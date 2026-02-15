@@ -12,6 +12,9 @@ RUN npx prisma generate
 COPY . .
 RUN npm run build
 
+# Compile seed separately (ts-node doesn't work in production)
+RUN npx tsc prisma/seed.ts --outDir dist/prisma --esModuleInterop --module commonjs --target ES2023 --skipLibCheck --resolveJsonModule
+
 # ── Stage 2: Production ──
 FROM node:20-alpine AS runner
 
@@ -35,4 +38,4 @@ USER node
 EXPOSE 4000
 
 # Run migrations, seed, then start
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/main.js"]
