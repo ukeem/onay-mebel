@@ -14,9 +14,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Cache-bust: force rebuild even when Docker cache thinks nothing changed
-ARG CACHEBUST=1
-
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

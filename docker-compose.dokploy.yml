@@ -50,8 +50,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        CACHEBUST: "${CACHEBUST:-1}"
     restart: unless-stopped
     depends_on:
       - backend

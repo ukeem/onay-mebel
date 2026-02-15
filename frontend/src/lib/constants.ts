@@ -1,18 +1,20 @@
 /**
- * Base URL of the backend API / WebSocket server.
- * Single source of truth — import this instead of repeating the env fallback.
+ * Base URL of the backend API.
  *
- * Empty string = relative URLs (requests go to the same origin via nginx).
- * Set NEXT_PUBLIC_API_URL only when frontend and backend are on different domains.
+ * Always empty string = relative URLs.
+ * Requests go to the same origin (e.g. /api/auth/login),
+ * nginx proxies them to the backend container.
+ *
+ * DO NOT use process.env.NEXT_PUBLIC_API_URL here —
+ * Next.js bakes it at build time and Docker cache makes it unreliable.
  */
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+export const API_BASE_URL = "";
 
 /**
  * WebSocket base URL. Computed from window.location at runtime
  * so it works on any domain without build-time configuration.
  */
 export const WS_BASE_URL =
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (typeof window !== "undefined"
+  typeof window !== "undefined"
     ? `${window.location.protocol}//${window.location.host}`
-    : "");
+    : "";

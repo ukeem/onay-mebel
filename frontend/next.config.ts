@@ -6,6 +6,18 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   output: "standalone",
 
+  // Proxy /api and /uploads to backend in local dev (no nginx)
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:4000";
+    return [
+      { source: "/api/:path*", destination: `${backendUrl}/api/:path*` },
+      {
+        source: "/uploads/:path*",
+        destination: `${backendUrl}/uploads/:path*`,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
