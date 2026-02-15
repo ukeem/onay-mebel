@@ -14,6 +14,9 @@ const mockServer = {
 const makeSocket = (id: string) => ({
   id,
   emit: jest.fn(),
+  handshake: {
+    headers: {} as Record<string, string>,
+  },
 });
 
 describe('WsGateway', () => {
