@@ -8,9 +8,9 @@ import { useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
-import { API_BASE_URL } from "@/lib/constants";
+import { WS_BASE_URL } from "@/lib/constants";
 
-const WS_URL = API_BASE_URL;
+const WS_URL = WS_BASE_URL;
 
 export function useForceLogout() {
   const t = useTranslations();
