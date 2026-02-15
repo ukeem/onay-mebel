@@ -68,7 +68,10 @@ export class CatalogService {
 
   async updateRoomType(id: string, dto: CreateTypeDto) {
     await this.ensureExists('roomType', id);
-    return this.prisma.roomType.update({ where: { id }, data: { name: dto.name } });
+    return this.prisma.roomType.update({
+      where: { id },
+      data: { name: dto.name },
+    });
   }
 
   async deleteRoomType(id: string) {
@@ -89,7 +92,10 @@ export class CatalogService {
 
   async updateProductType(id: string, dto: CreateTypeDto) {
     await this.ensureExists('productType', id);
-    return this.prisma.productType.update({ where: { id }, data: { name: dto.name } });
+    return this.prisma.productType.update({
+      where: { id },
+      data: { name: dto.name },
+    });
   }
 
   async deleteProductType(id: string) {
@@ -110,7 +116,10 @@ export class CatalogService {
 
   async updateMaterialType(id: string, dto: CreateTypeDto) {
     await this.ensureExists('materialType', id);
-    return this.prisma.materialType.update({ where: { id }, data: { name: dto.name } });
+    return this.prisma.materialType.update({
+      where: { id },
+      data: { name: dto.name },
+    });
   }
 
   async deleteMaterialType(id: string) {
@@ -131,7 +140,10 @@ export class CatalogService {
 
   async updateHardwareType(id: string, dto: CreateTypeDto) {
     await this.ensureExists('hardwareType', id);
-    return this.prisma.hardwareType.update({ where: { id }, data: { name: dto.name } });
+    return this.prisma.hardwareType.update({
+      where: { id },
+      data: { name: dto.name },
+    });
   }
 
   async deleteHardwareType(id: string) {
@@ -265,7 +277,9 @@ export class CatalogService {
   /* ═══════════ HELPER ═══════════ */
 
   private async ensureExists(model: string, id: string) {
-    const record = await (this.prisma as any)[model].findUnique({ where: { id } });
+    const record = await (this.prisma as any)[model].findUnique({
+      where: { id },
+    });
     if (!record) throw new NotFoundException(`${model} не найден`);
   }
 }

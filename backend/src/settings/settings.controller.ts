@@ -1,18 +1,18 @@
 import {
-    Body,
-    Controller,
-    Get,
-    Param,
-    Patch,
-    Post,
-    Request,
-    UseGuards,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
-    UpdateUserHardwarePriceDto,
-    UpdateUserMaterialPriceDto,
-    UpdateUserServiceDto,
+  UpdateUserHardwarePriceDto,
+  UpdateUserMaterialPriceDto,
+  UpdateUserServiceDto,
 } from './dto/settings.dto';
 import { SettingsService } from './settings.service';
 
@@ -34,7 +34,11 @@ export class SettingsController {
     @Param('materialId') materialId: string,
     @Body() dto: UpdateUserMaterialPriceDto,
   ) {
-    return this.settings.updateUserMaterialPrice(req.user.id, materialId, dto.price);
+    return this.settings.updateUserMaterialPrice(
+      req.user.id,
+      materialId,
+      dto.price,
+    );
   }
 
   /* ═══ USER HARDWARE ═══ */
@@ -50,7 +54,11 @@ export class SettingsController {
     @Param('hardwareId') hardwareId: string,
     @Body() dto: UpdateUserHardwarePriceDto,
   ) {
-    return this.settings.updateUserHardwarePrice(req.user.id, hardwareId, dto.price);
+    return this.settings.updateUserHardwarePrice(
+      req.user.id,
+      hardwareId,
+      dto.price,
+    );
   }
 
   /* ═══ USER SERVICE ═══ */

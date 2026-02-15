@@ -135,7 +135,7 @@ export class ProductsService {
       });
 
       // 2. Copy mezzanine first (needed for sub-component references)
-      let mezzanineIdMap: Record<string, string> = {};
+      const mezzanineIdMap: Record<string, string> = {};
       if (src.mezzanine) {
         const mezz = await tx.productMezzanine.create({
           data: {

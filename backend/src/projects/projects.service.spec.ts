@@ -217,12 +217,10 @@ describe('ProjectsService', () => {
 
       const txMock = {
         project: {
-          create: jest
-            .fn()
-            .mockResolvedValue({
-              id: 'proj-copy',
-              name: 'Test Project (копия)',
-            }),
+          create: jest.fn().mockResolvedValue({
+            id: 'proj-copy',
+            name: 'Test Project (копия)',
+          }),
         },
         room: {
           create: jest.fn().mockResolvedValue({ id: 'room-copy' }),

@@ -18,7 +18,11 @@ export class SettingsService {
     });
   }
 
-  async updateUserMaterialPrice(userId: string, materialId: string, price: number) {
+  async updateUserMaterialPrice(
+    userId: string,
+    materialId: string,
+    price: number,
+  ) {
     const record = await this.prisma.userMaterial.findUnique({
       where: { userId_materialId: { userId, materialId } },
     });
@@ -42,11 +46,16 @@ export class SettingsService {
     });
   }
 
-  async updateUserHardwarePrice(userId: string, hardwareId: string, price: number) {
+  async updateUserHardwarePrice(
+    userId: string,
+    hardwareId: string,
+    price: number,
+  ) {
     const record = await this.prisma.userHardware.findUnique({
       where: { userId_hardwareId: { userId, hardwareId } },
     });
-    if (!record) throw new NotFoundException('Фурнитура не найдена в настройках');
+    if (!record)
+      throw new NotFoundException('Фурнитура не найдена в настройках');
     return this.prisma.userHardware.update({
       where: { id: record.id },
       data: { price },

@@ -16,11 +16,14 @@ export class UploadsService {
 
   saveFile(file: Express.Multer.File): string {
     if (!file) throw new BadRequestException('Файл не передан');
-    if (file.size > MAX_SIZE) throw new BadRequestException('Файл слишком большой (макс. 5 МБ)');
+    if (file.size > MAX_SIZE)
+      throw new BadRequestException('Файл слишком большой (макс. 5 МБ)');
 
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_EXT.includes(ext)) {
-      throw new BadRequestException(`Недопустимый формат. Разрешены: ${ALLOWED_EXT.join(', ')}`);
+      throw new BadRequestException(
+        `Недопустимый формат. Разрешены: ${ALLOWED_EXT.join(', ')}`,
+      );
     }
 
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;

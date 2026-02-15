@@ -1,24 +1,24 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    Patch,
-    Post,
-    UseGuards,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, RolesGuard } from '../auth/roles.guard';
 import { CatalogService } from './catalog.service';
 import {
-    CreateHardwareDto,
-    CreateMaterialDto,
-    CreateTypeDto,
-    UpdateHardwareDto,
-    UpdateMaterialDto,
-    UpdateServiceTemplateDto,
+  CreateHardwareDto,
+  CreateMaterialDto,
+  CreateTypeDto,
+  UpdateHardwareDto,
+  UpdateMaterialDto,
+  UpdateServiceTemplateDto,
 } from './dto/catalog.dto';
 
 @Controller('catalog')

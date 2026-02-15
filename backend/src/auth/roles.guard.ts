@@ -4,7 +4,8 @@ import { Role } from '@prisma/client';
 
 export const ROLES_KEY = 'roles';
 
-export const Roles = (...roles: Role[]) =>
+export const Roles =
+  (...roles: Role[]) =>
   (target: any, key?: string, descriptor?: any) => {
     Reflect.defineMetadata(ROLES_KEY, roles, descriptor?.value ?? target);
     return descriptor ?? target;

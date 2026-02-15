@@ -111,7 +111,7 @@ export class CalculationsService {
     /* ── Calculate each room/product ── */
     const roomResults: any[] = [];
     let productsSum = 0;
-    let totalBodySheets = 0;
+    let _totalBodySheets = 0;
     let totalAllSheets = 0;
     let totalEdgeLm = 0;
     let totalProductCount = 0;
@@ -128,7 +128,7 @@ export class CalculationsService {
         );
         productResults.push(pr);
         productsSum += pr.cleanPrice;
-        totalBodySheets += pr.bodySheets;
+        _totalBodySheets += pr.bodySheets;
         totalAllSheets += pr.totalSheets;
         totalEdgeLm += pr.edgeLm;
         totalProductCount++;
@@ -225,16 +225,12 @@ export class CalculationsService {
     for (const tier of ['standard', 'comfort', 'premium']) {
       // Build price maps for this tier from tierPrices
       const tierMatPrice = new Map<string, number>();
-      for (const [typeName, items] of Object.entries(
-        tierPrices.materials as Record<string, any[]>,
-      )) {
+      for (const [typeName, items] of Object.entries(tierPrices.materials)) {
         const tierItem = items.find((i: any) => i.tier === tier);
         if (tierItem) tierMatPrice.set(typeName, tierItem.price);
       }
       const tierHwPrice = new Map<string, number>();
-      for (const [typeName, items] of Object.entries(
-        tierPrices.hardware as Record<string, any[]>,
-      )) {
+      for (const [typeName, items] of Object.entries(tierPrices.hardware)) {
         const tierItem = items.find((i: any) => i.tier === tier);
         if (tierItem) tierHwPrice.set(typeName, tierItem.price);
       }
@@ -407,7 +403,7 @@ export class CalculationsService {
     const calc = await this.findOne(id, userId);
     return this.prisma.calculation.update({
       where: { id: calc.id },
-      data: { data: data as any },
+      data: { data: data },
     });
   }
 
@@ -592,16 +588,16 @@ export class CalculationsService {
         let roomsHtml = '';
         for (const room of tr.rooms) {
           let productsHtml = '';
-          let roomTotalBeforeDiscount = 0;
-          let roomTotal = 0;
+          let _roomTotalBeforeDiscount = 0;
+          let _roomTotal = 0;
 
           for (const pr of room.products) {
             const key = `${room.roomType}::${pr.productType}::${pr.dimensions}::${productIdx}`;
             const pt = tr.productTotals.get(key);
             const finalPrice = pt?.finalPrice ?? 0;
             const finalPriceBeforeDiscount = pt?.finalPriceBeforeDiscount ?? 0;
-            roomTotalBeforeDiscount += finalPriceBeforeDiscount;
-            roomTotal += finalPrice;
+            _roomTotalBeforeDiscount += finalPriceBeforeDiscount;
+            _roomTotal += finalPrice;
             productIdx++;
 
             // Detail items — distribute product price proportionally to details
@@ -641,7 +637,7 @@ export class CalculationsService {
                 detAdDistributed += detAd;
               }
 
-              const priceHtml =
+              const _priceHtml =
                 discountPct > 0
                   ? `<span class="price-old">${fmt(detBd)}</span> <span class="price-new">${fmt(detAd)}</span>`
                   : `<span class="price-current">${fmt(detAd)}</span>`;
@@ -677,7 +673,7 @@ export class CalculationsService {
         }
 
         // Grand total
-        const discountBadge =
+        const _discountBadge =
           discountPct > 0
             ? `<span class="discount-badge">-${discountPct}%</span>`
             : '';

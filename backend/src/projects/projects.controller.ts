@@ -1,13 +1,13 @@
 import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Param,
-    Patch,
-    Post,
-    Req,
-    UseGuards,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateProjectDto, UpdateProjectDto } from './dto/projects.dto';
@@ -38,7 +38,11 @@ export class ProjectsController {
 
   /** PATCH /api/projects/:id */
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateProjectDto, @Req() req: any) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectDto,
+    @Req() req: any,
+  ) {
     return this.svc.update(id, req.user.id, dto);
   }
 

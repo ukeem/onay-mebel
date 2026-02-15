@@ -1,12 +1,12 @@
 import { CalcType, ProfitType } from '@prisma/client';
 import {
-    IsEnum,
-    IsInt,
-    IsNotEmpty,
-    IsNumber,
-    IsOptional,
-    IsString,
-    Min
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
 } from 'class-validator';
 
 /* ─── Types (room, product, material, hardware) ─── */

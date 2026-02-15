@@ -1,11 +1,11 @@
 import { Role, UserStatus } from '@prisma/client';
 import {
-    IsDateString,
-    IsEnum,
-    IsOptional,
-    IsString,
-    Matches,
-    MinLength,
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
 } from 'class-validator';
 
 export class CreateUserDto {

@@ -1,7 +1,7 @@
 import {
-    ForbiddenException,
-    Injectable,
-    NotFoundException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto, UpdateRoomDto } from './dto/rooms.dto';
