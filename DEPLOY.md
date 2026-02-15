@@ -176,6 +176,7 @@ FRONTEND_URL=https://your-domain.com
 ### 5. Настроить домен
 
 Во вкладке **Domains** (или через Traefik-лейблы в compose-файле):
+
 - Указать домен, направить A-запись DNS на IP сервера
 - SSL-сертификат Let's Encrypt будет выпущен автоматически
 
@@ -190,6 +191,7 @@ FRONTEND_URL=https://your-domain.com
 ### Мониторинг и логи
 
 Всё доступно через веб-панель Dokploy:
+
 - **Logs** — логи каждого сервиса
 - **Monitoring** — CPU, RAM, сеть
 - **Deployments** — история деплоев
