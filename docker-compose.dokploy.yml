@@ -65,23 +65,16 @@ services:
       - internal
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     restart: unless-stopped
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
       - frontend
     networks:
       - dokploy-network
       - internal
-    labels:
-      # Traefik — HTTP → HTTPS redirect + SSL
-      - "traefik.enable=true"
-      - "traefik.http.routers.onay-mebel.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.onay-mebel.entrypoints=websecure"
-      - "traefik.http.routers.onay-mebel.tls.certResolver=letsencrypt"
-      - "traefik.http.services.onay-mebel.loadbalancer.server.port=80"
 
 volumes:
   pgdata:
