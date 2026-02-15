@@ -15,8 +15,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Force cache invalidation: embed build timestamp so Docker cannot reuse stale layer
-RUN echo "build-time: $(date)" > /tmp/.build-stamp && npm run build
+RUN npm run build
 
 # ── Stage 3: Production ──
 FROM node:20-alpine AS runner
