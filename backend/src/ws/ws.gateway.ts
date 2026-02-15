@@ -16,9 +16,7 @@ import { Server, Socket } from 'socket.io';
  */
 @WebSocketGateway({
   cors: {
-    origin: (process.env.FRONTEND_URL ?? 'http://localhost:3000')
-      .split(',')
-      .map((o) => o.trim()),
+    origin: true,
     credentials: true,
   },
 })

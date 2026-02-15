@@ -38,12 +38,9 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
-  const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
-    .split(',')
-    .map((o) => o.trim());
+  // CORS — reflect the request origin so it works behind nginx on any domain
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     credentials: true,
   });
 
