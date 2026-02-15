@@ -34,5 +34,5 @@ USER node
 
 EXPOSE 4000
 
-# Run migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# Run migrations, seed, then start
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"]
