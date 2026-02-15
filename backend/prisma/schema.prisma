@@ -1,0 +1,506 @@
+// Onay Mebel — Prisma Schema
+// ============================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  SUPER
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum CalcType {
+  SHEET // лист
+  SQM // кв.м
+  LM // м.п.
+}
+
+enum ProfitType {
+  COEF // коэффициент
+  FIXED // фиксированная
+}
+
+// ============================================
+// AUTH & USERS
+// ============================================
+
+model User {
+  id          String     @id @default(cuid())
+  role        Role       @default(USER)
+  phone       String     @unique
+  password    String
+  status      UserStatus @default(INACTIVE)
+  activeUntil DateTime?
+
+  refreshTokens RefreshToken[]
+  userMaterials UserMaterial[]
+  userHardware  UserHardware[]
+  userService   UserService?
+  projects      Project[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model SmsCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([phone, used, expiresAt])
+}
+
+// ============================================
+// CATALOG (admin templates)
+// ============================================
+
+model RoomType {
+  id   String @id @default(cuid())
+  name String
+
+  rooms Room[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductType {
+  id   String @id @default(cuid())
+  name String
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MaterialType {
+  id   String @id @default(cuid())
+  name String // ЛДСП, МДФ, ХДФ, Камень, Кромка...
+
+  materials Material[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HardwareType {
+  id   String @id @default(cuid())
+  name String // петли, направляющие, полкодержатели...
+
+  hardware Hardware[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Material {
+  id             String       @id @default(cuid())
+  materialTypeId String
+  materialType   MaterialType @relation(fields: [materialTypeId], references: [id], onDelete: Cascade)
+  brand          String?
+  calcType       CalcType     @default(SHEET)
+  length         Int          @default(1) // mm (для SHEET)
+  width          Int          @default(1) // mm (для SHEET)
+  price          Decimal      @default(0)
+  image          String?
+
+  userMaterials           UserMaterial[]
+  productBodies           Product[]           @relation("BodyMaterial")
+  productBackWalls        Product[]           @relation("BackWallMaterial")
+  mezzanineBackWalls      ProductMezzanine[]  @relation("MezzanineBackWall")
+  productFacades          ProductFacade[]
+  falseFacadeMat          Product[]           @relation("FalseFacadeMaterial")
+  mezzanineFalseFacadeMat ProductMezzanine[]  @relation("MezzanineFalseFacadeMat")
+  countertopMat           ProductCountertop[] @relation("CountertopMaterial")
+  apronMat                ProductCountertop[] @relation("ApronMaterial")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Hardware {
+  id             String       @id @default(cuid())
+  hardwareTypeId String
+  hardwareType   HardwareType @relation(fields: [hardwareTypeId], references: [id], onDelete: Cascade)
+  brand          String?
+  price          Decimal      @default(0)
+  image          String?
+
+  userHardware UserHardware[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceTemplate {
+  id                  String     @id @default(cuid())
+  sawingPrice         Decimal    @default(0) // Распил — цена за лист
+  drillingPrice       Decimal    @default(0) // Присадка — цена за лист
+  edgeBandingPrice    Decimal    @default(0) // Кромка — цена за м.п.
+  technologistPercent Decimal    @default(5) // Технолог %
+  designerPercent     Decimal    @default(5) // Дизайнер %
+  assemblyPercent     Decimal    @default(10) // Сборка + монтаж %
+  deliveryPrice       Decimal    @default(0) // Доставка — цена за 1 ед.
+  profitType          ProfitType @default(COEF)
+  profitValue         Decimal    @default(1.5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// USER SETTINGS (copy of catalog per user)
+// ============================================
+
+model UserMaterial {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  price      Decimal  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, materialId])
+}
+
+model UserHardware {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hardwareId String
+  hardware   Hardware @relation(fields: [hardwareId], references: [id], onDelete: Cascade)
+  price      Decimal  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, hardwareId])
+}
+
+model UserService {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sawingPrice         Decimal    @default(0)
+  drillingPrice       Decimal    @default(0)
+  edgeBandingPrice    Decimal    @default(0)
+  technologistPercent Decimal    @default(5)
+  designerPercent     Decimal    @default(5)
+  assemblyPercent     Decimal    @default(10)
+  deliveryPrice       Decimal    @default(0)
+  profitType          ProfitType @default(COEF)
+  profitValue         Decimal    @default(1.5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// PROJECTS
+// ============================================
+
+model Project {
+  id         String  @id @default(cuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  clientData String?
+
+  rooms        Room[]
+  calculations Calculation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Room {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  roomId        String
+  room          Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  productTypeId String
+  productType   ProductType @relation(fields: [productTypeId], references: [id])
+
+  // Габариты
+  width  Int @default(0) // W mm
+  height Int @default(0) // H mm
+  depth  Int @default(600) // D mm
+
+  // Материал корпуса — всегда ЛДСП
+  bodyMaterialId String?
+  bodyMaterial   Material? @relation("BodyMaterial", fields: [bodyMaterialId], references: [id])
+
+  // ---- Свитчеры + встроенные простые поля ----
+
+  // Секции
+  sectionsEnabled Boolean @default(false)
+
+  // Задняя стенка
+  backWallEnabled    Boolean   @default(false)
+  backWallMaterialId String?
+  backWallMaterial   Material? @relation("BackWallMaterial", fields: [backWallMaterialId], references: [id])
+
+  // Перегородки
+  partitionsEnabled Boolean @default(false)
+
+  // Полки
+  shelvesEnabled Boolean @default(false)
+
+  // Фасады
+  facadesEnabled Boolean @default(false)
+
+  // Фальш-фасады (боковые панели)
+  falseFacadesEnabled   Boolean   @default(false)
+  falseFacadeQty        Int       @default(0)
+  falseFacadeMaterialId String?
+  falseFacadeMaterial   Material? @relation("FalseFacadeMaterial", fields: [falseFacadeMaterialId], references: [id])
+
+  // Ящики
+  drawersEnabled Boolean @default(false)
+
+  // Антресоль
+  mezzanineEnabled Boolean @default(false)
+
+  // Столешница
+  countertopEnabled Boolean @default(false)
+
+  // Дополнительно
+  extrasEnabled Boolean @default(false)
+
+  // ---- Реляции на конфигурацию ----
+  sections   ProductSection[]
+  partitions ProductPartition[]
+  shelves    ProductShelf[]
+  facades    ProductFacade[]
+  drawers    ProductDrawer[]
+  mezzanine  ProductMezzanine?
+  countertop ProductCountertop?
+  extras     ProductExtra[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roomId])
+}
+
+// ============================================
+// PRODUCT CONFIGURATION
+// ============================================
+
+// Группа секций (Модуль: 2 боковины, крыша, дно)
+model ProductSection {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mezzanineId String?
+  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
+  qty         Int               @default(2) // кол-во секций в группе
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Группа перегородок
+model ProductPartition {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mezzanineId String?
+  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
+  qty         Int               @default(1)
+  height      Int // mm
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Группа полок
+model ProductShelf {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mezzanineId String?
+  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
+  qty         Int               @default(1)
+  width       Int // mm
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Группа фасадов
+model ProductFacade {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mezzanineId String?
+  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
+  materialId  String?
+  material    Material?         @relation(fields: [materialId], references: [id])
+  isLdsp      Boolean           @default(false)
+  width       Int // mm
+  height      Int // mm
+  qty         Int               @default(1)
+  handleQty   Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Группа ящиков
+model ProductDrawer {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mezzanineId String?
+  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
+  width       Int // mm
+  height      Int // mm
+  qty         Int               @default(1)
+  handleQty   Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Антресоль — отдельный модуль с теми же опциями (кроме ножек)
+model ProductMezzanine {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  height    Int // H_антресоли mm
+
+  // Свитчеры антресоли
+  sectionsEnabled       Boolean   @default(false)
+  backWallEnabled       Boolean   @default(false)
+  backWallMaterialId    String?
+  backWallMaterial      Material? @relation("MezzanineBackWall", fields: [backWallMaterialId], references: [id])
+  partitionsEnabled     Boolean   @default(false)
+  shelvesEnabled        Boolean   @default(false)
+  facadesEnabled        Boolean   @default(false)
+  falseFacadesEnabled   Boolean   @default(false)
+  falseFacadeQty        Int       @default(0)
+  falseFacadeMaterialId String?
+  falseFacadeMaterial   Material? @relation("MezzanineFalseFacadeMat", fields: [falseFacadeMaterialId], references: [id])
+  drawersEnabled        Boolean   @default(false)
+
+  // Компоненты антресоли (через mezzanineId)
+  sections   ProductSection[]
+  partitions ProductPartition[]
+  shelves    ProductShelf[]
+  facades    ProductFacade[]
+  drawers    ProductDrawer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Столешница
+model ProductCountertop {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialId String
+  material   Material @relation("CountertopMaterial", fields: [materialId], references: [id])
+  isLdsp     Boolean  @default(false)
+  width      Int // mm
+  depth      Int      @default(600) // mm
+
+  // Фартук
+  apronEnabled    Boolean   @default(false)
+  apronMaterialId String?
+  apronMaterial   Material? @relation("ApronMaterial", fields: [apronMaterialId], references: [id])
+  apronIsLdsp     Boolean   @default(false)
+  apronWidth      Int? // mm
+  apronHeight     Int? // mm
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Дополнительные позиции (произвольные)
+model ProductExtra {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  price     Decimal @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// CALCULATIONS (snapshot)
+// ============================================
+
+model Calculation {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // Polный snapshot расчёта в JSON
+  // Содержит: rooms[], products[], тарифы (standard/comfort/premium),
+  // детализацию цен, услуги, итоги
+  data Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
