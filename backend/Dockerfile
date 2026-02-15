@@ -12,6 +12,9 @@ RUN npx prisma generate
 COPY . .
 RUN npm run build
 
+# Compile seed separately (ts-node doesn't work in production)
+RUN npx tsc prisma/seed.ts --outDir dist/prisma --esModuleInterop --module commonjs --target ES2023 --skipLibCheck --resolveJsonModule
+
 # ── Stage 2: Production ──
 FROM node:20-alpine AS runner
 
@@ -27,9 +30,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/prisma ./prisma
 
-# Install tsx for running seed.ts in production (lightweight TS runner)
-RUN npm install --no-save tsx
-
 # Create uploads directory
 RUN mkdir -p uploads && chown -R node:node /app
 
@@ -37,5 +37,5 @@ USER node
 
 EXPOSE 4000
 
-# Run migrations, seed (non-blocking), then start
-CMD ["sh", "-c", "npx prisma migrate deploy && (npx tsx prisma/seed.ts || echo 'Seed skipped') && node dist/main.js"]
+# Run migrations, seed, then start
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/main.js"]
