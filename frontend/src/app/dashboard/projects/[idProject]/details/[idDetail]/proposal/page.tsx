@@ -88,7 +88,11 @@ export default function ProposalPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `КП-${idDetail}.html`;
+      // Extract project name from <title> for a cleaner filename
+      const titleMatch = rawHtml.match(/<title>[^—]*—\s*(.+?)<\/title>/);
+      const projectName = titleMatch?.[1]?.trim() || idDetail;
+      const date = new Date().toLocaleDateString("ru-RU").replace(/\./g, "-");
+      a.download = `КП — ${projectName} (${date}).html`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -141,25 +145,12 @@ export default function ProposalPage({
         onValueChange={(v) => switchTier(v as Tier)}
         className="shrink-0"
       >
-        <TabsList className="w-full justify-start shadow-sm">
-          <TabsTrigger
-            value="standard"
-            className="data-[state=inactive]:text-muted-foreground"
-          >
+        <TabsList className="flex w-full shadow-sm">
+          <TabsTrigger value="standard">
             {t("detail.tiers.standard")}
           </TabsTrigger>
-          <TabsTrigger
-            value="comfort"
-            className="data-[state=inactive]:text-muted-foreground"
-          >
-            {t("detail.tiers.comfort")}
-          </TabsTrigger>
-          <TabsTrigger
-            value="premium"
-            className="data-[state=inactive]:text-muted-foreground"
-          >
-            {t("detail.tiers.premium")}
-          </TabsTrigger>
+          <TabsTrigger value="comfort">{t("detail.tiers.comfort")}</TabsTrigger>
+          <TabsTrigger value="premium">{t("detail.tiers.premium")}</TabsTrigger>
         </TabsList>
       </Tabs>
 

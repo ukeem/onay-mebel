@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { NumInput } from "@/components/ui/num-input";
 import {
   Select,
   SelectContent,
@@ -22,7 +22,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/lib/api";
-import { selectOnFocus } from "@/lib/utils";
 import { ArrowLeft, FileText, History } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -315,9 +314,12 @@ export default function DetailPage({
   /* ═══ Client-side recalculation for active tier ═══ */
   const computed = useMemo(() => {
     let productsSum = 0;
+    let productsSumNoReserve = 0;
     let totalSheets = 0;
     let totalEdgeLm = 0;
     let totalProductCount = 0;
+    let materialSumRaw = 0;
+    let hardwareSumRaw = 0;
     const roomSums: number[] = [];
 
     for (const room of rooms) {
@@ -326,9 +328,13 @@ export default function DetailPage({
         let pSum = 0;
         for (const det of pr.details) {
           if (det.enabled) {
-            pSum += det.qty * det.unitPrice;
+            const detCost = det.qty * det.unitPrice;
+            pSum += detCost;
+            if (det.type === "material") materialSumRaw += detCost;
+            else if (det.type === "hardware") hardwareSumRaw += detCost;
           }
         }
+        productsSumNoReserve += pSum;
         pSum = Math.round(pSum * (1 + reservePct / 100));
         productsSum += pSum;
         totalSheets += pr.totalSheets;
@@ -344,7 +350,7 @@ export default function DetailPage({
     const edgeCost = totalEdgeLm * edgePrice;
     const workshopTotal = sawCost + drillCost + edgeCost;
 
-    const marketPrice = (productsSum + workshopTotal) * 2;
+    const marketPrice = (productsSumNoReserve + workshopTotal) * 2;
     const techCost = (marketPrice * techPct) / 100;
     const designCost = (marketPrice * designPct) / 100;
     const assemblyCost = (marketPrice * assemblyPct) / 100;
@@ -358,8 +364,11 @@ export default function DetailPage({
     let totalForClient: number;
     let cleanProfit: number;
 
+    const reserveAmount = productsSum - productsSumNoReserve;
+
     if (profitType === "COEF") {
-      const base = (productsSum + workshopTotal) * profitValue;
+      const base =
+        (productsSumNoReserve + workshopTotal) * profitValue + reserveAmount;
       const disc = (base * discountPct) / 100;
       totalForClient = base - disc;
       cleanProfit =
@@ -377,8 +386,13 @@ export default function DetailPage({
       cleanProfit = profitValue;
     }
 
+    const materialSum = Math.round(materialSumRaw * (1 + reservePct / 100));
+    const hardwareSum = Math.round(hardwareSumRaw * (1 + reservePct / 100));
+
     return {
       productsSum: Math.round(productsSum),
+      materialSum,
+      hardwareSum,
       workshopTotal: Math.round(workshopTotal),
       sawCost: Math.round(sawCost),
       drillCost: Math.round(drillCost),
@@ -390,6 +404,7 @@ export default function DetailPage({
       designCost: Math.round(designCost),
       assemblyCost: Math.round(assemblyCost),
       deliveryCost: Math.round(deliveryCost),
+      totalProductCount,
       cleanProfit: Math.round(cleanProfit),
       totalForClient: Math.round(totalForClient),
       roomSums,
@@ -656,414 +671,492 @@ export default function DetailPage({
         </div>
 
         {(["standard", "comfort", "premium"] as Tier[]).map((tier) => (
-          <TabsContent key={tier} value={tier} className="space-y-6 pt-2">
-            {/* rooms */}
-            <Accordion
-              type="multiple"
-              defaultValue={rooms.map((_, i) => `room-${i}`)}
-            >
-              {rooms.map((room, ri) => (
-                <AccordionItem key={ri} value={`room-${ri}`}>
-                  <AccordionTrigger className="text-base">
-                    <div className="flex items-center gap-2">
-                      {room.roomType}
-                      <Badge variant="secondary" className="text-xs">
-                        {room.products.length} {t("detail.productsShort")}
-                      </Badge>
-                      <span className="ml-auto text-sm text-muted-foreground">
-                        {fmt(computed.roomSums[ri] ?? 0)}
-                      </span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-2">
-                    {room.products.map((pr, pi) => {
-                      const pRaw = pr.details
-                        .filter((det) => det.enabled)
-                        .reduce((s, det) => s + det.qty * det.unitPrice, 0);
-                      const pSum = Math.round(pRaw * (1 + reservePct / 100));
-                      return (
-                        <Card key={pi}>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="flex items-center justify-between text-sm">
-                              <span>
-                                {pr.productType} {pr.dimensions}
-                              </span>
-                              <span className="font-semibold">{fmt(pSum)}</span>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-1 px-3 pb-3">
-                            {pr.details.map((det, di) => {
-                              const displayCost = det.qty * det.unitPrice;
+          <TabsContent key={tier} value={tier} className="pt-2">
+            <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+              {/* ── Left column: rooms ── */}
+              <div className="space-y-6">
+                {/* rooms */}
+                <Accordion
+                  type="multiple"
+                  defaultValue={rooms.map((_, i) => `room-${i}`)}
+                >
+                  {rooms.map((room, ri) => (
+                    <AccordionItem key={ri} value={`room-${ri}`}>
+                      <AccordionTrigger className="text-base">
+                        <div className="flex items-center gap-2">
+                          {room.roomType}
+                          <Badge variant="secondary" className="text-xs">
+                            {room.products.length} {t("detail.productsShort")}
+                          </Badge>
+                          <span className="ml-auto text-sm text-muted-foreground">
+                            {fmt(computed.roomSums[ri] ?? 0)}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-2">
+                        {room.products.map((pr, pi) => {
+                          const pRaw = pr.details
+                            .filter((det) => det.enabled)
+                            .reduce((s, det) => s + det.qty * det.unitPrice, 0);
+                          const pSum = Math.round(
+                            pRaw * (1 + reservePct / 100),
+                          );
+                          return (
+                            <Card key={pi}>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center justify-between gap-3 text-sm">
+                                  <span className="min-w-0 break-words">
+                                    {pr.productType} {pr.dimensions}
+                                  </span>
+                                  <span className="shrink-0 font-semibold whitespace-nowrap">
+                                    {fmt(pSum)}
+                                  </span>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-1 px-3 pb-3">
+                                {pr.details.map((det, di) => {
+                                  const displayCost = det.qty * det.unitPrice;
 
-                              /* Brand options for this item */
-                              const brandOpts =
-                                det.type === "material" && det.materialType
-                                  ? materialOptions.filter(
-                                      (m) =>
-                                        m.materialType === det.materialType,
-                                    )
-                                  : det.type === "hardware" && det.hardwareType
-                                    ? hardwareOptions.filter(
-                                        (h) =>
-                                          h.hardwareType === det.hardwareType,
-                                      )
-                                    : [];
+                                  /* Brand options for this item */
+                                  const brandOpts =
+                                    det.type === "material" && det.materialType
+                                      ? materialOptions.filter(
+                                          (m) =>
+                                            m.materialType === det.materialType,
+                                        )
+                                      : det.type === "hardware" &&
+                                          det.hardwareType
+                                        ? hardwareOptions.filter(
+                                            (h) =>
+                                              h.hardwareType ===
+                                              det.hardwareType,
+                                          )
+                                        : [];
 
-                              return (
-                                <div
-                                  key={di}
-                                  className={`flex items-start gap-2 rounded-lg px-2 py-2 ${
-                                    det.enabled
-                                      ? "hover:bg-muted/40"
-                                      : "opacity-40"
-                                  }`}
-                                >
-                                  <Checkbox
-                                    className="mt-0.5 shrink-0"
-                                    checked={det.enabled}
-                                    onCheckedChange={() =>
-                                      toggleDetail(ri, pi, di)
-                                    }
-                                  />
-                                  <div className="min-w-0 flex-1 space-y-1">
-                                    <div className="flex items-baseline justify-between gap-2">
-                                      <span
-                                        className={`text-xs font-medium leading-tight ${!det.enabled ? "line-through" : ""}`}
-                                      >
-                                        {det.label}
-                                      </span>
-                                      <span className="shrink-0 text-xs font-medium tabular-nums">
-                                        {det.enabled ? fmt(displayCost) : ""}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {brandOpts.length > 1 ? (
-                                        <Select
-                                          value={
-                                            det.type === "material"
-                                              ? (det.materialId ?? "")
-                                              : (det.brand ?? "")
-                                          }
-                                          onValueChange={(v) => {
-                                            if (det.type === "material") {
-                                              const opt = materialOptions.find(
-                                                (m) => m.materialId === v,
-                                              );
-                                              if (opt)
-                                                updateDetailBrand(
-                                                  ri,
-                                                  pi,
-                                                  di,
-                                                  opt,
-                                                );
-                                            } else {
-                                              const opt = hardwareOptions.find(
-                                                (h) => h.brand === v,
-                                              );
-                                              if (opt)
-                                                updateDetailBrand(
-                                                  ri,
-                                                  pi,
-                                                  di,
-                                                  opt,
-                                                );
-                                            }
-                                          }}
-                                          disabled={!det.enabled}
-                                        >
-                                          <SelectTrigger
-                                            className="w-[140px] text-[11px] px-2"
-                                            style={{
-                                              height: 32,
-                                              minHeight: 32,
-                                            }}
+                                  return (
+                                    <div
+                                      key={di}
+                                      className={`flex items-start gap-2 rounded-lg px-2 py-2 ${
+                                        det.enabled
+                                          ? "hover:bg-muted/40"
+                                          : "opacity-40"
+                                      }`}
+                                    >
+                                      <Checkbox
+                                        className="mt-0.5 shrink-0"
+                                        checked={det.enabled}
+                                        onCheckedChange={() =>
+                                          toggleDetail(ri, pi, di)
+                                        }
+                                      />
+                                      <div className="min-w-0 flex-1 space-y-1">
+                                        <div className="flex items-baseline justify-between gap-2">
+                                          <span
+                                            className={`max-w-[140px] text-xs font-medium leading-tight ${!det.enabled ? "line-through" : ""}`}
                                           >
-                                            <SelectValue
-                                              placeholder={t("common.brand")}
-                                            />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {brandOpts.map((opt, oi) => (
-                                              <SelectItem
-                                                key={oi}
-                                                value={
-                                                  "materialId" in opt
-                                                    ? (opt as MaterialOption)
-                                                        .materialId
-                                                    : opt.brand || String(oi)
+                                            {det.label}
+                                          </span>
+                                          <span className="shrink-0 text-xs font-medium tabular-nums">
+                                            {det.enabled
+                                              ? fmt(displayCost)
+                                              : ""}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {brandOpts.length > 1 ? (
+                                            <Select
+                                              value={
+                                                det.type === "material"
+                                                  ? (det.materialId ?? "")
+                                                  : (det.brand ?? "")
+                                              }
+                                              onValueChange={(v) => {
+                                                if (det.type === "material") {
+                                                  const opt =
+                                                    materialOptions.find(
+                                                      (m) => m.materialId === v,
+                                                    );
+                                                  if (opt)
+                                                    updateDetailBrand(
+                                                      ri,
+                                                      pi,
+                                                      di,
+                                                      opt,
+                                                    );
+                                                } else {
+                                                  const opt =
+                                                    hardwareOptions.find(
+                                                      (h) => h.brand === v,
+                                                    );
+                                                  if (opt)
+                                                    updateDetailBrand(
+                                                      ri,
+                                                      pi,
+                                                      di,
+                                                      opt,
+                                                    );
                                                 }
+                                              }}
+                                              disabled={!det.enabled}
+                                            >
+                                              <SelectTrigger
+                                                className="w-[140px] text-[11px] px-2"
+                                                style={{
+                                                  height: 32,
+                                                  minHeight: 32,
+                                                }}
                                               >
-                                                {opt.brand || "—"} ·{" "}
-                                                {fmt(opt.price)}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <span
-                                          className="inline-flex w-[140px] items-center text-[11px] text-muted-foreground"
-                                          style={{ height: 32 }}
-                                        >
-                                          {det.brand
-                                            ? `${det.brand} · ${fmt(det.unitPrice)}`
-                                            : "—"}
-                                        </span>
-                                      )}
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] text-muted-foreground">
-                                          ×
-                                        </span>
-                                        <Input
-                                          type="number"
-                                          className="w-[52px] px-1 py-0 text-[11px] text-center"
-                                          style={{ height: 32, minHeight: 32 }}
-                                          min={0}
-                                          value={det.qty}
-                                          onFocus={selectOnFocus}
-                                          onChange={(e) =>
-                                            updateDetailQty(
-                                              ri,
-                                              pi,
-                                              di,
-                                              Number(e.target.value) || 0,
-                                            )
-                                          }
-                                          disabled={!det.enabled}
-                                        />
+                                                <SelectValue
+                                                  placeholder={t(
+                                                    "common.brand",
+                                                  )}
+                                                />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {brandOpts.map((opt, oi) => (
+                                                  <SelectItem
+                                                    key={oi}
+                                                    value={
+                                                      "materialId" in opt
+                                                        ? (
+                                                            opt as MaterialOption
+                                                          ).materialId
+                                                        : opt.brand ||
+                                                          String(oi)
+                                                    }
+                                                  >
+                                                    {opt.brand || "—"} ·{" "}
+                                                    {fmt(opt.price)}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                          ) : (
+                                            <span
+                                              className="inline-flex w-[140px] items-center text-[11px] text-muted-foreground"
+                                              style={{ height: 32 }}
+                                            >
+                                              {det.brand
+                                                ? `${det.brand} · ${fmt(det.unitPrice)}`
+                                                : "—"}
+                                            </span>
+                                          )}
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[11px] text-muted-foreground">
+                                              ×
+                                            </span>
+                                            <div className="relative">
+                                              <NumInput
+                                                className="w-[70px] px-1 py-0 text-[11px] text-center pr-5"
+                                                style={{
+                                                  height: 32,
+                                                  minHeight: 32,
+                                                }}
+                                                min={0}
+                                                value={det.qty}
+                                                onValueChange={(v) =>
+                                                  updateDetailQty(ri, pi, di, v)
+                                                }
+                                                disabled={!det.enabled}
+                                              />
+                                              {det.unit && (
+                                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground pointer-events-none">
+                                                  {det.unit}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                                  );
+                                })}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
 
-            {/* ═══ Services & Pricing ═══ */}
-            <Card>
-              <CardContent className="space-y-5">
-                {/* Services */}
-                <div className="space-y-2">
-                  {/* Reserve */}
-                  <div className="flex items-center gap-3">
-                    <span className="flex-1 text-sm">
-                      {t("detail.reserve")}
-                    </span>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        className="h-9 w-24 pr-6 text-sm text-right"
-                        min={0}
-                        max={100}
-                        value={reservePct}
-                        onFocus={selectOnFocus}
-                        onChange={(e) =>
-                          setReservePct(Number(e.target.value) || 0)
-                        }
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        %
-                      </span>
-                    </div>
-                    <span className="w-24" />
-                  </div>
-
-                  <Separator className="my-3" />
-
-                  {[
-                    {
-                      label: t("detail.technologist"),
-                      value: techPct,
-                      set: setTechPct,
-                      result: computed.techCost,
-                      suffix: "%",
-                    },
-                    {
-                      label: t("detail.designer"),
-                      value: designPct,
-                      set: setDesignPct,
-                      result: computed.designCost,
-                      suffix: "%",
-                    },
-                  ].map((row, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="flex-1 text-sm">{row.label}</span>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          className="h-9 w-24 pr-6 text-sm text-right"
-                          min={0}
-                          value={row.value}
-                          onFocus={selectOnFocus}
-                          onChange={(e) => row.set(Number(e.target.value) || 0)}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          {row.suffix}
+              {/* ── Right column: summary + services ── */}
+              <div className="space-y-6 lg:sticky lg:top-[120px] lg:self-start">
+                {/* ═══ Material & Hardware Summary ═══ */}
+                <Card>
+                  <CardContent className="pt-5 pb-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          {t("detail.materialCost")}
+                        </span>
+                        <span className="text-base font-semibold tabular-nums">
+                          {fmt(computed.materialSum)}
                         </span>
                       </div>
-                      <span className="w-24 text-right text-sm font-medium tabular-nums">
-                        {fmt(row.result)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <Separator className="my-3" />
-
-                {/* Workshop */}
-                <div className="space-y-2">
-                  {[
-                    {
-                      label: t("detail.sawing"),
-                      value: sawPrice,
-                      set: setSawPrice,
-                      result: computed.sawCost,
-                      suffix: "₸",
-                    },
-                    {
-                      label: t("detail.drilling"),
-                      value: drillPrice,
-                      set: setDrillPrice,
-                      result: computed.drillCost,
-                      suffix: "₸",
-                    },
-                    {
-                      label: t("detail.edgeBanding"),
-                      value: edgePrice,
-                      set: setEdgePrice,
-                      result: computed.edgeCost,
-                      suffix: "₸",
-                    },
-                  ].map((row, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="flex-1 text-sm">{row.label}</span>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          className="h-9 w-24 pr-6 text-sm text-right"
-                          min={0}
-                          value={row.value}
-                          onFocus={selectOnFocus}
-                          onChange={(e) => row.set(Number(e.target.value) || 0)}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          {row.suffix}
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          {t("detail.hardwareCost")}
+                        </span>
+                        <span className="text-base font-semibold tabular-nums">
+                          {fmt(computed.hardwareSum)}
                         </span>
                       </div>
-                      <span className="w-24 text-right text-sm font-medium tabular-nums">
-                        {fmt(row.result)}
-                      </span>
                     </div>
-                  ))}
-                </div>
+                  </CardContent>
+                </Card>
 
-                <Separator className="my-3" />
-
-                {/* Delivery & Assembly */}
-                <div className="space-y-2">
-                  {[
-                    {
-                      label: t("detail.delivery"),
-                      value: delivPrice,
-                      set: setDelivPrice,
-                      result: computed.deliveryCost,
-                      suffix: "₸",
-                    },
-                    {
-                      label: t("detail.assembly"),
-                      value: assemblyPct,
-                      set: setAssemblyPct,
-                      result: computed.assemblyCost,
-                      suffix: "%",
-                    },
-                  ].map((row, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="flex-1 text-sm">{row.label}</span>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          className="h-9 w-24 pr-6 text-sm text-right"
-                          min={0}
-                          value={row.value}
-                          onFocus={selectOnFocus}
-                          onChange={(e) => row.set(Number(e.target.value) || 0)}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          {row.suffix}
+                {/* ═══ Services & Pricing ═══ */}
+                <Card>
+                  <CardContent className="space-y-5">
+                    {/* Services */}
+                    <div className="space-y-2">
+                      {/* Reserve */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                        <span className="text-sm text-muted-foreground sm:w-24 sm:shrink-0">
+                          {t("detail.reserve")}
                         </span>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <div className="relative w-1/2 sm:w-24">
+                            <NumInput
+                              className="h-9 w-full pr-6 text-sm text-right"
+                              min={0}
+                              max={100}
+                              value={reservePct}
+                              onValueChange={setReservePct}
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              %
+                            </span>
+                          </div>
+                          <span className="w-1/2 sm:w-24" />
+                        </div>
                       </div>
-                      <span className="w-24 text-right text-sm font-medium tabular-nums">
-                        {fmt(row.result)}
-                      </span>
+
+                      <Separator className="my-3" />
+
+                      {[
+                        {
+                          label: t("detail.technologist"),
+                          value: techPct,
+                          set: setTechPct,
+                          result: computed.techCost,
+                          suffix: "%",
+                        },
+                        {
+                          label: t("detail.designer"),
+                          value: designPct,
+                          set: setDesignPct,
+                          result: computed.designCost,
+                          suffix: "%",
+                        },
+                      ].map((row, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3"
+                        >
+                          <span className="text-sm text-muted-foreground sm:w-24 sm:shrink-0">
+                            {row.label}
+                          </span>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="relative w-1/2 sm:w-24">
+                              <NumInput
+                                className="h-9 w-full pr-6 text-sm text-right"
+                                min={0}
+                                value={row.value}
+                                onValueChange={row.set}
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                {row.suffix}
+                              </span>
+                            </div>
+                            <span className="w-1/2 sm:w-24 text-right text-sm font-medium tabular-nums">
+                              {fmt(row.result)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                <Separator className="my-3" />
+                    <Separator className="my-3" />
 
-                {/* Discount */}
-                <div className="flex items-center gap-3">
-                  <span className="flex-1 text-sm">{t("detail.discount")}</span>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      className="h-9 w-24 pr-6 text-sm text-right"
-                      min={0}
-                      max={100}
-                      value={discountPct}
-                      onFocus={selectOnFocus}
-                      onChange={(e) =>
-                        setDiscountPct(Number(e.target.value) || 0)
-                      }
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                      %
-                    </span>
-                  </div>
-                  <span className="w-24" />
-                </div>
+                    {/* Workshop */}
+                    <div className="space-y-2">
+                      {[
+                        {
+                          label: t("detail.sawing"),
+                          value: sawPrice,
+                          set: setSawPrice,
+                          result: computed.sawCost,
+                          suffix: "₸",
+                          info: `${computed.totalSheets} ${t("detail.sheets")}`,
+                        },
+                        {
+                          label: t("detail.drilling"),
+                          value: drillPrice,
+                          set: setDrillPrice,
+                          result: computed.drillCost,
+                          suffix: "₸",
+                          info: `${computed.totalSheets} ${t("detail.sheets")}`,
+                        },
+                        {
+                          label: t("detail.edgeBanding"),
+                          value: edgePrice,
+                          set: setEdgePrice,
+                          result: computed.edgeCost,
+                          suffix: "₸",
+                          info: `${computed.totalEdgeLm} ${t("detail.edgeMeters")}`,
+                        },
+                      ].map((row, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3"
+                        >
+                          <div className="sm:w-24 sm:shrink-0">
+                            <span className="text-sm text-muted-foreground">
+                              {row.label}
+                            </span>
+                            <span className="ml-2 text-xs text-muted-foreground/70">
+                              {row.info}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="relative w-1/2 sm:w-24">
+                              <NumInput
+                                className="h-9 w-full pr-6 text-sm text-right"
+                                min={0}
+                                value={row.value}
+                                onValueChange={row.set}
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                {row.suffix}
+                              </span>
+                            </div>
+                            <span className="w-1/2 sm:w-24 text-right text-sm font-medium tabular-nums">
+                              {fmt(row.result)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-                {/* Profit */}
-                <div className="flex items-center gap-3">
-                  <span className="flex-1 text-sm">
-                    {t("detail.profitParams")}
-                  </span>
-                  <Select
-                    value={profitType}
-                    onValueChange={(v) => setProfitType(v as "COEF" | "FIXED")}
-                  >
-                    <SelectTrigger className="h-9 w-24 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="COEF">
-                        {t("detail.coefficient")}
-                      </SelectItem>
-                      <SelectItem value="FIXED">
-                        {t("detail.fixedAmount")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    className="h-9 w-24 pr-2 text-sm text-right"
-                    min={0}
-                    step={profitType === "COEF" ? 0.1 : 1000}
-                    value={profitValue}
-                    onFocus={selectOnFocus}
-                    onChange={(e) =>
-                      setProfitValue(Number(e.target.value) || 0)
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                    <Separator className="my-3" />
+
+                    {/* Delivery & Assembly */}
+                    <div className="space-y-2">
+                      {[
+                        {
+                          label: t("detail.delivery"),
+                          value: delivPrice,
+                          set: setDelivPrice,
+                          result: computed.deliveryCost,
+                          suffix: "₸",
+                          info: `${computed.totalProductCount} ${t("detail.productsCount")}`,
+                        },
+                        {
+                          label: t("detail.assembly"),
+                          value: assemblyPct,
+                          set: setAssemblyPct,
+                          result: computed.assemblyCost,
+                          suffix: "%",
+                          info: undefined as string | undefined,
+                        },
+                      ].map((row, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3"
+                        >
+                          <div className="sm:w-24 sm:shrink-0">
+                            <span className="text-sm text-muted-foreground">
+                              {row.label}
+                            </span>
+                            {row.info && (
+                              <span className="ml-2 text-xs text-muted-foreground/70">
+                                {row.info}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="relative w-1/2 sm:w-24">
+                              <NumInput
+                                className="h-9 w-full pr-6 text-sm text-right"
+                                min={0}
+                                value={row.value}
+                                onValueChange={row.set}
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                {row.suffix}
+                              </span>
+                            </div>
+                            <span className="w-1/2 sm:w-24 text-right text-sm font-medium tabular-nums">
+                              {fmt(row.result)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator className="my-3" />
+
+                    {/* Discount */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                      <span className="text-sm text-muted-foreground sm:w-24 sm:shrink-0">
+                        {t("detail.discount")}
+                      </span>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="relative w-1/2 sm:w-24">
+                          <NumInput
+                            className="h-9 w-full pr-6 text-sm text-right"
+                            min={0}
+                            max={100}
+                            value={discountPct}
+                            onValueChange={setDiscountPct}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                            %
+                          </span>
+                        </div>
+                        <span className="w-1/2 sm:w-24" />
+                      </div>
+                    </div>
+
+                    {/* Profit */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                      <span className="text-sm text-muted-foreground sm:w-24 sm:shrink-0">
+                        {t("detail.profitParams")}
+                      </span>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Select
+                          value={profitType}
+                          onValueChange={(v) =>
+                            setProfitType(v as "COEF" | "FIXED")
+                          }
+                        >
+                          <SelectTrigger className="h-9 w-1/2 sm:w-24 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="COEF">
+                              {t("detail.coefficient")}
+                            </SelectItem>
+                            <SelectItem value="FIXED">
+                              {t("detail.fixedAmount")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <NumInput
+                          className="h-9 w-1/2 sm:w-24 pr-2 text-sm text-right"
+                          min={0}
+                          value={profitValue}
+                          onValueChange={setProfitValue}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
         ))}
       </Tabs>
@@ -1089,28 +1182,28 @@ export default function DetailPage({
 
       {/* ── Fixed bottom bar ── */}
       <div className="fixed bottom-16 left-0 right-0 z-40 border-t bg-background px-5 py-2 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] md:bottom-0 md:left-64">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           {/* Totals */}
-          <div className="grid grid-cols-2 gap-px">
-            <div className="flex flex-col border-r">
-              <span className="text-[8px] uppercase tracking-wider text-center text-muted-foreground/70">
+          <div className="grid grid-cols-2 gap-px lg:flex lg:gap-8">
+            <div className="flex flex-col border-r lg:border-r-0">
+              <span className="text-[8px] uppercase tracking-wider text-center lg:text-left text-muted-foreground/70">
                 {t("detail.totalClientLabel")}
               </span>
-              <strong className="text-primary tabular-nums text-lg text-center font-bold leading-tight">
+              <strong className="text-primary tabular-nums text-lg text-center lg:text-left font-bold leading-tight">
                 {fmt(computed.totalForClient)}
               </strong>
             </div>
             <div className="flex flex-col">
-              <span className="text-[8px] uppercase tracking-wider  text-center text-green-500">
+              <span className="text-[8px] uppercase tracking-wider text-center lg:text-left text-green-500">
                 {t("detail.cleanProfitLabel")}
               </span>
-              <strong className="text-green-600 tabular-nums text-lg text-center font-bold leading-tight">
+              <strong className="text-green-600 tabular-nums text-lg text-center lg:text-left font-bold leading-tight">
                 {fmt(computed.cleanProfit)}
               </strong>
             </div>
           </div>
           {/* Buttons */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:gap-2">
             <Button
               variant="outline"
               onClick={() =>

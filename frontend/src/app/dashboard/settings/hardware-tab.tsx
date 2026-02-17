@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
-import { selectOnFocus } from "@/lib/utils";
+import { parseNum, selectOnFocus } from "@/lib/utils";
 import { RefreshCw, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -61,7 +61,7 @@ export function UserHardwareTab() {
   const savePrice = async (uh: UserHardware) => {
     try {
       await api.patch(`/settings/hardware/${uh.hardware.id}`, {
-        price: parseFloat(prices[uh.id] || "0"),
+        price: parseNum(prices[uh.id] ?? ""),
       });
       toast.success(t("settings.priceUpdated"));
     } catch (err: unknown) {
@@ -137,12 +137,16 @@ export function UserHardwareTab() {
                 <TableCell>{uh.hardware.brand || "—"}</TableCell>
                 <TableCell>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     className="h-7 text-sm"
-                    value={prices[uh.id] || "0"}
+                    value={prices[uh.id] ?? ""}
                     onFocus={selectOnFocus}
                     onChange={(e) =>
-                      setPrices((p) => ({ ...p, [uh.id]: e.target.value }))
+                      setPrices((p) => ({
+                        ...p,
+                        [uh.id]: e.target.value.replace(/\./g, ","),
+                      }))
                     }
                     onBlur={() => savePrice(uh)}
                   />

@@ -14,7 +14,7 @@ import {
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { API_BASE_URL } from "@/lib/constants";
-import { selectOnFocus } from "@/lib/utils";
+import { parseNum, selectOnFocus } from "@/lib/utils";
 import { RefreshCw, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -59,7 +59,7 @@ export function UserMaterialsTab() {
   const savePrice = async (um: UserMaterial) => {
     try {
       await api.patch(`/settings/materials/${um.material.id}`, {
-        price: parseFloat(prices[um.id] || "0"),
+        price: parseNum(prices[um.id] ?? ""),
       });
       toast.success(t("settings.priceUpdated"));
     } catch (err: unknown) {
@@ -147,12 +147,16 @@ export function UserMaterialsTab() {
                 </TableCell>
                 <TableCell>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     className="h-7 text-sm"
-                    value={prices[um.id] || "0"}
+                    value={prices[um.id] ?? ""}
                     onFocus={selectOnFocus}
                     onChange={(e) =>
-                      setPrices((p) => ({ ...p, [um.id]: e.target.value }))
+                      setPrices((p) => ({
+                        ...p,
+                        [um.id]: e.target.value.replace(/\./g, ","),
+                      }))
                     }
                     onBlur={() => savePrice(um)}
                   />

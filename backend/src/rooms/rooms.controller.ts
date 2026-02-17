@@ -48,4 +48,10 @@ export class RoomsController {
   remove(@Param('id') id: string, @Req() req: any) {
     return this.svc.remove(id, req.user.id);
   }
+
+  /** POST /api/rooms/:id/copy */
+  @Post(':id/copy')
+  copy(@Param('id') id: string, @Req() req: any) {
+    return this.svc.copy(id, req.user.id);
+  }
 }

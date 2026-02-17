@@ -206,7 +206,8 @@ export function HardwareCrud() {
                 <div className="space-y-1">
                   <Label>{t("catalog.priceLabel")}</Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={price}
                     onFocus={selectOnFocus}
                     onChange={(e) => setPrice(e.target.value)}

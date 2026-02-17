@@ -13,12 +13,16 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SettingsService } from '../settings/settings.service';
 import { CalculationsService } from './calculations.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('calculations')
 export class CalculationsController {
-  constructor(private svc: CalculationsService) {}
+  constructor(
+    private svc: CalculationsService,
+    private settingsService: SettingsService,
+  ) {}
 
   /** POST /api/calculations/project/:projectId/calculate — run */
   @Post('project/:projectId/calculate')
@@ -69,7 +73,10 @@ export class CalculationsController {
     @Res() res: Response,
   ) {
     const calc = await this.svc.findOne(id, req.user.id);
-    const html = this.svc.generateProposal(calc.data as any);
+    const proposalSettings = await this.settingsService.getProposalSettings(
+      req.user.id,
+    );
+    const html = this.svc.generateProposal(calc.data as any, proposalSettings);
     res.send(html);
   }
 }

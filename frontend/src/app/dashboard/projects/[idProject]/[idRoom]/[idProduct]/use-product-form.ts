@@ -66,6 +66,8 @@ export function useProductForm(
   const [mezDrawers, setMezDrawers] = useState<SubItem[]>([]);
   const [mezBackWallEnabled, setMezBackWallEnabled] = useState(false);
   const [mezBackWallMaterialId, setMezBackWallMaterialId] = useState("");
+  const [mezSameAsBody, setMezSameAsBody] = useState(true);
+  const [mezBodyMaterialId, setMezBodyMaterialId] = useState("");
   const [mezFalseFacadesEnabled, setMezFalseFacadesEnabled] = useState(false);
   const [mezFalseFacadeQty, setMezFalseFacadeQty] = useState("1");
   const [mezFalseFacadeMaterialId, setMezFalseFacadeMaterialId] = useState("");
@@ -149,6 +151,8 @@ export function useProductForm(
         setMezDrawers(p.mezzanine.drawers || []);
         setMezBackWallEnabled(p.mezzanine.backWallEnabled);
         setMezBackWallMaterialId(p.mezzanine.backWallMaterialId || "");
+        setMezSameAsBody(!p.mezzanine.bodyMaterialId);
+        setMezBodyMaterialId(p.mezzanine.bodyMaterialId || "");
         setMezFalseFacadesEnabled(p.mezzanine.falseFacadesEnabled);
         setMezFalseFacadeQty(String(p.mezzanine.falseFacadeQty || 0));
         setMezFalseFacadeMaterialId(p.mezzanine.falseFacadeMaterialId || "");
@@ -265,6 +269,13 @@ export function useProductForm(
     },
     [clearError],
   );
+  const onMezBodyMaterialChange = useCallback(
+    (v: string) => {
+      setMezBodyMaterialId(v);
+      clearError("mezBodyMaterial");
+    },
+    [clearError],
+  );
   const onMezFalseFacadeMaterialChange = useCallback(
     (v: string) => {
       setMezFalseFacadeMaterialId(v);
@@ -335,6 +346,7 @@ export function useProductForm(
       if (ctApron && !ctApronMatId) e.add("apronMaterial");
     }
     if (mezzanineEnabled) {
+      if (!mezSameAsBody && !mezBodyMaterialId) e.add("mezBodyMaterial");
       if (mezBackWallEnabled && !mezBackWallMaterialId)
         e.add("mezBackWallMaterial");
       if (mezFacadesEnabled) {
@@ -357,6 +369,7 @@ export function useProductForm(
       falseFacadeMaterial: t("product.validation.falseFacadeMaterial"),
       countertopMaterial: t("product.validation.countertopMaterial"),
       apronMaterial: t("product.validation.apronMaterial"),
+      mezBodyMaterial: t("product.validation.mezBodyMaterial"),
       mezBackWallMaterial: t("product.validation.mezBackWallMaterial"),
       mezFacadeRequired: t("product.validation.mezFacadeRequired"),
       mezFalseFacadeMaterial: t("product.validation.mezFalseFacadeMaterial"),
@@ -437,6 +450,7 @@ export function useProductForm(
       if (mezzanineEnabled) {
         const mezRes = await api.put(`/products/${idProduct}/mezzanine`, {
           height: num(mezHeight),
+          bodyMaterialId: mezSameAsBody ? null : mezBodyMaterialId || null,
           sectionsEnabled: mezSectionsEnabled,
           partitionsEnabled: mezPartitionsEnabled,
           shelvesEnabled: mezShelvesEnabled,
@@ -583,6 +597,17 @@ export function useProductForm(
     [materials],
   );
 
+  const bodyMaterials = useMemo(
+    () =>
+      materials.filter(
+        (m) =>
+          m.materialType.name !== "ХДФ" &&
+          m.materialType.name !== "Кромка" &&
+          (m.calcType === "SHEET" || m.calcType === "SQM"),
+      ),
+    [materials],
+  );
+
   const facadeMaterials = useMemo(
     () =>
       materials.filter(
@@ -679,6 +704,9 @@ export function useProductForm(
     setMezDrawers,
     mezBackWallEnabled,
     mezBackWallMaterialId,
+    mezSameAsBody,
+    setMezSameAsBody,
+    mezBodyMaterialId,
     mezFalseFacadesEnabled,
     mezFalseFacadeQty,
     mezFalseFacadeMaterialId,
@@ -716,6 +744,7 @@ export function useProductForm(
     onBackWallMaterialChange,
     onFalseFacadeMaterialChange,
     onMezBackWallMaterialChange,
+    onMezBodyMaterialChange,
     onMezFalseFacadeMaterialChange,
     onCtMaterialChange,
     onApronMaterialChange,
@@ -734,6 +763,7 @@ export function useProductForm(
     /* computed */
     limits,
     hdfMaterials,
+    bodyMaterials,
     facadeMaterials,
     facadeErrorKeys,
     mezFacadeErrorKeys,

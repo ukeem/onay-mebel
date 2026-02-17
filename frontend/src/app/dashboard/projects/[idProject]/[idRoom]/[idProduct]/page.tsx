@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { selectOnFocus } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -114,6 +115,9 @@ export default function ProductPage({
     setMezDrawers,
     mezBackWallEnabled,
     mezBackWallMaterialId,
+    mezSameAsBody,
+    setMezSameAsBody,
+    mezBodyMaterialId,
     mezFalseFacadesEnabled,
     mezFalseFacadeQty,
     mezFalseFacadeMaterialId,
@@ -145,6 +149,7 @@ export default function ProductPage({
     onBackWallMaterialChange,
     onFalseFacadeMaterialChange,
     onMezBackWallMaterialChange,
+    onMezBodyMaterialChange,
     onMezFalseFacadeMaterialChange,
     onCtMaterialChange,
     onApronMaterialChange,
@@ -157,6 +162,7 @@ export default function ProductPage({
     handleSave,
     limits,
     hdfMaterials,
+    bodyMaterials,
     facadeMaterials,
     facadeErrorKeys,
     mezFacadeErrorKeys,
@@ -274,7 +280,7 @@ export default function ProductPage({
                 W ({t("common.mm")})
               </Label>
               <Input
-                type="number"
+                type="text" inputMode="decimal"
                 className={`h-9 ${hasError("dimensions") && num(width) <= 0 ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
                 value={width}
                 onFocus={selectOnFocus}
@@ -289,7 +295,7 @@ export default function ProductPage({
                 H ({t("common.mm")})
               </Label>
               <Input
-                type="number"
+                type="text" inputMode="decimal"
                 className={`h-9 ${hasError("dimensions") && num(height) <= 0 ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
                 value={height}
                 onFocus={selectOnFocus}
@@ -304,7 +310,7 @@ export default function ProductPage({
                 D ({t("common.mm")})
               </Label>
               <Input
-                type="number"
+                type="text" inputMode="decimal"
                 className={`h-9 ${hasError("dimensions") && num(depth) <= 0 ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
                 value={depth}
                 onFocus={selectOnFocus}
@@ -480,7 +486,7 @@ export default function ProductPage({
                 {t("product.antresolHeight")}
               </Label>
               <Input
-                type="number"
+                type="text" inputMode="decimal"
                 className="h-9"
                 min={400}
                 max={H}
@@ -488,6 +494,29 @@ export default function ProductPage({
                 onFocus={selectOnFocus}
                 onChange={(e) => setMezHeight(e.target.value)}
               />
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm">{t("product.mezSameAsBody")}</Label>
+                <Switch
+                  checked={mezSameAsBody}
+                  onCheckedChange={(v) => {
+                    setMezSameAsBody(v);
+                    if (v) clearError("mezBodyMaterial");
+                  }}
+                />
+              </div>
+              {!mezSameAsBody && (
+                <MatSelect
+                  label={t("product.mezBodyMaterial")}
+                  value={mezBodyMaterialId}
+                  onChange={onMezBodyMaterialChange}
+                  materials={bodyMaterials}
+                  t={t}
+                  error={hasError("mezBodyMaterial")}
+                />
+              )}
             </div>
             <Separator />
             <SwitchRow
@@ -641,7 +670,7 @@ export default function ProductPage({
                   {t("product.width")} ({t("common.mm")})
                 </Label>
                 <Input
-                  type="number"
+                  type="text" inputMode="decimal"
                   className="h-9"
                   min={300}
                   max={W}
@@ -655,7 +684,7 @@ export default function ProductPage({
                   {t("product.depthLabel")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text" inputMode="decimal"
                   className="h-9"
                   min={300}
                   max={900}
@@ -686,7 +715,7 @@ export default function ProductPage({
                       {t("product.width")} ({t("common.mm")})
                     </Label>
                     <Input
-                      type="number"
+                      type="text" inputMode="decimal"
                       className="h-9"
                       min={300}
                       max={num(ctWidth)}
@@ -700,7 +729,7 @@ export default function ProductPage({
                       {t("product.height")} ({t("common.mm")})
                     </Label>
                     <Input
-                      type="number"
+                      type="text" inputMode="decimal"
                       className="h-9"
                       min={300}
                       max={900}

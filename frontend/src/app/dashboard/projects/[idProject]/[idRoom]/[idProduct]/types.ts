@@ -21,6 +21,7 @@ export interface SubItem {
 export interface MezzanineData {
   id: string;
   height: number;
+  bodyMaterialId: string | null;
   sectionsEnabled: boolean;
   backWallEnabled: boolean;
   backWallMaterialId: string | null;
@@ -93,11 +94,11 @@ export type TFunc = any;
 
 /* ── helpers ── */
 export function num(v: string) {
-  return parseInt(v) || 0;
+  return parseInt(String(v).replace(",", ".")) || 0;
 }
 
 export function dec(v: string) {
-  return parseFloat(v) || 0;
+  return parseFloat(String(v).replace(",", ".")) || 0;
 }
 
 export function clamp(value: number, min: number, max: number) {

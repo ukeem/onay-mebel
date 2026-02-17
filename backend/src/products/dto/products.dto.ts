@@ -244,6 +244,10 @@ export class UpsertMezzanineDto {
   height: number;
 
   @IsOptional()
+  @IsString()
+  bodyMaterialId?: string | null;
+
+  @IsOptional()
   @IsBoolean()
   sectionsEnabled?: boolean;
 

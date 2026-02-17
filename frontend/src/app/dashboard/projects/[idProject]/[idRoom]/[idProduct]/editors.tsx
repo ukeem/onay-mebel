@@ -256,7 +256,8 @@ export const DimensionEditor = memo(function DimensionEditor({
                   {dimLabel} ({t("common.mm")})
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={dimMin}
                   max={dimMax}
@@ -338,6 +339,7 @@ export const FacadesEditor = memo(function FacadesEditor({
       {items.map((f, i) => {
         const othersSum = usedTotal - f.qty;
         const maxForThis = Math.max(1, maxQty - othersSum);
+        const maxWidthForFacade = Math.floor(maxW / Math.max(1, f.qty));
         return (
           <div
             key={i}
@@ -358,10 +360,11 @@ export const FacadesEditor = memo(function FacadesEditor({
                   {t("product.width")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={300}
-                  max={maxW}
+                  max={maxWidthForFacade}
                   value={f.width ?? 0}
                   onFocus={selectOnFocus}
                   onChange={(e) => {
@@ -370,7 +373,7 @@ export const FacadesEditor = memo(function FacadesEditor({
                     setItems(copy);
                   }}
                   onBlur={() => {
-                    const v = clamp(f.width ?? 300, 300, maxW);
+                    const v = clamp(f.width ?? 300, 300, maxWidthForFacade);
                     if (v !== (f.width ?? 0)) {
                       const copy = [...items];
                       copy[i] = { ...f, width: v };
@@ -384,7 +387,8 @@ export const FacadesEditor = memo(function FacadesEditor({
                   {t("product.height")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={300}
                   max={maxH}
@@ -410,7 +414,8 @@ export const FacadesEditor = memo(function FacadesEditor({
                   {t("product.handles")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={0}
                   value={f.handleQty ?? 0}
@@ -426,8 +431,13 @@ export const FacadesEditor = memo(function FacadesEditor({
                 label={t("product.qty")}
                 value={f.qty}
                 onChange={(v) => {
+                  const newMaxW = Math.floor(maxW / Math.max(1, v));
                   const copy = [...items];
-                  copy[i] = { ...f, qty: v };
+                  copy[i] = {
+                    ...f,
+                    qty: v,
+                    width: Math.max(300, newMaxW),
+                  };
                   setItems(copy);
                 }}
                 min={1}
@@ -543,7 +553,8 @@ export const DrawersEditor = memo(function DrawersEditor({
                   {t("product.width")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={150}
                   max={maxDrawerW}
@@ -569,7 +580,8 @@ export const DrawersEditor = memo(function DrawersEditor({
                   {t("product.height")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={150}
                   max={300}
@@ -595,7 +607,8 @@ export const DrawersEditor = memo(function DrawersEditor({
                   {t("product.handles")}
                 </Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="h-9"
                   min={0}
                   value={d.handleQty ?? 0}
@@ -687,7 +700,8 @@ export const ExtrasEditor = memo(function ExtrasEditor({
                 {t("common.price")} ₸
               </Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 className="h-9"
                 value={e.price}
                 onFocus={selectOnFocus}

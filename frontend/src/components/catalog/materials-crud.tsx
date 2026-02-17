@@ -246,7 +246,8 @@ export function MaterialsCrud() {
                   <div className="space-y-1">
                     <Label>{t("catalog.lengthMm")}</Label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={length}
                       onFocus={selectOnFocus}
                       onChange={(e) => setLength(e.target.value)}
@@ -255,7 +256,8 @@ export function MaterialsCrud() {
                   <div className="space-y-1">
                     <Label>{t("catalog.widthMm")}</Label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={width}
                       onFocus={selectOnFocus}
                       onChange={(e) => setWidth(e.target.value)}
@@ -265,7 +267,8 @@ export function MaterialsCrud() {
                 <div className="space-y-1">
                   <Label>{t("catalog.priceLabel")}</Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={price}
                     onFocus={selectOnFocus}
                     onChange={(e) => setPrice(e.target.value)}

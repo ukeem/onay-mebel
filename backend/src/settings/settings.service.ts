@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ProfitType } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ContactType, ProfitType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -133,5 +138,127 @@ export class SettingsService {
     }
 
     return { message: 'Каталог синхронизирован' };
+  }
+
+  /* ═══ COMPANY INFO ═══ */
+
+  async getCompanyInfo(userId: string) {
+    return this.prisma.companyInfo.findUnique({ where: { userId } });
+  }
+
+  async upsertCompanyInfo(
+    userId: string,
+    dto: { name: string; logo?: string; description?: string },
+  ) {
+    return this.prisma.companyInfo.upsert({
+      where: { userId },
+      update: {
+        name: dto.name,
+        logo: dto.logo ?? null,
+        description: dto.description ?? null,
+      },
+      create: {
+        userId,
+        name: dto.name,
+        logo: dto.logo ?? null,
+        description: dto.description ?? null,
+      },
+    });
+  }
+
+  /* ═══ PAYMENT STAGES ═══ */
+
+  async getPaymentStages(userId: string) {
+    return this.prisma.paymentStage.findMany({
+      where: { userId },
+      orderBy: { stageNumber: 'asc' },
+    });
+  }
+
+  async savePaymentStages(
+    userId: string,
+    stages: { stageNumber: number; percentage: number }[],
+  ) {
+    const total = stages.reduce((s, st) => s + st.percentage, 0);
+    if (total !== 100) {
+      throw new BadRequestException('Сумма этапов должна быть равна 100%');
+    }
+
+    // Check unique stage numbers
+    const nums = stages.map((s) => s.stageNumber);
+    if (new Set(nums).size !== nums.length) {
+      throw new BadRequestException('Номера этапов не должны повторяться');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.paymentStage.deleteMany({ where: { userId } });
+      return tx.paymentStage.createMany({
+        data: stages.map((s) => ({
+          userId,
+          stageNumber: s.stageNumber,
+          percentage: s.percentage,
+        })),
+      });
+    });
+  }
+
+  /* ═══ CONTACTS ═══ */
+
+  async getContacts(userId: string) {
+    return this.prisma.userContact.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createContact(
+    userId: string,
+    dto: { type: ContactType; value: string },
+  ) {
+    return this.prisma.userContact.create({
+      data: { userId, type: dto.type, value: dto.value },
+    });
+  }
+
+  async updateContact(
+    userId: string,
+    contactId: string,
+    dto: { type?: ContactType; value?: string },
+  ) {
+    const contact = await this.prisma.userContact.findUnique({
+      where: { id: contactId },
+    });
+    if (!contact) throw new NotFoundException('Контакт не найден');
+    if (contact.userId !== userId) throw new ForbiddenException('Нет доступа');
+    return this.prisma.userContact.update({
+      where: { id: contactId },
+      data: dto,
+    });
+  }
+
+  async deleteContact(userId: string, contactId: string) {
+    const contact = await this.prisma.userContact.findUnique({
+      where: { id: contactId },
+    });
+    if (!contact) throw new NotFoundException('Контакт не найден');
+    if (contact.userId !== userId) throw new ForbiddenException('Нет доступа');
+    return this.prisma.userContact.delete({ where: { id: contactId } });
+  }
+
+  /* ═══ GET ALL PROPOSAL DATA (for KP generation) ═══ */
+
+  async getProposalSettings(userId: string) {
+    const [companyInfo, paymentStages, contacts] = await Promise.all([
+      this.prisma.companyInfo.findUnique({ where: { userId } }),
+      this.prisma.paymentStage.findMany({
+        where: { userId },
+        orderBy: { stageNumber: 'asc' },
+      }),
+      this.prisma.userContact.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+    return { companyInfo, paymentStages, contacts };
   }
 }

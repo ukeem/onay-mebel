@@ -27,6 +27,7 @@ import { getApiError } from "@/lib/api-error";
 import {
   ArrowLeft,
   ChevronRight,
+  Copy,
   DoorOpen,
   Pencil,
   Plus,
@@ -109,14 +110,14 @@ export default function ProjectPage({
   const handleAddRoom = async () => {
     setSaving(true);
     try {
-      await api.post("/rooms", {
+      const { data } = await api.post("/rooms", {
         projectId: idProject,
         roomTypeId: selectedType,
       });
       toast.success(t("project.roomAdded"));
       setAddOpen(false);
       setSelectedType("");
-      fetchData();
+      router.push(`/dashboard/projects/${idProject}/${data.id}`);
     } catch (err: unknown) {
       toast.error(getApiError(err, t("common.error")));
     } finally {
@@ -133,6 +134,16 @@ export default function ProjectPage({
       toast.error(getApiError(err, t("common.error")));
     } finally {
       setDeleteRoomId(null);
+    }
+  };
+
+  const handleCopyRoom = async (roomId: string) => {
+    try {
+      await api.post(`/rooms/${roomId}/copy`);
+      toast.success(t("project.roomCopied"));
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
     }
   };
 
@@ -313,6 +324,16 @@ export default function ProjectPage({
                     className="shrink-0 flex items-center -mr-2"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleCopyRoom(r.id)}
+                      title={t("project.copyRoom")}
+                      aria-label={t("project.copyRoom")}
+                    >
+                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

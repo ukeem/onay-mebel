@@ -130,7 +130,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.sawing")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={sawingPrice}
               onFocus={selectOnFocus}
               onChange={(e) => setSawingPrice(e.target.value)}
@@ -139,7 +140,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.drilling")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={drillingPrice}
               onFocus={selectOnFocus}
               onChange={(e) => setDrillingPrice(e.target.value)}
@@ -151,7 +153,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.edgeBanding")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={edgeBandingPrice}
               onFocus={selectOnFocus}
               onChange={(e) => setEdgeBandingPrice(e.target.value)}
@@ -160,7 +163,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.delivery")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={deliveryPrice}
               onFocus={selectOnFocus}
               onChange={(e) => setDeliveryPrice(e.target.value)}
@@ -174,7 +178,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.technologist")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={technologistPercent}
               onFocus={selectOnFocus}
               onChange={(e) => setTechnologistPercent(e.target.value)}
@@ -183,7 +188,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.designer")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={designerPercent}
               onFocus={selectOnFocus}
               onChange={(e) => setDesignerPercent(e.target.value)}
@@ -192,7 +198,8 @@ export function ServiceTemplateCrud() {
           <div className="space-y-1">
             <Label>{t("settings.serviceLabels.assembly")}</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={assemblyPercent}
               onFocus={selectOnFocus}
               onChange={(e) => setAssemblyPercent(e.target.value)}
@@ -226,7 +233,8 @@ export function ServiceTemplateCrud() {
                 : t("settings.serviceLabels.amountLabel")}
             </Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               step={profitType === "COEF" ? "0.1" : "1"}
               value={profitValue}
               onFocus={selectOnFocus}

@@ -29,6 +29,7 @@ const PRODUCT_INCLUDE = {
   drawers: true,
   mezzanine: {
     include: {
+      bodyMaterial: { include: { materialType: true } },
       backWallMaterial: true,
       falseFacadeMaterial: true,
       sections: true,
@@ -462,6 +463,7 @@ export class ProductsService {
       create: { productId, ...dto },
       update: { ...dto },
       include: {
+        bodyMaterial: { include: { materialType: true } },
         sections: true,
         partitions: true,
         shelves: true,

@@ -37,6 +37,14 @@ enum ProfitType {
   FIXED // фиксированная
 }
 
+enum ContactType {
+  WHATSAPP
+  TELEGRAM
+  EMAIL
+  INSTAGRAM
+  TIKTOK
+}
+
 // ============================================
 // AUTH & USERS
 // ============================================
@@ -54,6 +62,9 @@ model User {
   userHardware  UserHardware[]
   userService   UserService?
   projects      Project[]
+  companyInfo   CompanyInfo?
+  paymentStages PaymentStage[]
+  contacts      UserContact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -143,6 +154,7 @@ model Material {
   productBodies           Product[]           @relation("BodyMaterial")
   productBackWalls        Product[]           @relation("BackWallMaterial")
   mezzanineBackWalls      ProductMezzanine[]  @relation("MezzanineBackWall")
+  mezzanineBodyMat        ProductMezzanine[]  @relation("MezzanineBodyMaterial")
   productFacades          ProductFacade[]
   falseFacadeMat          Product[]           @relation("FalseFacadeMaterial")
   mezzanineFalseFacadeMat ProductMezzanine[]  @relation("MezzanineFalseFacadeMat")
@@ -232,6 +244,49 @@ model UserService {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// COMPANY INFO, PAYMENT STAGES, CONTACTS
+// ============================================
+
+model CompanyInfo {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logo        String? // путь к файлу логотипа
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentStage {
+  id          String @id @default(cuid())
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageNumber Int // 1–5
+  percentage  Int // %
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, stageNumber])
+  @@index([userId])
+}
+
+model UserContact {
+  id     String      @id @default(cuid())
+  userId String
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   ContactType
+  value  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ============================================
@@ -424,6 +479,10 @@ model ProductMezzanine {
   productId String  @unique
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   height    Int // H_антресоли mm
+
+  // Материал корпуса антресоли (null = как корпус основного изделия)
+  bodyMaterialId String?
+  bodyMaterial   Material? @relation("MezzanineBodyMaterial", fields: [bodyMaterialId], references: [id])
 
   // Свитчеры антресоли
   sectionsEnabled       Boolean   @default(false)
