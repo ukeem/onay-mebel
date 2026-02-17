@@ -36,7 +36,7 @@ export const ToggleSection = memo(function ToggleSection({
   children?: React.ReactNode;
 }) {
   return (
-    <Card className="gap-0 py-0 overflow-hidden transition-all">
+    <Card className="gap-0 py-0 overflow-hidden transition-all break-inside-avoid mb-2 lg:mb-2">
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -218,6 +218,7 @@ export const DimensionEditor = memo(function DimensionEditor({
   dimMin,
   dimMax,
   defaultDim,
+  qtyLabel,
   t,
 }: {
   items: SubItem[];
@@ -228,6 +229,7 @@ export const DimensionEditor = memo(function DimensionEditor({
   dimMin: number;
   dimMax: number;
   defaultDim?: number;
+  qtyLabel?: string;
   t: TFunc;
 }) {
   const usedTotal = items.reduce((s, x) => s + x.qty, 0);
@@ -279,7 +281,7 @@ export const DimensionEditor = memo(function DimensionEditor({
                 />
               </div>
               <QtySelect
-                label={t("product.qty")}
+                label={qtyLabel || t("product.qty")}
                 value={s.qty}
                 onChange={(v) => {
                   const copy = [...items];
@@ -409,26 +411,28 @@ export const FacadesEditor = memo(function FacadesEditor({
                   }}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.handles")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={0}
-                  value={f.handleQty ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...f, handleQty: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                />
-              </div>
+              {(f.openType ?? "HANDLE") === "HANDLE" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("product.handles")}
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    className="h-9"
+                    min={0}
+                    value={f.handleQty ?? 0}
+                    onFocus={selectOnFocus}
+                    onChange={(e) => {
+                      const copy = [...items];
+                      copy[i] = { ...f, handleQty: num(e.target.value) };
+                      setItems(copy);
+                    }}
+                  />
+                </div>
+              )}
               <QtySelect
-                label={t("product.qty")}
+                label={t("product.facadeQty")}
                 value={f.qty}
                 onChange={(v) => {
                   const newMaxW = Math.floor(maxW / Math.max(1, v));
@@ -443,6 +447,33 @@ export const FacadesEditor = memo(function FacadesEditor({
                 min={1}
                 max={maxForThis}
               />
+            </div>
+            {/* per-facade openType toggle */}
+            <div className="flex w-full">
+              <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5 sm:w-auto">
+                {(["HANDLE", "TIP_ON"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
+                      (f.openType ?? "HANDLE") === opt
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-foreground"
+                    }`}
+                    onClick={() => {
+                      const copy = [...items];
+                      copy[i] = {
+                        ...f,
+                        openType: opt,
+                        handleQty: opt === "TIP_ON" ? 0 : f.handleQty,
+                      };
+                      setItems(copy);
+                    }}
+                  >
+                    {opt === "HANDLE" ? t("product.handleOpenType") : "Tip-On"}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2.5">
               <Switch
@@ -486,6 +517,7 @@ export const FacadesEditor = memo(function FacadesEditor({
               height: defaultH ?? 300,
               materialId: "",
               handleQty: 0,
+              openType: "HANDLE" as const,
             },
           ])
         }
@@ -536,7 +568,7 @@ export const DrawersEditor = memo(function DrawersEditor({
         return (
           <div
             key={i}
-            className="relative rounded-lg border bg-background p-3 pr-10"
+            className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
           >
             <Button
               variant="ghost"
@@ -621,7 +653,7 @@ export const DrawersEditor = memo(function DrawersEditor({
                 />
               </div>
               <QtySelect
-                label={t("product.qty")}
+                label={t("product.drawerQty")}
                 value={d.qty}
                 onChange={(v) => {
                   const copy = [...items];
@@ -631,6 +663,31 @@ export const DrawersEditor = memo(function DrawersEditor({
                 min={1}
                 max={maxQtyForThis}
               />
+            </div>
+            {/* per-drawer slideType toggle */}
+            <div className="flex w-full">
+              <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5 sm:w-auto">
+                {(["GUIDE", "TANDEM"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
+                      (d.slideType ?? "GUIDE") === opt
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-foreground"
+                    }`}
+                    onClick={() => {
+                      const copy = [...items];
+                      copy[i] = { ...d, slideType: opt };
+                      setItems(copy);
+                    }}
+                  >
+                    {opt === "GUIDE"
+                      ? t("product.drawerSlideGuide")
+                      : t("product.drawerSlideTandem")}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         );
@@ -643,7 +700,13 @@ export const DrawersEditor = memo(function DrawersEditor({
         onClick={() =>
           setItems([
             ...items,
-            { qty: 1, width: maxDrawerW || 150, height: 150, handleQty: 0 },
+            {
+              qty: 1,
+              width: maxDrawerW || 150,
+              height: 150,
+              handleQty: 0,
+              slideType: "GUIDE" as const,
+            },
           ])
         }
       >

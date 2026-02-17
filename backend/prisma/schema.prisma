@@ -45,6 +45,16 @@ enum ContactType {
   TIKTOK
 }
 
+enum FacadeOpenType {
+  HANDLE // ручки
+  TIP_ON // Tip-On (нажимной)
+}
+
+enum DrawerSlideType {
+  GUIDE // направляющие
+  TANDEM // тандем
+}
+
 // ============================================
 // AUTH & USERS
 // ============================================
@@ -452,6 +462,7 @@ model ProductFacade {
   height      Int // mm
   qty         Int               @default(1)
   handleQty   Int               @default(0)
+  openType    FacadeOpenType    @default(HANDLE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -468,6 +479,7 @@ model ProductDrawer {
   height      Int // mm
   qty         Int               @default(1)
   handleQty   Int               @default(0)
+  slideType   DrawerSlideType   @default(GUIDE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

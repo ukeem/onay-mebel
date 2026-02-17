@@ -620,7 +620,7 @@ export class CalculationsService {
       )
       .join('');
 
-    const tabContentsHtml = enabledTiers
+    const tabParts = enabledTiers
       .map((tier, idx) => {
         const tr = tierResults[tier];
         let productIdx = 0;
@@ -727,7 +727,7 @@ export class CalculationsService {
                <span class="discount-badge">-${discountPct}%</span>`
             : `<span class="grand-new">${fmt(tr.totalForClient)}</span>`;
 
-        // Payment stages HTML for this tier
+        // Payment stages HTML for this tier (rendered outside tab-content)
         let paymentHtml = '';
         if (ps.paymentStages && ps.paymentStages.length > 0) {
           const stagesItems = ps.paymentStages
@@ -741,13 +741,16 @@ export class CalculationsService {
               </div>`;
             })
             .join('');
-          paymentHtml = `<div class="payment-section">
+          paymentHtml = `<div id="payment-${tier}" class="payment-section" style="display:${idx === 0 ? 'block' : 'none'};">
             <div class="payment-title" data-i18n="paymentTitle">Условия оплаты</div>
-            ${stagesItems}
+            <div class="payment-stages-card">
+              ${stagesItems}
+            </div>
           </div>`;
         }
 
-        return `
+        return {
+          tabHtml: `
         <div id="tab-${tier}" class="tab-content" style="display:${idx === 0 ? 'block' : 'none'};">
           <div class="tier-title">${tierLabels[tier]}</div>
           ${roomsHtml}
@@ -757,16 +760,26 @@ export class CalculationsService {
               ${grandTotalHtml}
             </div>
           </div>
-          ${paymentHtml}
         </div>
         <div id="total-${tier}" class="total-bar" style="display:${idx === 0 ? 'flex' : 'none'};">
           <div class="total-inner-bar">
             <span class="total-label" data-i18n="total">Итого</span>
             ${grandTotalHtml}
           </div>
-        </div>`;
+        </div>`,
+          paymentHtml,
+        };
       })
-      .join('');
+      .reduce(
+        (acc, item) => {
+          acc.tabs += item.tabHtml;
+          acc.payments += item.paymentHtml;
+          return acc;
+        },
+        { tabs: '', payments: '' },
+      );
+    const tabContentsHtml = tabParts.tabs;
+    const allPaymentsHtml = tabParts.payments;
 
     /* Build contacts HTML */
     const contactIcons: Record<string, string> = {
@@ -1207,7 +1220,7 @@ export class CalculationsService {
 
     /* ─── Print btn ─── */
     .print-btn {
-      display: block;
+      display: none; /* temporarily hidden */
       width: 100%;
       margin-top: 24px;
       padding: 14px;
@@ -1229,16 +1242,18 @@ export class CalculationsService {
     /* ─── Payment stages ─── */
     .payment-section {
       margin-top: 24px;
-      padding: 18px;
-      background: var(--payment-bg);
-      border-radius: 14px;
-      border: 1px solid var(--border);
     }
     .payment-title {
       font-size: 14px;
       font-weight: 700;
       color: var(--text);
       margin-bottom: 12px;
+    }
+    .payment-stages-card {
+      padding: 18px;
+      background: var(--payment-bg);
+      border-radius: 14px;
+      border: 1px solid var(--border);
     }
     .payment-stage {
       display: flex;
@@ -1269,9 +1284,17 @@ export class CalculationsService {
       margin-bottom: 12px;
     }
     .contacts-grid {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 8px;
+    }
+    @media (min-width: 600px) {
+      .contacts-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .contacts-grid .contact-btn:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+      }
     }
     .contact-btn {
       display: flex;
@@ -1405,6 +1428,7 @@ export class CalculationsService {
 
   ${tabContentsHtml}
 
+  ${allPaymentsHtml}
   ${contactsHtml}
 
   <button onclick="window.print()" class="print-btn no-print" data-i18n="print">Печать / PDF</button>
@@ -1416,12 +1440,15 @@ export class CalculationsService {
       document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
       document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
       document.querySelectorAll('.total-bar').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('.payment-section').forEach(function(el) { el.style.display = 'none'; });
       var tab = document.getElementById('tab-' + tier);
       var btn = document.getElementById('tab-btn-' + tier);
       var total = document.getElementById('total-' + tier);
+      var payment = document.getElementById('payment-' + tier);
       if (tab) tab.style.display = 'block';
       if (btn) btn.classList.add('active');
       if (total) total.style.display = 'flex';
+      if (payment) payment.style.display = 'block';
     }
 
     /* ── Theme toggle ── */
@@ -2159,11 +2186,12 @@ export class CalculationsService {
       });
     }
 
-    /* Handles */
+    /* Handles — only from facades with openType=HANDLE */
     let totalHandles = 0;
     const collectHandles = (facades: any[], drawers: any[]) => {
       for (const f of facades ?? []) {
-        if (f.handleQty > 0) totalHandles += f.handleQty * f.qty;
+        if (f.openType !== 'TIP_ON' && f.handleQty > 0)
+          totalHandles += f.handleQty * f.qty;
       }
       for (const dr of drawers ?? []) {
         if (dr.handleQty > 0) totalHandles += dr.handleQty * dr.qty;
@@ -2197,6 +2225,37 @@ export class CalculationsService {
         unit: 'шт.',
         unitPrice: handlePrice,
         cost: Math.round(handleCost),
+        enabled: true,
+      });
+    }
+
+    /* Tip-On — from all facades (main + mezzanine) with openType=TIP_ON */
+    let totalTipOn = 0;
+    const collectTipOn = (facades: any[]) => {
+      for (const f of facades ?? []) {
+        if (f.openType === 'TIP_ON') totalTipOn += f.qty;
+      }
+    };
+    if (product.facadesEnabled) {
+      collectTipOn(product.facades?.filter((f: any) => !f.mezzanineId));
+    }
+    if (product.mezzanineEnabled && product.mezzanine?.facadesEnabled) {
+      collectTipOn(product.mezzanine.facades);
+    }
+    if (totalTipOn > 0) {
+      const tipOnPrice = hwPrice.get('Tip-On') ?? 0;
+      const tipOnCost = totalTipOn * tipOnPrice;
+      hardwareCost += tipOnCost;
+      details.push({
+        id: 'tip-on',
+        type: 'hardware',
+        label: `Tip-On (${totalTipOn} шт.)`,
+        hardwareType: 'Tip-On',
+        brand: '',
+        qty: totalTipOn,
+        unit: 'шт.',
+        unitPrice: tipOnPrice,
+        cost: Math.round(tipOnCost),
         enabled: true,
       });
     }
@@ -2244,37 +2303,59 @@ export class CalculationsService {
       });
     }
 
-    /* Drawer slides: 1 per drawer */
-    let totalSlides = 0;
-    if (product.drawersEnabled && product.drawers) {
-      for (const dr of product.drawers) {
-        if (!dr.mezzanineId) totalSlides += dr.qty;
+    /* Drawer slides: split by slideType (GUIDE vs TANDEM) */
+    let totalGuides = 0;
+    let totalTandems = 0;
+    const collectSlides = (drawers: any[]) => {
+      for (const dr of drawers ?? []) {
+        if (dr.slideType === 'TANDEM') {
+          totalTandems += dr.qty;
+        } else {
+          totalGuides += dr.qty;
+        }
       }
+    };
+    if (product.drawersEnabled && product.drawers) {
+      collectSlides(product.drawers.filter((d: any) => !d.mezzanineId));
     }
     if (
       product.mezzanineEnabled &&
       product.mezzanine?.drawersEnabled &&
       product.mezzanine?.drawers
     ) {
-      for (const dr of product.mezzanine.drawers) {
-        totalSlides += dr.qty;
-      }
+      collectSlides(product.mezzanine.drawers);
     }
-    if (totalSlides > 0) {
-      const slidePrice =
-        hwPrice.get('Направляющие') ?? hwPrice.get('Тандем') ?? 0;
-      const slideCost = totalSlides * slidePrice;
-      hardwareCost += slideCost;
+    if (totalGuides > 0) {
+      const guidePrice = hwPrice.get('Направляющие') ?? 0;
+      const guideCost = totalGuides * guidePrice;
+      hardwareCost += guideCost;
       details.push({
         id: 'slides',
         type: 'hardware',
-        label: `Направляющие (${totalSlides} шт.)`,
+        label: `Направляющие (${totalGuides} шт.)`,
         hardwareType: 'Направляющие',
         brand: '',
-        qty: totalSlides,
+        qty: totalGuides,
         unit: 'шт.',
-        unitPrice: slidePrice,
-        cost: Math.round(slideCost),
+        unitPrice: guidePrice,
+        cost: Math.round(guideCost),
+        enabled: true,
+      });
+    }
+    if (totalTandems > 0) {
+      const tandemPrice = hwPrice.get('Тандем') ?? 0;
+      const tandemCost = totalTandems * tandemPrice;
+      hardwareCost += tandemCost;
+      details.push({
+        id: 'tandems',
+        type: 'hardware',
+        label: `Тандем (${totalTandems} шт.)`,
+        hardwareType: 'Тандем',
+        brand: '',
+        qty: totalTandems,
+        unit: 'шт.',
+        unitPrice: tandemPrice,
+        cost: Math.round(tandemCost),
         enabled: true,
       });
     }
@@ -2430,7 +2511,11 @@ function defaultService() {
 
 /* Strip quantity info from labels for KP display (per TZ: "убрать кол-во, площади") */
 function stripQtyFromLabel(label: string): string {
-  return label.replace(/\s*\(\d+\s*(шт\.|м\.п\.|листов)\)/g, '').trim();
+  return label
+    .replace(/\s*\(\d+\s*(шт\.|м\.п\.|листов)\)/g, '') // (6 шт.)
+    .replace(/,?\s*\d+\s*шт\.?$/g, '') // , 6 шт
+    .replace(/\s+\d+×\d+/g, '') // 333×1600
+    .trim();
 }
 
 function findMat(product: any, materialId: string): any {

@@ -1,4 +1,10 @@
-import { CalcType, PrismaClient, ProfitType, Role, UserStatus } from '@prisma/client';
+import {
+  CalcType,
+  PrismaClient,
+  ProfitType,
+  Role,
+  UserStatus,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient({
@@ -31,7 +37,16 @@ async function main() {
   // ===========================
   // 2. Типы комнат
   // ===========================
-  const roomTypes = ['Гостиная', 'Спальня', 'Кухня', 'Детская', 'Прихожая', 'Ванная', 'Кабинет', 'Балкон'];
+  const roomTypes = [
+    'Гостиная',
+    'Спальня',
+    'Кухня',
+    'Детская',
+    'Прихожая',
+    'Ванная',
+    'Кабинет',
+    'Балкон',
+  ];
 
   for (const name of roomTypes) {
     await prisma.roomType.upsert({
@@ -45,7 +60,16 @@ async function main() {
   // ===========================
   // 3. Типы изделий
   // ===========================
-  const productTypes = ['Шкаф', 'Тумба', 'Комод', 'Полка', 'Стол', 'Кухонный гарнитур', 'Стеллаж', 'Шкаф-купе'];
+  const productTypes = [
+    'Шкаф',
+    'Тумба',
+    'Комод',
+    'Полка',
+    'Стол',
+    'Кухонный гарнитур',
+    'Стеллаж',
+    'Шкаф-купе',
+  ];
 
   for (const name of productTypes) {
     await prisma.productType.upsert({
@@ -75,7 +99,16 @@ async function main() {
   // ===========================
   // 5. Типы фурнитуры (расширяемые)
   // ===========================
-  const hardwareTypeNames = ['Петли', 'Направляющие', 'Полкодержатели', 'Тандем', 'Ножки', 'Ручки', 'Конфирмат'];
+  const hardwareTypeNames = [
+    'Петли',
+    'Направляющие',
+    'Полкодержатели',
+    'Тандем',
+    'Ножки',
+    'Ручки',
+    'Конфирмат',
+    'Tip-On',
+  ];
   const hardwareTypes: Record<string, string> = {};
 
   for (const name of hardwareTypeNames) {
@@ -93,21 +126,98 @@ async function main() {
   // ===========================
   const materials = [
     // ЛДСП
-    { materialTypeId: materialTypes['ЛДСП'], brand: 'Egger', calcType: CalcType.SHEET, length: 2800, width: 2070, price: 18000 },
-    { materialTypeId: materialTypes['ЛДСП'], brand: 'Kronospan', calcType: CalcType.SHEET, length: 2800, width: 2070, price: 15000 },
-    { materialTypeId: materialTypes['ЛДСП'], brand: 'Kastamonu', calcType: CalcType.SHEET, length: 2800, width: 2070, price: 12000 },
+    {
+      materialTypeId: materialTypes['ЛДСП'],
+      brand: 'Egger',
+      calcType: CalcType.SHEET,
+      length: 2800,
+      width: 2070,
+      price: 18000,
+    },
+    {
+      materialTypeId: materialTypes['ЛДСП'],
+      brand: 'Kronospan',
+      calcType: CalcType.SHEET,
+      length: 2800,
+      width: 2070,
+      price: 15000,
+    },
+    {
+      materialTypeId: materialTypes['ЛДСП'],
+      brand: 'Kastamonu',
+      calcType: CalcType.SHEET,
+      length: 2800,
+      width: 2070,
+      price: 12000,
+    },
     // МДФ
-    { materialTypeId: materialTypes['МДФ'], brand: 'AGT', calcType: CalcType.SQM, length: 1, width: 1, price: 25000 },
-    { materialTypeId: materialTypes['МДФ'], brand: 'Alvic', calcType: CalcType.SQM, length: 1, width: 1, price: 35000 },
+    {
+      materialTypeId: materialTypes['МДФ'],
+      brand: 'AGT',
+      calcType: CalcType.SQM,
+      length: 1,
+      width: 1,
+      price: 25000,
+    },
+    {
+      materialTypeId: materialTypes['МДФ'],
+      brand: 'Alvic',
+      calcType: CalcType.SQM,
+      length: 1,
+      width: 1,
+      price: 35000,
+    },
     // ХДФ
-    { materialTypeId: materialTypes['ХДФ'], brand: 'Kronospan', calcType: CalcType.SHEET, length: 2800, width: 2070, price: 4000 },
-    { materialTypeId: materialTypes['ХДФ'], brand: 'Egger', calcType: CalcType.SQM, length: 1, width: 1, price: 2500 },
+    {
+      materialTypeId: materialTypes['ХДФ'],
+      brand: 'Kronospan',
+      calcType: CalcType.SHEET,
+      length: 2800,
+      width: 2070,
+      price: 4000,
+    },
+    {
+      materialTypeId: materialTypes['ХДФ'],
+      brand: 'Egger',
+      calcType: CalcType.SQM,
+      length: 1,
+      width: 1,
+      price: 2500,
+    },
     // Камень
-    { materialTypeId: materialTypes['Камень'], brand: 'Samsung Staron', calcType: CalcType.LM, length: 1, width: 1, price: 45000 },
-    { materialTypeId: materialTypes['Камень'], brand: 'Grandex', calcType: CalcType.SQM, length: 1, width: 1, price: 60000 },
+    {
+      materialTypeId: materialTypes['Камень'],
+      brand: 'Samsung Staron',
+      calcType: CalcType.LM,
+      length: 1,
+      width: 1,
+      price: 45000,
+    },
+    {
+      materialTypeId: materialTypes['Камень'],
+      brand: 'Grandex',
+      calcType: CalcType.SQM,
+      length: 1,
+      width: 1,
+      price: 60000,
+    },
     // Кромка
-    { materialTypeId: materialTypes['Кромка'], brand: 'Egger', calcType: CalcType.LM, length: 1, width: 1, price: 300 },
-    { materialTypeId: materialTypes['Кромка'], brand: 'Rehau', calcType: CalcType.LM, length: 1, width: 1, price: 500 },
+    {
+      materialTypeId: materialTypes['Кромка'],
+      brand: 'Egger',
+      calcType: CalcType.LM,
+      length: 1,
+      width: 1,
+      price: 300,
+    },
+    {
+      materialTypeId: materialTypes['Кромка'],
+      brand: 'Rehau',
+      calcType: CalcType.LM,
+      length: 1,
+      width: 1,
+      price: 500,
+    },
   ];
 
   for (const mat of materials) {
@@ -127,11 +237,31 @@ async function main() {
     { hardwareTypeId: hardwareTypes['Петли'], brand: 'Blum', price: 1500 },
     { hardwareTypeId: hardwareTypes['Петли'], brand: 'GTV', price: 500 },
     { hardwareTypeId: hardwareTypes['Петли'], brand: 'Hettich', price: 1200 },
-    { hardwareTypeId: hardwareTypes['Направляющие'], brand: 'Blum', price: 3500 },
-    { hardwareTypeId: hardwareTypes['Направляющие'], brand: 'GTV', price: 1200 },
-    { hardwareTypeId: hardwareTypes['Направляющие'], brand: 'Hettich', price: 3000 },
-    { hardwareTypeId: hardwareTypes['Полкодержатели'], brand: 'GTV', price: 100 },
-    { hardwareTypeId: hardwareTypes['Полкодержатели'], brand: 'Hettich', price: 200 },
+    {
+      hardwareTypeId: hardwareTypes['Направляющие'],
+      brand: 'Blum',
+      price: 3500,
+    },
+    {
+      hardwareTypeId: hardwareTypes['Направляющие'],
+      brand: 'GTV',
+      price: 1200,
+    },
+    {
+      hardwareTypeId: hardwareTypes['Направляющие'],
+      brand: 'Hettich',
+      price: 3000,
+    },
+    {
+      hardwareTypeId: hardwareTypes['Полкодержатели'],
+      brand: 'GTV',
+      price: 100,
+    },
+    {
+      hardwareTypeId: hardwareTypes['Полкодержатели'],
+      brand: 'Hettich',
+      price: 200,
+    },
     { hardwareTypeId: hardwareTypes['Тандем'], brand: 'Blum', price: 8000 },
     { hardwareTypeId: hardwareTypes['Тандем'], brand: 'Hettich', price: 6000 },
     { hardwareTypeId: hardwareTypes['Ножки'], brand: 'GTV', price: 300 },
@@ -140,6 +270,9 @@ async function main() {
     { hardwareTypeId: hardwareTypes['Ручки'], brand: 'GTV', price: 400 },
     { hardwareTypeId: hardwareTypes['Ручки'], brand: 'Gamet', price: 1500 },
     { hardwareTypeId: hardwareTypes['Конфирмат'], brand: 'GTV', price: 20 },
+    { hardwareTypeId: hardwareTypes['Tip-On'], brand: 'Blum', price: 1200 },
+    { hardwareTypeId: hardwareTypes['Tip-On'], brand: 'GTV', price: 500 },
+    { hardwareTypeId: hardwareTypes['Tip-On'], brand: 'Hettich', price: 900 },
   ];
 
   for (const hw of hardwareItems) {
@@ -159,13 +292,13 @@ async function main() {
   if (!existingTemplate) {
     await prisma.serviceTemplate.create({
       data: {
-        sawingPrice: 5000,       // Распил — цена за лист
-        drillingPrice: 3000,     // Присадка — цена за лист
-        edgeBandingPrice: 300,   // Кромка — цена за м.п.
-        technologistPercent: 5,  // Технолог 5%
-        designerPercent: 5,      // Дизайнер 5%
-        assemblyPercent: 10,     // Сборка+монтаж 10%
-        deliveryPrice: 30000,    // Доставка — за 1 ед.
+        sawingPrice: 5000, // Распил — цена за лист
+        drillingPrice: 3000, // Присадка — цена за лист
+        edgeBandingPrice: 300, // Кромка — цена за м.п.
+        technologistPercent: 5, // Технолог 5%
+        designerPercent: 5, // Дизайнер 5%
+        assemblyPercent: 10, // Сборка+монтаж 10%
+        deliveryPrice: 30000, // Доставка — за 1 ед.
         profitType: ProfitType.COEF,
         profitValue: 1.5,
       },

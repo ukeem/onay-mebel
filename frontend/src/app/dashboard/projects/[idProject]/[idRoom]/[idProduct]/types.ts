@@ -15,6 +15,8 @@ export interface SubItem {
   materialId?: string;
   isLdsp?: boolean;
   handleQty?: number;
+  openType?: "HANDLE" | "TIP_ON";
+  slideType?: "GUIDE" | "TANDEM";
   mezzanineId?: string;
 }
 

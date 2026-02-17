@@ -204,6 +204,7 @@ export class ProductsService {
             height: f.height,
             qty: f.qty,
             handleQty: f.handleQty,
+            openType: f.openType,
           },
         });
       }
@@ -218,6 +219,7 @@ export class ProductsService {
             height: d.height,
             qty: d.qty,
             handleQty: d.handleQty,
+            slideType: d.slideType,
           },
         });
       }
@@ -397,6 +399,7 @@ export class ProductsService {
           height: item.height,
           qty: item.qty,
           handleQty: item.handleQty ?? 0,
+          openType: item.openType ?? 'HANDLE',
         };
         if (item.id) {
           results.push(
@@ -434,6 +437,7 @@ export class ProductsService {
           height: item.height,
           qty: item.qty,
           handleQty: item.handleQty ?? 0,
+          slideType: item.slideType ?? 'GUIDE',
         };
         if (item.id) {
           results.push(

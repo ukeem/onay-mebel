@@ -1,6 +1,8 @@
+import { DrawerSlideType, FacadeOpenType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -203,6 +205,10 @@ export class UpsertFacadeDto {
   handleQty?: number;
 
   @IsOptional()
+  @IsIn(['HANDLE', 'TIP_ON'])
+  openType?: FacadeOpenType;
+
+  @IsOptional()
   @IsString()
   mezzanineId?: string;
 }
@@ -230,6 +236,10 @@ export class UpsertDrawerDto {
   @IsInt()
   @Min(0)
   handleQty?: number;
+
+  @IsOptional()
+  @IsIn(['GUIDE', 'TANDEM'])
+  slideType?: DrawerSlideType;
 
   @IsOptional()
   @IsString()
