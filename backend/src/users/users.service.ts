@@ -123,6 +123,10 @@ export class UsersService {
     // Status logic per TZ:
     // lock → BLOCKED
     // unlock → if activeUntil > now → ACTIVE, else → INACTIVE
+    // Note: activeUntil represents the END of the day, so we compare with start of today (00:00)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     if (dto.status !== undefined) {
       if (dto.status === UserStatus.BLOCKED) {
         updateData.status = UserStatus.BLOCKED;
@@ -134,7 +138,7 @@ export class UsersService {
         const au = dto.activeUntil
           ? new Date(dto.activeUntil)
           : target.activeUntil;
-        if (au && au > new Date()) {
+        if (au && au >= startOfToday) {
           updateData.status = UserStatus.ACTIVE;
         } else {
           updateData.status = UserStatus.INACTIVE;
@@ -150,7 +154,7 @@ export class UsersService {
     ) {
       const au = new Date(dto.activeUntil);
       updateData.status =
-        au > new Date() ? UserStatus.ACTIVE : UserStatus.INACTIVE;
+        au >= startOfToday ? UserStatus.ACTIVE : UserStatus.INACTIVE;
     }
 
     const user = await this.prisma.user.update({

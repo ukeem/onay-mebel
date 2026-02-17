@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
+import type { RoomType } from "@/types";
 import {
   ArrowLeft,
   ChevronRight,
@@ -37,11 +38,6 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-interface RoomType {
-  id: string;
-  name: string;
-}
 
 interface Room {
   id: string;

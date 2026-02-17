@@ -14,6 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogCopyService } from '../shared/catalog-copy.service';
+import { parseDuration } from '../shared/parse-duration.util';
 import { SmsService } from '../sms/sms.service';
 import { WsGateway } from '../ws/ws.gateway';
 
@@ -99,10 +100,13 @@ export class AuthService {
     }
 
     // Check activeUntil: if expired, set status to INACTIVE
+    // activeUntil represents end-of-day, so compare with start of today
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
     if (
       user.status === UserStatus.ACTIVE &&
       user.activeUntil &&
-      user.activeUntil < new Date()
+      user.activeUntil < startOfToday
     ) {
       await this.prisma.user.update({
         where: { id: user.id },
@@ -155,7 +159,37 @@ export class AuthService {
     }
 
     if (stored.user.status === UserStatus.BLOCKED) {
-      throw new ForbiddenException('Аккаунт заблокирован');
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId: stored.user.id },
+      });
+      throw new ForbiddenException('BLOCKED');
+    }
+
+    // ACTIVE but subscription expired → mark INACTIVE
+    // activeUntil represents end-of-day, so compare with start of today
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (
+      stored.user.status === UserStatus.ACTIVE &&
+      stored.user.activeUntil &&
+      stored.user.activeUntil < startOfToday
+    ) {
+      await this.prisma.user.update({
+        where: { id: stored.user.id },
+        data: { status: UserStatus.INACTIVE },
+      });
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId: stored.user.id },
+      });
+      throw new ForbiddenException('INACTIVE');
+    }
+
+    // Already INACTIVE
+    if (stored.user.status === UserStatus.INACTIVE) {
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId: stored.user.id },
+      });
+      throw new ForbiddenException('INACTIVE');
     }
 
     // Rotate: delete old, issue new (deleteMany won't throw if already gone)
@@ -264,7 +298,7 @@ export class AuthService {
     );
     const expiresAt = new Date();
     expiresAt.setSeconds(
-      expiresAt.getSeconds() + this.parseDuration(refreshExpiresIn),
+      expiresAt.getSeconds() + parseDuration(refreshExpiresIn),
     );
 
     // Clean old refresh tokens for this user (max 5)
@@ -328,23 +362,5 @@ export class AuthService {
     });
 
     return true;
-  }
-
-  private parseDuration(duration: string): number {
-    const match = duration.match(/^(\d+)([smhd])$/);
-    if (!match) return 7 * 24 * 3600; // default 7 days
-    const value = parseInt(match[1], 10);
-    switch (match[2]) {
-      case 's':
-        return value;
-      case 'm':
-        return value * 60;
-      case 'h':
-        return value * 3600;
-      case 'd':
-        return value * 86400;
-      default:
-        return 7 * 86400;
-    }
   }
 }

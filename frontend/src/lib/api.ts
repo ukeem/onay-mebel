@@ -41,6 +41,20 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as RetryableConfig | undefined;
 
+    // Handle INACTIVE / BLOCKED from non-auth endpoints → redirect to login
+    // Skip auth endpoints — login page handles 403 itself via catch block
+    const url = originalRequest?.url ?? "";
+    const isAuthEndpoint = url.includes("/auth/");
+    if (error.response?.status === 403 && !isAuthEndpoint) {
+      const msg = error.response?.data?.message;
+      if (msg === "INACTIVE" || msg === "BLOCKED") {
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+    }
+
     if (
       error.response?.status === 401 &&
       originalRequest &&

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
+import type { ProductSummary, ProductType, RoomDetail } from "@/types";
 import {
   ArrowLeft,
   ChevronRight,
@@ -38,26 +39,6 @@ import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-interface ProductType {
-  id: string;
-  name: string;
-}
-
-interface Product {
-  id: string;
-  productType: ProductType;
-  width: number | null;
-  height: number | null;
-  depth: number | null;
-}
-
-interface Room {
-  id: string;
-  roomType: { id: string; name: string };
-  project: { id: string; name: string };
-  products: Product[];
-}
-
 export default function RoomPage({
   params,
 }: {
@@ -67,7 +48,7 @@ export default function RoomPage({
   const router = useRouter();
   const t = useTranslations();
 
-  const [room, setRoom] = useState<Room | null>(null);
+  const [room, setRoom] = useState<RoomDetail | null>(null);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,7 +59,9 @@ export default function RoomPage({
   const [saving, setSaving] = useState(false);
 
   /* edit type dialog */
-  const [editTypeProduct, setEditTypeProduct] = useState<Product | null>(null);
+  const [editTypeProduct, setEditTypeProduct] = useState<ProductSummary | null>(
+    null,
+  );
   const [editTypeValue, setEditTypeValue] = useState("");
   const [editTypeSaving, setEditTypeSaving] = useState(false);
 

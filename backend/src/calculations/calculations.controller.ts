@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SettingsService } from '../settings/settings.service';
 import { CalculationsService } from './calculations.service';
+import { UpdateCalculationDto } from './dto/calculations.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('calculations')
@@ -46,7 +47,7 @@ export class CalculationsController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body() body: { data: any },
+    @Body() body: UpdateCalculationDto,
     @Req() req: any,
   ) {
     return this.svc.update(id, req.user.id, body.data);

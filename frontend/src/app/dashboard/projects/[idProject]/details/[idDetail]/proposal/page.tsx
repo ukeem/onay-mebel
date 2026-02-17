@@ -160,6 +160,7 @@ export default function ProposalPage({
           ref={iframeRef}
           id="proposal-frame"
           src={htmlUrl}
+          sandbox="allow-scripts allow-same-origin"
           className="mt-2 flex-1 rounded-md border bg-white"
           title={t("proposal.title")}
           onLoad={handleIframeLoad}

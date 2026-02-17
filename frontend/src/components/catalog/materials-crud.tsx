@@ -31,26 +31,13 @@ import {
 } from "@/components/ui/table";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
+import { API_BASE_URL } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/utils";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import type { Material, MaterialType } from "@/types";
+import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-interface MaterialType {
-  id: string;
-  name: string;
-}
-
-interface Material {
-  id: string;
-  brand: string | null;
-  calcType: "SHEET" | "SQM" | "LM";
-  length: number;
-  width: number;
-  price: string;
-  materialType: MaterialType;
-}
 
 export function MaterialsCrud() {
   const t = useTranslations();
@@ -71,6 +58,8 @@ export function MaterialsCrud() {
   const [length, setLength] = useState("2800");
   const [width, setWidth] = useState("2070");
   const [price, setPrice] = useState("0");
+  const [image, setImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -101,6 +90,7 @@ export function MaterialsCrud() {
     setLength("2800");
     setWidth("2070");
     setPrice("0");
+    setImage(null);
   };
 
   const handleSave = async () => {
@@ -110,9 +100,11 @@ export function MaterialsCrud() {
         ...(editId ? {} : { materialTypeId }),
         brand: brand || undefined,
         calcType,
-        length: parseInt(length),
-        width: parseInt(width),
+        ...(calcType === "SHEET"
+          ? { length: parseInt(length), width: parseInt(width) }
+          : {}),
         price: parseFloat(price),
+        image: image || undefined,
       };
       if (editId) {
         await api.patch(`/catalog/materials/${editId}`, body);
@@ -139,6 +131,7 @@ export function MaterialsCrud() {
     setLength(String(m.length));
     setWidth(String(m.width));
     setPrice(String(m.price));
+    setImage(m.image);
     setOpen(true);
   };
 
@@ -151,6 +144,25 @@ export function MaterialsCrud() {
       toast.error(getApiError(err, t("common.error")));
     } finally {
       setDeleteId(null);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post("/uploads", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImage(res.data.url);
+      toast.success(t("catalog.imageUploaded"));
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -242,28 +254,30 @@ export function MaterialsCrud() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label>{t("catalog.lengthMm")}</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={length}
-                      onFocus={selectOnFocus}
-                      onChange={(e) => setLength(e.target.value)}
-                    />
+                {calcType === "SHEET" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>{t("catalog.lengthMm")}</Label>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={length}
+                        onFocus={selectOnFocus}
+                        onChange={(e) => setLength(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>{t("catalog.widthMm")}</Label>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={width}
+                        onFocus={selectOnFocus}
+                        onChange={(e) => setWidth(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label>{t("catalog.widthMm")}</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={width}
-                      onFocus={selectOnFocus}
-                      onChange={(e) => setWidth(e.target.value)}
-                    />
-                  </div>
-                </div>
+                )}
                 <div className="space-y-1">
                   <Label>{t("catalog.priceLabel")}</Label>
                   <Input
@@ -273,6 +287,35 @@ export function MaterialsCrud() {
                     onFocus={selectOnFocus}
                     onChange={(e) => setPrice(e.target.value)}
                   />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("catalog.image")}</Label>
+                  <div className="flex items-center gap-3">
+                    {image && (
+                      <img
+                        src={`${API_BASE_URL}${image}`}
+                        alt=""
+                        className="h-14 w-14 rounded-md border object-cover"
+                      />
+                    )}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploading}
+                      />
+                      <span className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        {uploading
+                          ? "..."
+                          : image
+                            ? t("catalog.changeImage")
+                            : t("catalog.uploadImage")}
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -289,6 +332,7 @@ export function MaterialsCrud() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead></TableHead>
               <TableHead>{t("common.type")}</TableHead>
               <TableHead>{t("common.brand")}</TableHead>
               <TableHead>{t("settings.calcType")}</TableHead>
@@ -302,13 +346,24 @@ export function MaterialsCrud() {
           <TableBody>
             {items.map((m) => (
               <TableRow key={m.id}>
+                <TableCell className="w-12">
+                  {m.image ? (
+                    <img
+                      src={`${API_BASE_URL}${m.image}`}
+                      alt=""
+                      className="h-8 w-8 rounded border object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded border bg-muted" />
+                  )}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{m.materialType.name}</Badge>
                 </TableCell>
                 <TableCell>{m.brand || "—"}</TableCell>
                 <TableCell>{calcTypeLabels[m.calcType]}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {m.length}×{m.width}
+                  {m.calcType === "SHEET" ? `${m.length}×${m.width}` : "—"}
                 </TableCell>
                 <TableCell>{Number(m.price).toLocaleString()}</TableCell>
                 <TableCell className="text-right">
@@ -338,7 +393,7 @@ export function MaterialsCrud() {
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="h-16 text-center text-muted-foreground"
                 >
                   {t("catalog.noMaterials")}

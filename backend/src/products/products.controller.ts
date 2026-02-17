@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseArrayPipe,
   Patch,
   Post,
   Put,
@@ -79,7 +80,8 @@ export class ProductsController {
   @Put(':id/sections')
   upsertSections(
     @Param('id') id: string,
-    @Body() items: UpsertSectionDto[],
+    @Body(new ParseArrayPipe({ items: UpsertSectionDto }))
+    items: UpsertSectionDto[],
     @Req() req: any,
   ) {
     return this.svc.upsertSections(id, items, req.user.id);
@@ -89,7 +91,8 @@ export class ProductsController {
   @Put(':id/partitions')
   upsertPartitions(
     @Param('id') id: string,
-    @Body() items: UpsertPartitionDto[],
+    @Body(new ParseArrayPipe({ items: UpsertPartitionDto }))
+    items: UpsertPartitionDto[],
     @Req() req: any,
   ) {
     return this.svc.upsertPartitions(id, items, req.user.id);
@@ -99,7 +102,8 @@ export class ProductsController {
   @Put(':id/shelves')
   upsertShelves(
     @Param('id') id: string,
-    @Body() items: UpsertShelfDto[],
+    @Body(new ParseArrayPipe({ items: UpsertShelfDto }))
+    items: UpsertShelfDto[],
     @Req() req: any,
   ) {
     return this.svc.upsertShelves(id, items, req.user.id);
@@ -109,7 +113,8 @@ export class ProductsController {
   @Put(':id/facades')
   upsertFacades(
     @Param('id') id: string,
-    @Body() items: UpsertFacadeDto[],
+    @Body(new ParseArrayPipe({ items: UpsertFacadeDto }))
+    items: UpsertFacadeDto[],
     @Req() req: any,
   ) {
     return this.svc.upsertFacades(id, items, req.user.id);
@@ -119,7 +124,8 @@ export class ProductsController {
   @Put(':id/drawers')
   upsertDrawers(
     @Param('id') id: string,
-    @Body() items: UpsertDrawerDto[],
+    @Body(new ParseArrayPipe({ items: UpsertDrawerDto }))
+    items: UpsertDrawerDto[],
     @Req() req: any,
   ) {
     return this.svc.upsertDrawers(id, items, req.user.id);
@@ -161,7 +167,8 @@ export class ProductsController {
   @Put(':id/extras')
   upsertExtras(
     @Param('id') id: string,
-    @Body() items: UpsertExtraDto[],
+    @Body(new ParseArrayPipe({ items: UpsertExtraDto }))
+    items: UpsertExtraDto[],
     @Req() req: any,
   ) {
     return this.svc.upsertExtras(id, items, req.user.id);

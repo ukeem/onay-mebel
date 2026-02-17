@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
@@ -7,6 +7,7 @@ export class CreateProjectDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   clientData?: string;
 }
 
@@ -18,5 +19,6 @@ export class UpdateProjectDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   clientData?: string;
 }

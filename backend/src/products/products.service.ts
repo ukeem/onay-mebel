@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { copyProductData } from '../shared/copy-product.util';
 import {
   CreateProductDto,
   UpdateProductDto,
@@ -110,152 +111,10 @@ export class ProductsService {
     const src = await this.findOne(id, userId);
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Create the product copy
-      const newProduct = await tx.product.create({
-        data: {
-          roomId: src.roomId,
-          productTypeId: src.productTypeId,
-          width: src.width,
-          height: src.height,
-          depth: src.depth,
-          bodyMaterialId: src.bodyMaterialId,
-          sectionsEnabled: src.sectionsEnabled,
-          backWallEnabled: src.backWallEnabled,
-          backWallMaterialId: src.backWallMaterialId,
-          partitionsEnabled: src.partitionsEnabled,
-          shelvesEnabled: src.shelvesEnabled,
-          facadesEnabled: src.facadesEnabled,
-          falseFacadesEnabled: src.falseFacadesEnabled,
-          falseFacadeQty: src.falseFacadeQty,
-          falseFacadeMaterialId: src.falseFacadeMaterialId,
-          drawersEnabled: src.drawersEnabled,
-          mezzanineEnabled: src.mezzanineEnabled,
-          countertopEnabled: src.countertopEnabled,
-          extrasEnabled: src.extrasEnabled,
-        },
-      });
+      const newProductId = await copyProductData(tx, src, src.roomId);
 
-      // 2. Copy mezzanine first (needed for sub-component references)
-      const mezzanineIdMap: Record<string, string> = {};
-      if (src.mezzanine) {
-        const mezz = await tx.productMezzanine.create({
-          data: {
-            productId: newProduct.id,
-            height: src.mezzanine.height,
-            sectionsEnabled: src.mezzanine.sectionsEnabled,
-            backWallEnabled: src.mezzanine.backWallEnabled,
-            backWallMaterialId: src.mezzanine.backWallMaterialId,
-            partitionsEnabled: src.mezzanine.partitionsEnabled,
-            shelvesEnabled: src.mezzanine.shelvesEnabled,
-            facadesEnabled: src.mezzanine.facadesEnabled,
-            falseFacadesEnabled: src.mezzanine.falseFacadesEnabled,
-            falseFacadeQty: src.mezzanine.falseFacadeQty,
-            falseFacadeMaterialId: src.mezzanine.falseFacadeMaterialId,
-            drawersEnabled: src.mezzanine.drawersEnabled,
-          },
-        });
-        mezzanineIdMap[src.mezzanine.id] = mezz.id;
-      }
-
-      // 3. Copy sections
-      for (const s of src.sections) {
-        await tx.productSection.create({
-          data: {
-            productId: newProduct.id,
-            mezzanineId: s.mezzanineId ? mezzanineIdMap[s.mezzanineId] : null,
-            qty: s.qty,
-          },
-        });
-      }
-
-      // 4. Copy partitions
-      for (const p of src.partitions) {
-        await tx.productPartition.create({
-          data: {
-            productId: newProduct.id,
-            mezzanineId: p.mezzanineId ? mezzanineIdMap[p.mezzanineId] : null,
-            qty: p.qty,
-            height: p.height,
-          },
-        });
-      }
-
-      // 5. Copy shelves
-      for (const s of src.shelves) {
-        await tx.productShelf.create({
-          data: {
-            productId: newProduct.id,
-            mezzanineId: s.mezzanineId ? mezzanineIdMap[s.mezzanineId] : null,
-            qty: s.qty,
-            width: s.width,
-          },
-        });
-      }
-
-      // 6. Copy facades
-      for (const f of src.facades) {
-        await tx.productFacade.create({
-          data: {
-            productId: newProduct.id,
-            mezzanineId: f.mezzanineId ? mezzanineIdMap[f.mezzanineId] : null,
-            materialId: f.materialId,
-            isLdsp: f.isLdsp,
-            width: f.width,
-            height: f.height,
-            qty: f.qty,
-            handleQty: f.handleQty,
-            openType: f.openType,
-          },
-        });
-      }
-
-      // 7. Copy drawers
-      for (const d of src.drawers) {
-        await tx.productDrawer.create({
-          data: {
-            productId: newProduct.id,
-            mezzanineId: d.mezzanineId ? mezzanineIdMap[d.mezzanineId] : null,
-            width: d.width,
-            height: d.height,
-            qty: d.qty,
-            handleQty: d.handleQty,
-            slideType: d.slideType,
-          },
-        });
-      }
-
-      // 8. Copy countertop
-      if (src.countertop) {
-        await tx.productCountertop.create({
-          data: {
-            productId: newProduct.id,
-            materialId: src.countertop.materialId,
-            isLdsp: src.countertop.isLdsp,
-            width: src.countertop.width,
-            depth: src.countertop.depth,
-            apronEnabled: src.countertop.apronEnabled,
-            apronMaterialId: src.countertop.apronMaterialId,
-            apronIsLdsp: src.countertop.apronIsLdsp,
-            apronWidth: src.countertop.apronWidth,
-            apronHeight: src.countertop.apronHeight,
-          },
-        });
-      }
-
-      // 9. Copy extras
-      for (const e of src.extras) {
-        await tx.productExtra.create({
-          data: {
-            productId: newProduct.id,
-            name: e.name,
-            price: e.price,
-          },
-        });
-      }
-
-      // Return full product with includes
       return tx.product.findUnique({
-        where: { id: newProduct.id },
+        where: { id: newProductId },
         include: PRODUCT_INCLUDE,
       });
     });

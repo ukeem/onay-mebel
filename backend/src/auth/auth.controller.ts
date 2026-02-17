@@ -13,6 +13,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Request as ExpressReq, Response } from 'express';
+import { parseDurationMs } from '../shared/parse-duration.util';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
@@ -56,12 +57,12 @@ export class AuthController {
 
     res.cookie('accessToken', accessToken, {
       ...this.cookieOptions,
-      maxAge: this.parseDurationMs(accessExpiresIn),
+      maxAge: parseDurationMs(accessExpiresIn),
     });
 
     res.cookie('refreshToken', refreshToken, {
       ...this.cookieOptions,
-      maxAge: this.parseDurationMs(refreshExpiresIn),
+      maxAge: parseDurationMs(refreshExpiresIn),
       path: '/api/auth', // only sent to auth endpoints
     });
   }
@@ -72,24 +73,6 @@ export class AuthController {
       ...this.cookieOptions,
       path: '/api/auth',
     });
-  }
-
-  private parseDurationMs(duration: string): number {
-    const match = duration.match(/^(\d+)([smhd])$/);
-    if (!match) return 7 * 24 * 3600 * 1000;
-    const value = parseInt(match[1], 10);
-    switch (match[2]) {
-      case 's':
-        return value * 1000;
-      case 'm':
-        return value * 60 * 1000;
-      case 'h':
-        return value * 3600 * 1000;
-      case 'd':
-        return value * 86400 * 1000;
-      default:
-        return 7 * 86400 * 1000;
-    }
   }
 
   /** POST /api/auth/register */

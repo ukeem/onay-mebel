@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useFormatDate } from "@/hooks/use-format-date";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
+import type { ProjectSummary } from "@/types";
 import {
   ChevronRight,
   Copy,
@@ -30,28 +31,15 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-interface Project {
-  id: string;
-  name: string;
-  clientData: string | null;
-  rooms: {
-    id: string;
-    roomType: { name: string };
-    _count: { products: number };
-  }[];
-  _count: { calculations: number };
-  createdAt: string;
-}
-
 export default function ProjectsPage() {
   const formatDate = useFormatDate();
   const t = useTranslations();
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [editProject, setEditProject] = useState<ProjectSummary | null>(null);
   const [editName, setEditName] = useState("");
   const [editClient, setEditClient] = useState("");
   const [name, setName] = useState("");
@@ -115,7 +103,7 @@ export default function ProjectsPage() {
     }
   };
 
-  const openEdit = (p: Project) => {
+  const openEdit = (p: ProjectSummary) => {
     setEditProject(p);
     setEditName(p.name);
     setEditClient(p.clientData || "");

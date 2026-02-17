@@ -1,5 +1,8 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
+  Delete,
   Post,
   UploadedFile,
   UseGuards,
@@ -18,8 +21,22 @@ export class UploadsController {
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
   )
-  upload(@UploadedFile() file: Express.Multer.File) {
-    const url = this.uploadsService.saveFile(file);
+  async upload(@UploadedFile() file: Express.Multer.File) {
+    const url = await this.uploadsService.saveFile(file);
     return { url };
+  }
+
+  @Delete()
+  async remove(@Body('url') url: string) {
+    if (
+      !url ||
+      typeof url !== 'string' ||
+      !url.startsWith('/uploads/') ||
+      url.includes('..')
+    ) {
+      throw new BadRequestException('Некорректный путь к файлу');
+    }
+    await this.uploadsService.deleteFile(url);
+    return { message: 'Файл удалён' };
   }
 }

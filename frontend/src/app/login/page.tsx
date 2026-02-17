@@ -10,6 +10,7 @@ import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { formatPhone, rawPhone } from "@/lib/phone-mask";
 import { useAuthStore } from "@/stores/auth.store";
+import { ArrowLeft, Clock, ShieldX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,7 +23,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("+7 ");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [stub, setStub] = useState<string | null>(null);
+  const [stub, setStub] = useState<"INACTIVE" | "BLOCKED" | null>(null);
   const t = useTranslations();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,9 +45,9 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const msgStr = getApiError(err, t("auth.fail.login"));
       if (msgStr === "INACTIVE") {
-        setStub(t("status.inactive"));
+        setStub("INACTIVE");
       } else if (msgStr === "BLOCKED") {
-        setStub(t("status.blocked"));
+        setStub("BLOCKED");
       } else {
         toast.error(msgStr);
       }
@@ -67,9 +68,23 @@ export default function LoginPage() {
         <CardContent>
           {stub ? (
             <div className="space-y-4">
-              <p className="text-sm text-center text-muted-foreground">
-                {stub}
-              </p>
+              <div className="flex flex-col items-center gap-2">
+                {stub === "INACTIVE" ? (
+                  <Clock className="h-10 w-10 text-amber-500" />
+                ) : (
+                  <ShieldX className="h-10 w-10 text-destructive" />
+                )}
+                <h3 className="text-base font-semibold text-center">
+                  {stub === "INACTIVE"
+                    ? t("status.inactive")
+                    : t("status.blocked")}
+                </h3>
+                <p className="text-sm text-center text-muted-foreground">
+                  {stub === "INACTIVE"
+                    ? t("status.inactiveDescription")
+                    : t("status.blockedDescription")}
+                </p>
+              </div>
               <div className="grid gap-2">
                 <Button variant="outline" className="w-full" asChild>
                   <a
@@ -104,6 +119,14 @@ export default function LoginPage() {
                   </a>
                 </Button>
               </div>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => setStub(null)}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                {t("status.backToLogin")}
+              </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

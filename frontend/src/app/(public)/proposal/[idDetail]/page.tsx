@@ -43,6 +43,7 @@ export default function PublicProposalPage({
         <iframe
           id="public-proposal-frame"
           src={htmlUrl}
+          sandbox="allow-scripts allow-same-origin"
           className="h-screen w-full border-0"
           title="Коммерческое предложение"
         />

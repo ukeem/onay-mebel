@@ -4,6 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  copyProductData,
+  PRODUCT_COPY_INCLUDE,
+} from '../shared/copy-product.util';
 import { CreateProjectDto, UpdateProjectDto } from './dto/projects.dto';
 
 @Injectable()
@@ -88,174 +92,7 @@ export class ProjectsService {
         });
 
         for (const product of room.products) {
-          const newProduct = await tx.product.create({
-            data: {
-              roomId: newRoom.id,
-              productTypeId: product.productTypeId,
-              width: product.width,
-              height: product.height,
-              depth: product.depth,
-              bodyMaterialId: product.bodyMaterialId,
-              sectionsEnabled: product.sectionsEnabled,
-              backWallEnabled: product.backWallEnabled,
-              backWallMaterialId: product.backWallMaterialId,
-              partitionsEnabled: product.partitionsEnabled,
-              shelvesEnabled: product.shelvesEnabled,
-              facadesEnabled: product.facadesEnabled,
-              falseFacadesEnabled: product.falseFacadesEnabled,
-              falseFacadeQty: product.falseFacadeQty,
-              falseFacadeMaterialId: product.falseFacadeMaterialId,
-              drawersEnabled: product.drawersEnabled,
-              mezzanineEnabled: product.mezzanineEnabled,
-              countertopEnabled: product.countertopEnabled,
-              extrasEnabled: product.extrasEnabled,
-            },
-          });
-
-          /* sub-components */
-          for (const sec of product.sections) {
-            await tx.productSection.create({
-              data: { productId: newProduct.id, qty: sec.qty },
-            });
-          }
-          for (const part of product.partitions) {
-            await tx.productPartition.create({
-              data: {
-                productId: newProduct.id,
-                height: part.height,
-                qty: part.qty,
-              },
-            });
-          }
-          for (const sh of product.shelves) {
-            await tx.productShelf.create({
-              data: { productId: newProduct.id, width: sh.width, qty: sh.qty },
-            });
-          }
-          for (const f of product.facades) {
-            await tx.productFacade.create({
-              data: {
-                productId: newProduct.id,
-                materialId: f.materialId,
-                isLdsp: f.isLdsp,
-                width: f.width,
-                height: f.height,
-                qty: f.qty,
-                handleQty: f.handleQty,
-              },
-            });
-          }
-          for (const dr of product.drawers) {
-            await tx.productDrawer.create({
-              data: {
-                productId: newProduct.id,
-                width: dr.width,
-                height: dr.height,
-                qty: dr.qty,
-                handleQty: dr.handleQty,
-              },
-            });
-          }
-          for (const ex of product.extras) {
-            await tx.productExtra.create({
-              data: {
-                productId: newProduct.id,
-                name: ex.name,
-                price: ex.price,
-              },
-            });
-          }
-          if (product.mezzanine) {
-            const mez = product.mezzanine;
-            const newMez = await tx.productMezzanine.create({
-              data: {
-                productId: newProduct.id,
-                height: mez.height,
-                sectionsEnabled: mez.sectionsEnabled,
-                partitionsEnabled: mez.partitionsEnabled,
-                shelvesEnabled: mez.shelvesEnabled,
-                facadesEnabled: mez.facadesEnabled,
-                falseFacadesEnabled: mez.falseFacadesEnabled,
-                falseFacadeQty: mez.falseFacadeQty,
-                falseFacadeMaterialId: mez.falseFacadeMaterialId,
-                drawersEnabled: mez.drawersEnabled,
-                backWallEnabled: mez.backWallEnabled,
-                backWallMaterialId: mez.backWallMaterialId,
-              },
-            });
-            for (const sec of mez.sections) {
-              await tx.productSection.create({
-                data: {
-                  productId: newProduct.id,
-                  mezzanineId: newMez.id,
-                  qty: sec.qty,
-                },
-              });
-            }
-            for (const part of mez.partitions) {
-              await tx.productPartition.create({
-                data: {
-                  productId: newProduct.id,
-                  mezzanineId: newMez.id,
-                  height: part.height,
-                  qty: part.qty,
-                },
-              });
-            }
-            for (const sh of mez.shelves) {
-              await tx.productShelf.create({
-                data: {
-                  productId: newProduct.id,
-                  mezzanineId: newMez.id,
-                  width: sh.width,
-                  qty: sh.qty,
-                },
-              });
-            }
-            for (const f of mez.facades) {
-              await tx.productFacade.create({
-                data: {
-                  productId: newProduct.id,
-                  mezzanineId: newMez.id,
-                  materialId: f.materialId,
-                  isLdsp: f.isLdsp,
-                  width: f.width,
-                  height: f.height,
-                  qty: f.qty,
-                  handleQty: f.handleQty,
-                },
-              });
-            }
-            for (const dr of mez.drawers) {
-              await tx.productDrawer.create({
-                data: {
-                  productId: newProduct.id,
-                  mezzanineId: newMez.id,
-                  width: dr.width,
-                  height: dr.height,
-                  qty: dr.qty,
-                  handleQty: dr.handleQty,
-                },
-              });
-            }
-          }
-          if (product.countertop) {
-            const ct = product.countertop;
-            await tx.productCountertop.create({
-              data: {
-                productId: newProduct.id,
-                materialId: ct.materialId,
-                isLdsp: ct.isLdsp,
-                width: ct.width,
-                depth: ct.depth,
-                apronEnabled: ct.apronEnabled,
-                apronMaterialId: ct.apronMaterialId,
-                apronIsLdsp: ct.apronIsLdsp,
-                apronWidth: ct.apronWidth,
-                apronHeight: ct.apronHeight,
-              },
-            });
-          }
+          await copyProductData(tx, product, newRoom.id);
         }
       }
 
@@ -270,26 +107,7 @@ export class ProjectsService {
       include: {
         rooms: {
           include: {
-            products: {
-              include: {
-                sections: true,
-                partitions: true,
-                shelves: true,
-                facades: true,
-                drawers: true,
-                extras: true,
-                mezzanine: {
-                  include: {
-                    sections: true,
-                    partitions: true,
-                    shelves: true,
-                    facades: true,
-                    drawers: true,
-                  },
-                },
-                countertop: true,
-              },
-            },
+            products: { include: PRODUCT_COPY_INCLUDE },
           },
         },
       },

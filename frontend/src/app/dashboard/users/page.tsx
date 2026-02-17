@@ -27,6 +27,7 @@ import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { formatPhone, rawPhone } from "@/lib/phone-mask";
 import { useAuthStore } from "@/stores/auth.store";
+import type { User } from "@/types";
 import {
   Check,
   Eye,
@@ -40,15 +41,6 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-interface User {
-  id: string;
-  phone: string;
-  role: "SUPER" | "ADMIN" | "USER";
-  status: "ACTIVE" | "INACTIVE" | "BLOCKED";
-  activeUntil: string | null;
-  createdAt: string;
-}
 
 const roleBadge = (role: string, t: (key: string) => string) => {
   switch (role) {

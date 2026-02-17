@@ -32,22 +32,11 @@ import {
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { selectOnFocus } from "@/lib/utils";
+import type { Hardware, HardwareType } from "@/types";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-interface HardwareType {
-  id: string;
-  name: string;
-}
-
-interface Hardware {
-  id: string;
-  brand: string | null;
-  price: string;
-  hardwareType: HardwareType;
-}
 
 export function HardwareCrud() {
   const t = useTranslations();
