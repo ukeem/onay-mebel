@@ -148,7 +148,12 @@ export class SettingsService {
 
   async upsertCompanyInfo(
     userId: string,
-    dto: { name: string; logo?: string; description?: string },
+    dto: {
+      name: string;
+      logo?: string;
+      description?: string;
+      descriptionKz?: string;
+    },
   ) {
     return this.prisma.companyInfo.upsert({
       where: { userId },
@@ -156,12 +161,14 @@ export class SettingsService {
         name: dto.name,
         logo: dto.logo ?? null,
         description: dto.description ?? null,
+        descriptionKz: dto.descriptionKz ?? null,
       },
       create: {
         userId,
         name: dto.name,
         logo: dto.logo ?? null,
         description: dto.description ?? null,
+        descriptionKz: dto.descriptionKz ?? null,
       },
     });
   }

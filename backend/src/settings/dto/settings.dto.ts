@@ -85,6 +85,10 @@ export class UpsertCompanyInfoDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  descriptionKz?: string;
 }
 
 /* ═══ Payment Stages ═══ */

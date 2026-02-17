@@ -266,6 +266,7 @@ interface CompanyInfo {
   logo?: string | null;
   name: string;
   description?: string | null;
+  descriptionKz?: string | null;
 }
 
 function CompanyInfoSection() {
@@ -275,6 +276,7 @@ function CompanyInfoSection() {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState(defaultDescription);
+  const [descriptionKz, setDescriptionKz] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -285,6 +287,7 @@ function CompanyInfoSection() {
       if (data) {
         setName(data.name);
         setDescription(data.description ?? defaultDescription);
+        setDescriptionKz(data.descriptionKz ?? "");
         setLogo(data.logo ?? null);
       }
     } catch {
@@ -328,6 +331,7 @@ function CompanyInfoSection() {
         name: name.trim(),
         logo: logo || undefined,
         description: description.trim() || undefined,
+        descriptionKz: descriptionKz.trim() || undefined,
       });
       toast.success(t("settings.company.saved"));
     } catch (err: unknown) {
@@ -402,6 +406,17 @@ function CompanyInfoSection() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t("settings.company.descriptionPlaceholder")}
+            rows={3}
+          />
+        </div>
+
+        {/* Description KZ */}
+        <div className="space-y-1">
+          <Label>{t("settings.company.descriptionKz")}</Label>
+          <Textarea
+            value={descriptionKz}
+            onChange={(e) => setDescriptionKz(e.target.value)}
+            placeholder={t("settings.company.descriptionKzPlaceholder")}
             rows={3}
           />
         </div>

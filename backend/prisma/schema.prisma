@@ -261,12 +261,13 @@ model UserService {
 // ============================================
 
 model CompanyInfo {
-  id          String  @id @default(cuid())
-  userId      String  @unique
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logo        String? // путь к файлу логотипа
-  name        String
-  description String?
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logo          String? // путь к файлу логотипа
+  name          String
+  description   String?
+  descriptionKz String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
