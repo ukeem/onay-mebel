@@ -38,9 +38,10 @@ async function bootstrap() {
     }),
   );
 
-  // CORS — reflect the request origin so it works behind nginx on any domain
+  // CORS — restrict to frontend URL in production, allow any in dev
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   app.enableCors({
-    origin: true,
+    origin: process.env.NODE_ENV === 'production' ? [frontendUrl] : true,
     credentials: true,
   });
 

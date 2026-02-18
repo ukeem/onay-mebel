@@ -49,7 +49,6 @@ export default function DetailsPage({
   const router = useRouter();
   const [calcs, setCalcs] = useState<CalcRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [calculating, setCalculating] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
@@ -62,32 +61,11 @@ export default function DetailsPage({
     } finally {
       setLoading(false);
     }
-  }, [idProject]);
+  }, [idProject, t]);
 
   useEffect(() => {
     fetchCalcs();
   }, [fetchCalcs]);
-
-  const handleCalculate = async () => {
-    setCalculating(true);
-    try {
-      const { data } = await api.post(
-        `/calculations/project/${idProject}/calculate`,
-      );
-      toast.success(t("details.calculated"));
-      router.push(`/dashboard/projects/${idProject}/details/${data.id}`);
-    } catch (err: unknown) {
-      let msg = t("details.calcError");
-      if (err && typeof err === "object" && "response" in err) {
-        const resp = (err as { response?: { data?: { message?: string } } })
-          .response;
-        if (resp?.data?.message) msg = resp.data.message;
-      }
-      toast.error(msg);
-    } finally {
-      setCalculating(false);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     try {

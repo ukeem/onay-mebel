@@ -20,7 +20,9 @@ export class AppController {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       db = true;
-    } catch {}
+    } catch {
+      // DB unreachable — report degraded
+    }
     return {
       status: db ? 'ok' : 'degraded',
       uptime: process.uptime(),

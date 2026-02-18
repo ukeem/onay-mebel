@@ -36,6 +36,7 @@ import { selectOnFocus } from "@/lib/utils";
 import type { Material, MaterialType } from "@/types";
 import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -292,9 +293,11 @@ export function MaterialsCrud() {
                   <Label>{t("catalog.image")}</Label>
                   <div className="flex items-center gap-3">
                     {image && (
-                      <img
+                      <Image
                         src={`${API_BASE_URL}${image}`}
                         alt=""
+                        width={56}
+                        height={56}
                         className="h-14 w-14 rounded-md border object-cover"
                       />
                     )}
@@ -348,9 +351,11 @@ export function MaterialsCrud() {
               <TableRow key={m.id}>
                 <TableCell className="w-12">
                   {m.image ? (
-                    <img
+                    <Image
                       src={`${API_BASE_URL}${m.image}`}
                       alt=""
+                      width={32}
+                      height={32}
                       className="h-8 w-8 rounded border object-cover"
                     />
                   ) : (

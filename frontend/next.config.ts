@@ -1,10 +1,17 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const rootDir = dirname(fileURLToPath(import.meta.url));
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  turbopack: {
+    root: rootDir,
+  },
 
   // Proxy /api and /uploads to backend in local dev only (production uses nginx)
   ...(process.env.NODE_ENV !== "production" && {

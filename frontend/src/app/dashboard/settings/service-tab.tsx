@@ -25,6 +25,7 @@ import { API_BASE_URL } from "@/lib/constants";
 import { parseNum, selectOnFocus } from "@/lib/utils";
 import { Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { UserService } from "./types";
@@ -272,11 +273,12 @@ interface CompanyInfo {
 function CompanyInfoSection() {
   const t = useTranslations();
   const defaultDescription = t("settings.company.descriptionPlaceholder");
+  const defaultDescriptionKz = t("settings.company.descriptionKzPlaceholder");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState(defaultDescription);
-  const [descriptionKz, setDescriptionKz] = useState("");
+  const [descriptionKz, setDescriptionKz] = useState(defaultDescriptionKz);
   const [logo, setLogo] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -286,8 +288,8 @@ function CompanyInfoSection() {
       const data: CompanyInfo | null = res.data;
       if (data) {
         setName(data.name);
-        setDescription(data.description ?? defaultDescription);
-        setDescriptionKz(data.descriptionKz ?? "");
+        setDescription(data.description?.trim() || defaultDescription);
+        setDescriptionKz(data.descriptionKz?.trim() || defaultDescriptionKz);
         setLogo(data.logo ?? null);
       }
     } catch {
@@ -295,7 +297,7 @@ function CompanyInfoSection() {
     } finally {
       setLoading(false);
     }
-  }, [defaultDescription]);
+  }, [defaultDescription, defaultDescriptionKz]);
 
   useEffect(() => {
     fetch();
@@ -360,9 +362,11 @@ function CompanyInfoSection() {
           <div className="flex items-center gap-3">
             {logo ? (
               <div className="relative">
-                <img
+                <Image
                   src={`${API_BASE_URL}${logo}`}
                   alt="Logo"
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-md object-contain border"
                 />
                 <button

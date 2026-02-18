@@ -305,7 +305,7 @@ export default function DetailPage({
     } finally {
       setLoading(false);
     }
-  }, [idDetail]);
+  }, [idDetail, t]);
 
   useEffect(() => {
     fetchCalc();
@@ -1221,28 +1221,5 @@ export default function DetailPage({
         </div>
       </div>
     </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <Card className={highlight ? "border-primary" : ""}>
-      <CardContent className="pt-4">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p
-          className={`text-lg font-semibold ${highlight ? "text-primary" : ""}`}
-        >
-          {value}
-        </p>
-      </CardContent>
-    </Card>
   );
 }

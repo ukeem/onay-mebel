@@ -143,16 +143,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleRoleChange = async (userId: string, role: string) => {
-    try {
-      await api.patch(`/users/${userId}`, { role });
-      toast.success(t("users.roleChanged"));
-      fetchUsers();
-    } catch (err: unknown) {
-      toast.error(getApiError(err, t("common.error")));
-    }
-  };
-
   const handleDelete = async (user: User) => {
     try {
       await api.delete(`/users/${user.id}`);

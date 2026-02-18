@@ -3,8 +3,8 @@ services:
     image: postgres:16
     container_name: onay-mebel-db
     restart: unless-stopped
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"  # НЕ выставлять наружу в production!
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -60,8 +60,12 @@ services:
     image: nginx:alpine
     container_name: onay-mebel-nginx
     restart: unless-stopped
-    ports:
-      - "${NGINX_PORT:-80}:80"
+    # В Dokploy порт проксируется через Traefik — не биндить напрямую
+    # Для локального запуска раскомментировать:
+    # ports:
+    #   - "${NGINX_PORT:-80}:80"
+    expose:
+      - "80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

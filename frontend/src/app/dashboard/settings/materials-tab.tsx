@@ -17,6 +17,7 @@ import { API_BASE_URL } from "@/lib/constants";
 import { parseNum, selectOnFocus } from "@/lib/utils";
 import { RefreshCw, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -124,9 +125,11 @@ export function UserMaterialsTab() {
               <TableRow key={um.id}>
                 <TableCell className="hidden md:table-cell">
                   {um.material.image ? (
-                    <img
+                    <Image
                       src={`${API_BASE_URL}${um.material.image}`}
                       alt={um.material.brand || ""}
+                      width={40}
+                      height={40}
                       className="h-10 w-10 rounded object-cover"
                     />
                   ) : (

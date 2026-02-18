@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
@@ -53,6 +54,7 @@ import { WsModule } from './ws/ws.module';
         },
       ],
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     SharedModule,
     AuthModule,

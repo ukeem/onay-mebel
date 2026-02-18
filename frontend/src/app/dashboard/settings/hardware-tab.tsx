@@ -16,6 +16,7 @@ import { getApiError } from "@/lib/api-error";
 import { parseNum, selectOnFocus } from "@/lib/utils";
 import { RefreshCw, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -120,9 +121,11 @@ export function UserHardwareTab() {
               <TableRow key={uh.id}>
                 <TableCell className="hidden md:table-cell">
                   {uh.hardware.image ? (
-                    <img
+                    <Image
                       src={`${API_BASE}${uh.hardware.image}`}
                       alt={uh.hardware.brand || ""}
+                      width={40}
+                      height={40}
                       className="h-10 w-10 rounded object-cover"
                     />
                   ) : (

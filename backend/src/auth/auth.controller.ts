@@ -8,6 +8,7 @@ import {
   Req,
   Request,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -105,6 +106,7 @@ export class AuthController {
   }
 
   /** POST /api/auth/refresh */
+  @Throttle({ short: { ttl: 60000, limit: 10 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -114,7 +116,7 @@ export class AuthController {
     const refreshToken = (req.cookies as Record<string, string>)?.refreshToken;
     if (!refreshToken) {
       this.clearTokenCookies(res);
-      return { message: 'No refresh token' };
+      throw new UnauthorizedException('No refresh token');
     }
     const result = await this.auth.refresh(refreshToken);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
