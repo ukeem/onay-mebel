@@ -314,10 +314,30 @@ export class CalculationsService {
         assemblyCost -
         (productsSum + workshopTotal);
     } else {
-      const base = productsSum + workshopTotal;
-      const discountAmount = (base * discount) / 100;
-      totalForClient = base - discountAmount + profitValue + deliveryCost;
-      cleanProfit = profitValue;
+      const base = productsSum + workshopTotal + reserveAmount;
+      const allCosts =
+        base +
+        profitValue +
+        techCost +
+        designCost +
+        assemblyCost +
+        deliveryCost;
+      const discountAmount = (allCosts * discount) / 100;
+      totalForClient =
+        base +
+        profitValue +
+        techCost +
+        designCost +
+        assemblyCost +
+        deliveryCost -
+        discountAmount;
+      cleanProfit =
+        totalForClient -
+        base -
+        techCost -
+        designCost -
+        assemblyCost -
+        deliveryCost;
     }
 
     /* Build material/hardware alternatives for brand selection on detail page */
@@ -442,9 +462,24 @@ export class CalculationsService {
             (tierProductsSum + tWorkshopTotal),
         );
       } else {
-        const base = tierProductsSum + tWorkshopTotal;
-        tTotalForClient = Math.round(base + profitValue + tDeliveryCost);
-        tCleanProfit = Math.round(profitValue);
+        const base = tierProductsSum + tWorkshopTotal + tierReserve;
+        const allCosts =
+          base +
+          profitValue +
+          tTechCost +
+          tDesignCost +
+          tAssemblyCost +
+          tDeliveryCost;
+        const disc = (allCosts * discount) / 100;
+        tTotalForClient = Math.round(allCosts - disc);
+        tCleanProfit = Math.round(
+          tTotalForClient -
+            base -
+            tTechCost -
+            tDesignCost -
+            tAssemblyCost -
+            tDeliveryCost,
+        );
       }
 
       tierTotals[tier] = {
@@ -612,6 +647,9 @@ export class CalculationsService {
     const drillingPrice = d.drillingPrice ?? 0;
     const edgeBandingPrice = d.edgeBandingPrice ?? 0;
     const deliveryPrice = d.deliveryPrice ?? 0;
+    const technologistPct = d.technologistPercent ?? 0;
+    const designerPct = d.designerPercent ?? 0;
+    const assemblyPct = d.assemblyPercent ?? 0;
 
     /* compute totals per tier */
     const tierResults: Record<
@@ -676,6 +714,11 @@ export class CalculationsService {
           Math.max(0, totalProductCount - 1) * (deliveryPrice / 3);
       }
 
+      const pMarketPrice = (productsSumNoReserve + workshopTotal) * 2;
+      const pTechCost = (pMarketPrice * technologistPct) / 100;
+      const pDesignCost = (pMarketPrice * designerPct) / 100;
+      const pAssemblyCost = (pMarketPrice * assemblyPct) / 100;
+
       let totalForClient: number;
       if (profitType === 'COEF') {
         const base =
@@ -684,9 +727,16 @@ export class CalculationsService {
         const disc = (base * discountPct) / 100;
         totalForClient = Math.round(base - disc + deliveryCost);
       } else {
-        const base = productsSum + workshopTotal;
-        const disc = (base * discountPct) / 100;
-        totalForClient = Math.round(base - disc + profitValue + deliveryCost);
+        const base = productsSum + workshopTotal + proposalReserve;
+        const allCosts =
+          base +
+          profitValue +
+          pTechCost +
+          pDesignCost +
+          pAssemblyCost +
+          deliveryCost;
+        const disc = (allCosts * discountPct) / 100;
+        totalForClient = Math.round(allCosts - disc);
       }
 
       const totalBeforeDiscount =
