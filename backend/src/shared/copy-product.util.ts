@@ -123,7 +123,7 @@ export async function copyProductData(
   });
 
   // 2. Sections
-  for (const s of src.sections) {
+  for (const s of src.sections ?? []) {
     await tx.productSection.create({
       data: {
         productId: newProduct.id,
@@ -141,7 +141,7 @@ export async function copyProductData(
   }
 
   // 3. Partitions
-  for (const p of src.partitions) {
+  for (const p of src.partitions ?? []) {
     await tx.productPartition.create({
       data: {
         productId: newProduct.id,
@@ -154,7 +154,7 @@ export async function copyProductData(
   }
 
   // 4. Shelves
-  for (const sh of src.shelves) {
+  for (const sh of src.shelves ?? []) {
     await tx.productShelf.create({
       data: {
         productId: newProduct.id,
@@ -168,7 +168,7 @@ export async function copyProductData(
   }
 
   // 5. Facades
-  for (const f of src.facades) {
+  for (const f of src.facades ?? []) {
     await tx.productFacade.create({
       data: {
         productId: newProduct.id,
@@ -186,7 +186,7 @@ export async function copyProductData(
   }
 
   // 6. Drawers
-  for (const d of src.drawers) {
+  for (const d of src.drawers ?? []) {
     await tx.productDrawer.create({
       data: {
         productId: newProduct.id,
@@ -203,7 +203,7 @@ export async function copyProductData(
   }
 
   // 7. False Facades
-  for (const ff of src.falseFacades) {
+  for (const ff of src.falseFacades ?? []) {
     await tx.productFalseFacade.create({
       data: {
         productId: newProduct.id,
@@ -216,7 +216,7 @@ export async function copyProductData(
   }
 
   // 8. Countertops
-  for (const ct of src.countertops) {
+  for (const ct of src.countertops ?? []) {
     await tx.productCountertop.create({
       data: {
         productId: newProduct.id,
@@ -232,7 +232,7 @@ export async function copyProductData(
   }
 
   // 9. Extras
-  for (const e of src.extras) {
+  for (const e of src.extras ?? []) {
     await tx.productExtra.create({
       data: {
         productId: newProduct.id,
