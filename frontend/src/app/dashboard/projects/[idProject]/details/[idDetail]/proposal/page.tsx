@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, Download, Printer } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useRef, useState } from "react";
@@ -24,6 +24,11 @@ export default function ProposalPage({
   const [htmlUrl, setHtmlUrl] = useState("");
   const [error, setError] = useState(false);
   const [activeTier, setActiveTier] = useState<Tier>("standard");
+  const [totals, setTotals] = useState<Record<Tier, string>>({
+    standard: "",
+    comfort: "",
+    premium: "",
+  });
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeLoaded = useRef(false);
   const htmlUrlRef = useRef("");
@@ -34,11 +39,34 @@ export default function ProposalPage({
         responseType: "text" as const,
       })
       .then(({ data: html }) => {
-        setRawHtml(html);
-        // Hide the in-HTML tabs — React tabs handle switching
-        const modified = html.replace(
+        const withAbsoluteUploads = html.replace(
+          /src="\/uploads\//g,
+          `src="${window.location.origin}/uploads/`,
+        );
+        setRawHtml(withAbsoluteUploads);
+
+        // Extract totals per tier from HTML
+        const tierNames: Tier[] = ["standard", "comfort", "premium"];
+        const extracted = { standard: "", comfort: "", premium: "" };
+        for (const tier of tierNames) {
+          const re = new RegExp(
+            `id="total-${tier}"[\\s\\S]*?class="grand-new"[^>]*>([\\s\\S]*?)</span>\\s*</`,
+          );
+          const m = withAbsoluteUploads.match(re);
+          if (m) {
+            // Strip inner HTML tags, decode &nbsp;
+            extracted[tier] = m[1]
+              .replace(/<[^>]+>/g, "")
+              .replace(/&nbsp;/g, " ")
+              .trim();
+          }
+        }
+        setTotals(extracted);
+
+        // Hide the in-HTML tabs + bottom total bar — React handles them
+        const modified = withAbsoluteUploads.replace(
           "</head>",
-          "<style>.tabs-wrap{display:none!important}</style></head>",
+          "<style>.tabs-wrap{display:none!important}.total-bar{display:none!important}</style></head>",
         );
         const blob = new Blob([modified], { type: "text/html" });
         const url = URL.createObjectURL(blob);
@@ -77,28 +105,28 @@ export default function ProposalPage({
     }
   }, []);
 
-  const handlePrint = () => {
-    iframeRef.current?.contentWindow?.print();
-  };
+  const handleShare = async () => {
+    const publicUrl = `${window.location.origin}/proposal/${idDetail}`;
+    const titleMatch = rawHtml?.match(/<title>[^—]*—\s*(.+?)<\/title>/);
+    const projectName = titleMatch?.[1]?.trim() || t("proposal.title");
+    const shareText = `${projectName}\n${publicUrl}`;
 
-  const handleDownload = () => {
-    if (rawHtml) {
-      const blob = new Blob([rawHtml], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      // Extract project name from <title> for a cleaner filename
-      const titleMatch = rawHtml.match(/<title>[^—]*—\s*(.+?)<\/title>/);
-      const projectName = titleMatch?.[1]?.trim() || idDetail;
-      const date = new Date().toLocaleDateString("ru-RU").replace(/\./g, "-");
-      a.download = `КП — ${projectName} (${date}).html`;
-      a.click();
-      URL.revokeObjectURL(url);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: projectName, url: publicUrl });
+      } catch {
+        /* user cancelled */
+      }
+    } else {
+      await navigator.clipboard.writeText(shareText);
+      // Use sonner toast if available
+      const { toast } = await import("sonner");
+      toast.success(t("detail.linkCopied"));
     }
   };
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] md:h-[calc(100vh-6rem)] flex-col">
+    <div className="flex h-[calc(100vh-10rem)] md:h-[calc(100vh-6rem)] flex-col">
       {/* toolbar */}
       <div className="sticky top-12 md:top-0 z-20 flex items-center gap-3 bg-background/95 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <Button
@@ -114,28 +142,6 @@ export default function ProposalPage({
         <h1 className="flex-1 text-md leading-6 font-semibold">
           {t("proposal.title")}
         </h1>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 sm:h-auto sm:w-auto sm:px-3"
-          aria-label={t("proposal.print")}
-          onClick={handlePrint}
-        >
-          <Printer className="h-3 w-3" />
-          <span className="ml-1 hidden sm:inline">{t("proposal.print")}</span>
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 sm:h-auto sm:w-auto sm:px-3"
-          aria-label={t("proposal.downloadHtml")}
-          onClick={handleDownload}
-        >
-          <Download className="h-3 w-3" />
-          <span className="ml-1 hidden sm:inline">
-            {t("proposal.downloadHtml")}
-          </span>
-        </Button>
       </div>
 
       {/* Tier tabs */}
@@ -174,6 +180,30 @@ export default function ProposalPage({
           <Spinner />
         </div>
       )}
+      {/* Bottom bar: total + share */}
+      <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 border-t bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        {totals[activeTier] ? (
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm text-muted-foreground">
+              {t("detail.totalClientLabel")}
+            </span>
+            <span className="text-xl font-bold tracking-tight">
+              {totals[activeTier]}
+            </span>
+          </div>
+        ) : (
+          <div />
+        )}
+        <Button
+          size="sm"
+          className="gap-1.5 rounded-full bg-green-600 px-4 text-white shadow-md hover:bg-green-700 hover:shadow-lg transition-all"
+          aria-label={t("proposal.share")}
+          onClick={handleShare}
+        >
+          <Share2 className="h-4 w-4" />
+          <span>{t("proposal.share")}</span>
+        </Button>
+      </div>
     </div>
   );
 }

@@ -6,8 +6,9 @@
 export type {
   CountertopData,
   ExtraItem,
+  FalseFacadeItem,
+  HwOption,
   MatOption,
-  MezzanineData,
   ProductData,
   SubItem,
 } from "@/types";

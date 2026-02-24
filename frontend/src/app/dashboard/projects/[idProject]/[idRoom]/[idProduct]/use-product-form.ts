@@ -2,13 +2,19 @@
 
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
+import type { CountertopData, FalseFacadeItem } from "@/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import type { ExtraItem, MatOption, ProductData, SubItem } from "./types";
-import { num } from "./types";
+import type {
+  ExtraItem,
+  HwOption,
+  MatOption,
+  ProductData,
+  SubItem,
+} from "./types";
 
 export function useProductForm(
   idProject: string,
@@ -20,152 +26,100 @@ export function useProductForm(
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [materials, setMaterials] = useState<MatOption[]>([]);
+  const [hardwareList, setHardwareList] = useState<HwOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Set<string>>(new Set());
 
-  /* ── local state mirrors ── */
-  const [width, setWidth] = useState("0");
-  const [height, setHeight] = useState("0");
-  const [depth, setDepth] = useState("600");
-
-  /* switchers */
+  /* ── switchers ── */
   const [sectionsEnabled, setSectionsEnabled] = useState(false);
-  const [backWallEnabled, setBackWallEnabled] = useState(false);
-  const [backWallMaterialId, setBackWallMaterialId] = useState("");
   const [partitionsEnabled, setPartitionsEnabled] = useState(false);
   const [shelvesEnabled, setShelvesEnabled] = useState(false);
   const [facadesEnabled, setFacadesEnabled] = useState(false);
   const [falseFacadesEnabled, setFalseFacadesEnabled] = useState(false);
-  const [falseFacadeQty, setFalseFacadeQty] = useState("1");
-  const [falseFacadeMaterialId, setFalseFacadeMaterialId] = useState("");
   const [drawersEnabled, setDrawersEnabled] = useState(false);
-  const [mezzanineEnabled, setMezzanineEnabled] = useState(false);
   const [countertopEnabled, setCountertopEnabled] = useState(false);
   const [extrasEnabled, setExtrasEnabled] = useState(false);
 
-  /* sub items */
-  const [sectionsQty, setSectionsQty] = useState(1);
+  /* ── sub items ── */
+  const [sections, setSections] = useState<SubItem[]>([]);
   const [partitions, setPartitions] = useState<SubItem[]>([]);
   const [shelves, setShelves] = useState<SubItem[]>([]);
   const [facades, setFacades] = useState<SubItem[]>([]);
+  const [falseFacades, setFalseFacades] = useState<FalseFacadeItem[]>([]);
   const [drawers, setDrawers] = useState<SubItem[]>([]);
+  const [countertops, setCountertops] = useState<CountertopData[]>([]);
   const [extras, setExtras] = useState<ExtraItem[]>([]);
 
-  /* mezzanine */
-  const [mezHeight, setMezHeight] = useState("400");
-  const [mezSectionsEnabled, setMezSectionsEnabled] = useState(false);
-  const [mezSectionsQty, setMezSectionsQty] = useState(1);
-  const [mezPartitionsEnabled, setMezPartitionsEnabled] = useState(false);
-  const [mezPartitions, setMezPartitions] = useState<SubItem[]>([]);
-  const [mezShelvesEnabled, setMezShelvesEnabled] = useState(false);
-  const [mezShelves, setMezShelves] = useState<SubItem[]>([]);
-  const [mezFacadesEnabled, setMezFacadesEnabled] = useState(false);
-  const [mezFacades, setMezFacades] = useState<SubItem[]>([]);
-  const [mezDrawersEnabled, setMezDrawersEnabled] = useState(false);
-  const [mezDrawers, setMezDrawers] = useState<SubItem[]>([]);
-  const [mezBackWallEnabled, setMezBackWallEnabled] = useState(false);
-  const [mezBackWallMaterialId, setMezBackWallMaterialId] = useState("");
-  const [mezSameAsBody, setMezSameAsBody] = useState(true);
-  const [mezBodyMaterialId, setMezBodyMaterialId] = useState("");
-  const [mezFalseFacadesEnabled, setMezFalseFacadesEnabled] = useState(false);
-  const [mezFalseFacadeQty, setMezFalseFacadeQty] = useState("1");
-  const [mezFalseFacadeMaterialId, setMezFalseFacadeMaterialId] = useState("");
+  /* ── default states (driven by last section) ── */
+  const [defaultWidth, setDefaultWidth] = useState(1000);
+  const [defaultHeight, setDefaultHeight] = useState(2000);
+  const [defaultDepth, setDefaultDepth] = useState(600);
+  const [defaultMaterialId, setDefaultMaterialId] = useState("");
 
-  /* countertop */
-  const [ctMatId, setCtMatId] = useState("");
-  const [ctWidth, setCtWidth] = useState("600");
-  const [ctDepth, setCtDepth] = useState("600");
-  const [ctApron, setCtApron] = useState(false);
-  const [ctApronMatId, setCtApronMatId] = useState("");
-  const [ctApronW, setCtApronW] = useState("0");
-  const [ctApronH, setCtApronH] = useState("0");
+  /* ref to skip tracking on initial load */
+  const initialLoadDone = useRef(false);
 
   /* ── fetch ── */
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const fetchData = useCallback(async () => {
     try {
-      const [pRes, mRes] = await Promise.all([
+      const [pRes, mRes, hwRes] = await Promise.all([
         api.get(`/products/${idProduct}`),
-        api.get("/catalog/materials"),
+        api.get("/settings/materials"),
+        api.get("/settings/hardware"),
       ]);
       const p: ProductData = pRes.data;
       setProduct(p);
+      const enabledMaterials =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mRes.data as any[])
+          .filter((um) => um.enabled !== false)
+          .map((um) => um.material as MatOption);
       setMaterials(
-        (mRes.data as MatOption[]).filter(
-          (m) => m.materialType.name !== "Кромка",
-        ),
+        enabledMaterials.filter((m) => m.materialType.name !== "Кромка"),
       );
-      setWidth(String(p.width));
-      setHeight(String(p.height));
-      setDepth(String(p.depth));
+      // Transform UserHardware[] → HwOption[]
+      setHardwareList(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (hwRes.data as any[])
+          .filter((uh) => uh.enabled !== false)
+          .map((uh) => ({
+            id: uh.hardware.id,
+            brand: uh.hardware.brand,
+            hardwareType: uh.hardware.hardwareType,
+          })),
+      );
+
       setSectionsEnabled(p.sectionsEnabled);
-      setBackWallEnabled(p.backWallEnabled);
-      setBackWallMaterialId(p.backWallMaterialId || "");
       setPartitionsEnabled(p.partitionsEnabled);
       setShelvesEnabled(p.shelvesEnabled);
       setFacadesEnabled(p.facadesEnabled);
       setFalseFacadesEnabled(p.falseFacadesEnabled);
-      setFalseFacadeQty(String(p.falseFacadeQty));
-      setFalseFacadeMaterialId(p.falseFacadeMaterialId || "");
       setDrawersEnabled(p.drawersEnabled);
-      setMezzanineEnabled(p.mezzanineEnabled);
       setCountertopEnabled(p.countertopEnabled);
       setExtrasEnabled(p.extrasEnabled);
 
-      /* filter main body items (mezzanineId === null) */
-      const mainSections = (p.sections || []).filter(
-        (x: any) => !x.mezzanineId,
-      );
-      const mainPartitions = (p.partitions || []).filter(
-        (x: any) => !x.mezzanineId,
-      );
-      const mainShelves = (p.shelves || []).filter((x: any) => !x.mezzanineId);
-      const mainFacades = (p.facades || []).filter((x: any) => !x.mezzanineId);
-      const mainDrawers = (p.drawers || []).filter((x: any) => !x.mezzanineId);
+      setSections(p.sections || []);
 
-      setSectionsQty(
-        mainSections.reduce((s: number, x: any) => s + x.qty, 0) || 1,
-      );
-      setPartitions(mainPartitions);
-      setShelves(mainShelves);
-      setFacades(mainFacades);
-      setDrawers(mainDrawers);
+      /* initialize defaults from last section */
+      const secs = p.sections || [];
+      if (secs.length > 0) {
+        const last = secs[secs.length - 1];
+        if (last.width) setDefaultWidth(last.width);
+        if (last.height) setDefaultHeight(last.height);
+        if (last.depth) setDefaultDepth(last.depth);
+        if (last.materialId) setDefaultMaterialId(last.materialId);
+      }
+      initialLoadDone.current = true;
+
+      setPartitions(p.partitions || []);
+      setShelves(p.shelves || []);
+      setFacades(p.facades || []);
+      setFalseFacades(p.falseFacades || []);
+      setDrawers(p.drawers || []);
+      setCountertops(p.countertops || []);
       setExtras(p.extras || []);
-      if (p.mezzanine) {
-        setMezHeight(String(p.mezzanine.height));
-        setMezSectionsEnabled(p.mezzanine.sectionsEnabled);
-        setMezSectionsQty(
-          (p.mezzanine.sections || []).reduce(
-            (s: number, x: any) => s + x.qty,
-            0,
-          ) || 1,
-        );
-        setMezPartitionsEnabled(p.mezzanine.partitionsEnabled);
-        setMezPartitions(p.mezzanine.partitions || []);
-        setMezShelvesEnabled(p.mezzanine.shelvesEnabled);
-        setMezShelves(p.mezzanine.shelves || []);
-        setMezFacadesEnabled(p.mezzanine.facadesEnabled);
-        setMezFacades(p.mezzanine.facades || []);
-        setMezDrawersEnabled(p.mezzanine.drawersEnabled);
-        setMezDrawers(p.mezzanine.drawers || []);
-        setMezBackWallEnabled(p.mezzanine.backWallEnabled);
-        setMezBackWallMaterialId(p.mezzanine.backWallMaterialId || "");
-        setMezSameAsBody(!p.mezzanine.bodyMaterialId);
-        setMezBodyMaterialId(p.mezzanine.bodyMaterialId || "");
-        setMezFalseFacadesEnabled(p.mezzanine.falseFacadesEnabled);
-        setMezFalseFacadeQty(String(p.mezzanine.falseFacadeQty || 0));
-        setMezFalseFacadeMaterialId(p.mezzanine.falseFacadeMaterialId || "");
-      }
-      if (p.countertop) {
-        setCtMatId(p.countertop.materialId);
-        setCtWidth(String(p.countertop.width));
-        setCtDepth(String(p.countertop.depth));
-        setCtApron(p.countertop.apronEnabled);
-        setCtApronMatId(p.countertop.apronMaterialId || "");
-        setCtApronW(String(p.countertop.apronWidth || 0));
-        setCtApronH(String(p.countertop.apronHeight || 0));
-      }
     } catch {
       toast.error(t("product.loadError"));
     } finally {
@@ -198,107 +152,42 @@ export function useProductForm(
     setDrawersEnabled(v);
     if (!v) setDrawers([]);
   }, []);
-  const toggleBackWall = useCallback((v: boolean) => {
-    setBackWallEnabled(v);
-    if (!v) setBackWallMaterialId("");
-  }, []);
   const toggleFacades = useCallback((v: boolean) => {
     setFacadesEnabled(v);
     if (!v) setFacades([]);
   }, []);
   const toggleFalseFacades = useCallback((v: boolean) => {
     setFalseFacadesEnabled(v);
-    if (!v) {
-      setFalseFacadeQty("1");
-      setFalseFacadeMaterialId("");
-    }
+    if (!v) setFalseFacades([]);
   }, []);
   const toggleExtras = useCallback((v: boolean) => {
     setExtrasEnabled(v);
     if (!v) setExtras([]);
   }, []);
-
-  /* mez toggles */
-  const toggleMezPartitions = useCallback((v: boolean) => {
-    setMezPartitionsEnabled(v);
-    if (!v) setMezPartitions([]);
-  }, []);
-  const toggleMezShelves = useCallback((v: boolean) => {
-    setMezShelvesEnabled(v);
-    if (!v) setMezShelves([]);
-  }, []);
-  const toggleMezDrawers = useCallback((v: boolean) => {
-    setMezDrawersEnabled(v);
-    if (!v) setMezDrawers([]);
-  }, []);
-  const toggleMezBackWall = useCallback((v: boolean) => {
-    setMezBackWallEnabled(v);
-    if (!v) setMezBackWallMaterialId("");
-  }, []);
-  const toggleMezFacades = useCallback((v: boolean) => {
-    setMezFacadesEnabled(v);
-    if (!v) setMezFacades([]);
-  }, []);
-  const toggleMezFalseFacades = useCallback((v: boolean) => {
-    setMezFalseFacadesEnabled(v);
-    if (!v) {
-      setMezFalseFacadeQty("1");
-      setMezFalseFacadeMaterialId("");
-    }
-  }, []);
-
-  /* material change callbacks */
-  const onBackWallMaterialChange = useCallback(
-    (v: string) => {
-      setBackWallMaterialId(v);
-      clearError("backWallMaterial");
+  /* section setter that tracks defaults */
+  const setSectionsTracked = useCallback(
+    (v: SubItem[] | ((prev: SubItem[]) => SubItem[])) => {
+      setSections((prev) => {
+        const next = typeof v === "function" ? v(prev) : v;
+        if (initialLoadDone.current && next.length > 0) {
+          const last = next[next.length - 1];
+          if (last.width) setDefaultWidth(last.width);
+          if (last.height) setDefaultHeight(last.height);
+          if (last.depth) setDefaultDepth(last.depth);
+          if (last.materialId) setDefaultMaterialId(last.materialId);
+        }
+        return next;
+      });
     },
-    [clearError],
-  );
-  const onFalseFacadeMaterialChange = useCallback(
-    (v: string) => {
-      setFalseFacadeMaterialId(v);
-      clearError("falseFacadeMaterial");
-    },
-    [clearError],
-  );
-  const onMezBackWallMaterialChange = useCallback(
-    (v: string) => {
-      setMezBackWallMaterialId(v);
-      clearError("mezBackWallMaterial");
-    },
-    [clearError],
-  );
-  const onMezBodyMaterialChange = useCallback(
-    (v: string) => {
-      setMezBodyMaterialId(v);
-      clearError("mezBodyMaterial");
-    },
-    [clearError],
-  );
-  const onMezFalseFacadeMaterialChange = useCallback(
-    (v: string) => {
-      setMezFalseFacadeMaterialId(v);
-      clearError("mezFalseFacadeMaterial");
-    },
-    [clearError],
-  );
-  const onCtMaterialChange = useCallback(
-    (v: string) => {
-      setCtMatId(v);
-      clearError("countertopMaterial");
-    },
-    [clearError],
-  );
-  const onApronMaterialChange = useCallback(
-    (v: string) => {
-      setCtApronMatId(v);
-      clearError("apronMaterial");
-    },
-    [clearError],
+    [],
   );
 
-  /* setItems wrappers for facades (need clearError) */
+  const toggleSections = useCallback((v: boolean) => {
+    setSectionsEnabled(v);
+    if (!v) setSections([]);
+  }, []);
+
+  /* facade setters with error clear */
   const setFacadesWithClear = useCallback(
     (v: SubItem[]) => {
       setFacades(v);
@@ -306,85 +195,131 @@ export function useProductForm(
     },
     [clearError],
   );
-  const setMezFacadesWithClear = useCallback(
-    (v: SubItem[]) => {
-      setMezFacades(v);
-      clearError(
-        "mezFacadeRequired",
-        ...v.map((_, i) => `mezFacadeMaterial_${i}`),
-      );
-    },
-    [clearError],
-  );
-
-  const onFalseFacadeQtyChange = useCallback(
-    (v: number) => setFalseFacadeQty(String(v)),
-    [],
-  );
-  const onMezFalseFacadeQtyChange = useCallback(
-    (v: number) => setMezFalseFacadeQty(String(v)),
-    [],
-  );
 
   /* ── validate ── */
   const validate = (): string | null => {
     const e = new Set<string>();
 
-    if (num(width) <= 0 || num(height) <= 0 || num(depth) <= 0)
-      e.add("dimensions");
-    if (backWallEnabled && !backWallMaterialId) e.add("backWallMaterial");
+    /* sections */
+    if (sectionsEnabled) {
+      sections.forEach((s, i) => {
+        if (!s.materialId) e.add(`sectionMaterial_${i}`);
+        if (s.backWallEnabled && !s.backWallMaterialId)
+          e.add(`backWallMaterial_${i}`);
+        if (s.legsEnabled && !s.legsHardwareId) e.add(`legsHardware_${i}`);
+      });
+    }
+    /* partitions */
+    if (partitionsEnabled) {
+      partitions.forEach((p, i) => {
+        if (!p.materialId) e.add(`partitionMaterial_${i}`);
+      });
+    }
+    /* shelves */
+    if (shelvesEnabled) {
+      shelves.forEach((s, i) => {
+        if (!s.materialId) e.add(`shelfMaterial_${i}`);
+        if (holderHardware.length > 0 && !s.holderHardwareId)
+          e.add(`shelfHolder_${i}`);
+      });
+    }
+    /* facades */
     if (facadesEnabled) {
       if (facades.length === 0) e.add("facadeRequired");
       facades.forEach((f, i) => {
-        if (!f.isLdsp && !f.materialId) e.add(`facadeMaterial_${i}`);
+        if (!f.materialId) e.add(`facadeMaterial_${i}`);
+        if (hingeHardware.length > 0 && !f.hingeHardwareId)
+          e.add(`facadeHinge_${i}`);
+        if ((f.openType ?? "HANDLE") === "HANDLE") {
+          if (
+            handleHardware.length > 0 &&
+            (f.handleQty ?? 0) > 0 &&
+            !f.handleHardwareId
+          )
+            e.add(`facadeHandle_${i}`);
+        } else {
+          if (tipOnHardware.length > 0 && !f.tipOnHardwareId)
+            e.add(`facadeTipOn_${i}`);
+        }
       });
     }
-    if (falseFacadesEnabled && !falseFacadeMaterialId)
-      e.add("falseFacadeMaterial");
-    if (countertopEnabled) {
-      if (!ctMatId) e.add("countertopMaterial");
-      if (ctApron && !ctApronMatId) e.add("apronMaterial");
+    /* false facades */
+    if (falseFacadesEnabled) {
+      falseFacades.forEach((ff, i) => {
+        if (!ff.materialId) e.add(`falseFacadeMaterial_${i}`);
+      });
     }
-    if (mezzanineEnabled) {
-      if (!mezSameAsBody && !mezBodyMaterialId) e.add("mezBodyMaterial");
-      if (mezBackWallEnabled && !mezBackWallMaterialId)
-        e.add("mezBackWallMaterial");
-      if (mezFacadesEnabled) {
-        if (mezFacades.length === 0) e.add("mezFacadeRequired");
-        mezFacades.forEach((f, i) => {
-          if (!f.isLdsp && !f.materialId) e.add(`mezFacadeMaterial_${i}`);
-        });
-      }
-      if (mezFalseFacadesEnabled && !mezFalseFacadeMaterialId)
-        e.add("mezFalseFacadeMaterial");
+    /* drawers */
+    if (drawersEnabled) {
+      drawers.forEach((d, i) => {
+        if (!d.materialId) e.add(`drawerMaterial_${i}`);
+        const hwList =
+          (d.slideType ?? "GUIDE") === "TANDEM"
+            ? tandemHardware
+            : slideHardware;
+        if (hwList.length > 0 && !d.slideHardwareId) e.add(`drawerSlide_${i}`);
+      });
+    }
+    /* countertops */
+    if (countertopEnabled) {
+      countertops.forEach((ct, i) => {
+        if (!ct.materialId) e.add(`countertopMaterial_${i}`);
+        if (ct.apronEnabled && !ct.apronMaterialId) e.add(`apronMaterial_${i}`);
+      });
     }
 
     setErrors(e);
     if (e.size === 0) return null;
 
-    const keyMap: Record<string, string> = {
-      dimensions: t("product.validation.dimensions"),
-      backWallMaterial: t("product.validation.backWallMaterial"),
-      facadeRequired: t("product.validation.facadeRequired"),
-      falseFacadeMaterial: t("product.validation.falseFacadeMaterial"),
-      countertopMaterial: t("product.validation.countertopMaterial"),
-      apronMaterial: t("product.validation.apronMaterial"),
-      mezBodyMaterial: t("product.validation.mezBodyMaterial"),
-      mezBackWallMaterial: t("product.validation.mezBackWallMaterial"),
-      mezFacadeRequired: t("product.validation.mezFacadeRequired"),
-      mezFalseFacadeMaterial: t("product.validation.mezFalseFacadeMaterial"),
-    };
+    /* return first human-readable message */
     for (const k of e) {
-      if (keyMap[k]) return keyMap[k];
+      if (k === "facadeRequired") return t("product.validation.facadeRequired");
+      if (k.startsWith("sectionMaterial_"))
+        return t("product.validation.bodyMaterial");
+      if (k.startsWith("backWallMaterial_"))
+        return t("product.validation.backWallMaterial");
+      if (k.startsWith("legsHardware_"))
+        return t("product.validation.legsHardware");
+      if (k.startsWith("partitionMaterial_"))
+        return t("product.validation.partitionMaterial");
+      if (k.startsWith("shelfMaterial_"))
+        return t("product.validation.shelfMaterial");
+      if (k.startsWith("shelfHolder_"))
+        return t("product.validation.shelfHolder");
       if (k.startsWith("facadeMaterial_"))
         return t("product.validation.facadeMaterial");
-      if (k.startsWith("mezFacadeMaterial_"))
-        return t("product.validation.mezFacadeMaterial");
+      if (k.startsWith("facadeHinge_"))
+        return t("product.validation.facadeHinge");
+      if (k.startsWith("facadeHandle_"))
+        return t("product.validation.facadeHandle");
+      if (k.startsWith("facadeTipOn_"))
+        return t("product.validation.facadeTipOn");
+      if (k.startsWith("falseFacadeMaterial_"))
+        return t("product.validation.falseFacadeMaterial");
+      if (k.startsWith("drawerMaterial_"))
+        return t("product.validation.drawerMaterial");
+      if (k.startsWith("drawerSlide_"))
+        return t("product.validation.drawerSlide");
+      if (k.startsWith("countertopMaterial_"))
+        return t("product.validation.countertopMaterial");
+      if (k.startsWith("apronMaterial_"))
+        return t("product.validation.apronMaterial");
     }
     return null;
   };
 
-  const hasError = (key: string) => errors.has(key);
+  const hasError = useCallback(
+    (key: string) => {
+      if (!errors.has(key)) return false;
+      const idx = parseInt(key.split("_").pop()!, 10);
+      if (key.startsWith("countertopMaterial_"))
+        return !countertops[idx]?.materialId;
+      if (key.startsWith("apronMaterial_"))
+        return !countertops[idx]?.apronMaterialId;
+      return true;
+    },
+    [errors, countertops],
+  );
 
   /* ── save all ── */
   const handleSave = async () => {
@@ -396,22 +331,12 @@ export function useProductForm(
     setSaving(true);
     try {
       await api.patch(`/products/${idProduct}`, {
-        width: num(width),
-        height: num(height),
-        depth: num(depth),
         sectionsEnabled,
-        backWallEnabled,
-        backWallMaterialId: backWallEnabled ? backWallMaterialId || null : null,
         partitionsEnabled,
         shelvesEnabled,
         facadesEnabled,
         falseFacadesEnabled,
-        falseFacadeQty: num(falseFacadeQty),
-        falseFacadeMaterialId: falseFacadesEnabled
-          ? falseFacadeMaterialId || null
-          : null,
         drawersEnabled,
-        mezzanineEnabled,
         countertopEnabled,
         extrasEnabled,
       });
@@ -420,118 +345,126 @@ export function useProductForm(
 
       if (sectionsEnabled) {
         reqs.push(
-          api.put(`/products/${idProduct}/sections`, [{ qty: sectionsQty }]),
+          api.put(
+            `/products/${idProduct}/sections`,
+            sections.map((s) => ({
+              ...(s.id ? { id: s.id } : {}),
+              qty: s.qty,
+              width: s.width || 0,
+              height: s.height || 0,
+              depth: s.depth || 0,
+              materialId: s.materialId || null,
+              backWallEnabled: s.backWallEnabled || false,
+              backWallMaterialId: s.backWallEnabled
+                ? s.backWallMaterialId || null
+                : null,
+              legsEnabled: s.legsEnabled || false,
+              legsHardwareId: s.legsEnabled ? s.legsHardwareId || null : null,
+            })),
+          ),
         );
       }
       if (partitionsEnabled) {
-        reqs.push(api.put(`/products/${idProduct}/partitions`, partitions));
+        reqs.push(
+          api.put(
+            `/products/${idProduct}/partitions`,
+            partitions.map((p) => ({
+              ...(p.id ? { id: p.id } : {}),
+              qty: p.qty,
+              height: p.height || 0,
+              depth: p.depth || 0,
+              materialId: p.materialId || null,
+            })),
+          ),
+        );
       }
       if (shelvesEnabled) {
-        reqs.push(api.put(`/products/${idProduct}/shelves`, shelves));
+        reqs.push(
+          api.put(
+            `/products/${idProduct}/shelves`,
+            shelves.map((s) => ({
+              ...(s.id ? { id: s.id } : {}),
+              qty: s.qty,
+              width: s.width || 0,
+              depth: s.depth || 0,
+              materialId: s.materialId || null,
+              holderHardwareId: s.holderHardwareId || null,
+            })),
+          ),
+        );
       }
       if (facadesEnabled) {
         reqs.push(
           api.put(
             `/products/${idProduct}/facades`,
             facades.map((f) => ({
-              ...f,
-              materialId: f.isLdsp ? null : f.materialId || null,
+              ...(f.id ? { id: f.id } : {}),
+              qty: f.qty,
+              width: f.width || 0,
+              height: f.height || 0,
+              materialId: f.materialId || null,
+              handleQty: f.handleQty || 0,
+              openType: f.openType || "HANDLE",
+              hingeHardwareId: f.hingeHardwareId || null,
+              handleHardwareId: f.handleHardwareId || null,
+              tipOnHardwareId: f.tipOnHardwareId || null,
+            })),
+          ),
+        );
+      }
+      if (falseFacadesEnabled) {
+        reqs.push(
+          api.put(
+            `/products/${idProduct}/false-facades`,
+            falseFacades.map((ff) => ({
+              ...(ff.id ? { id: ff.id } : {}),
+              qty: ff.qty,
+              height: ff.height || 0,
+              depth: ff.depth || 0,
+              materialId: ff.materialId || null,
             })),
           ),
         );
       }
       if (drawersEnabled) {
-        reqs.push(api.put(`/products/${idProduct}/drawers`, drawers));
+        reqs.push(
+          api.put(
+            `/products/${idProduct}/drawers`,
+            drawers.map((d) => ({
+              ...(d.id ? { id: d.id } : {}),
+              qty: d.qty,
+              width: d.width || 0,
+              height: d.height || 0,
+              depth: d.depth || 0,
+              materialId: d.materialId || null,
+              handleQty: d.handleQty || 0,
+              slideType: d.slideType || "GUIDE",
+              slideHardwareId: d.slideHardwareId || null,
+            })),
+          ),
+        );
+      }
+      if (countertopEnabled) {
+        reqs.push(
+          api.put(
+            `/products/${idProduct}/countertops`,
+            countertops.map((ct) => ({
+              ...(ct.id ? { id: ct.id } : {}),
+              materialId: ct.materialId || null,
+              width: ct.width || 0,
+              depth: ct.depth || 0,
+              apronEnabled: ct.apronEnabled || false,
+              apronMaterialId: ct.apronEnabled
+                ? ct.apronMaterialId || null
+                : null,
+              apronWidth: ct.apronWidth || null,
+              apronHeight: ct.apronHeight || null,
+            })),
+          ),
+        );
       }
       if (extrasEnabled) {
         reqs.push(api.put(`/products/${idProduct}/extras`, extras));
-      }
-
-      if (mezzanineEnabled) {
-        const mezRes = await api.put(`/products/${idProduct}/mezzanine`, {
-          height: num(mezHeight),
-          bodyMaterialId: mezSameAsBody ? null : mezBodyMaterialId || null,
-          sectionsEnabled: mezSectionsEnabled,
-          partitionsEnabled: mezPartitionsEnabled,
-          shelvesEnabled: mezShelvesEnabled,
-          facadesEnabled: mezFacadesEnabled,
-          drawersEnabled: mezDrawersEnabled,
-          backWallEnabled: mezBackWallEnabled,
-          backWallMaterialId: mezBackWallEnabled
-            ? mezBackWallMaterialId || null
-            : null,
-          falseFacadesEnabled: mezFalseFacadesEnabled,
-          falseFacadeQty: num(mezFalseFacadeQty),
-          falseFacadeMaterialId: mezFalseFacadesEnabled
-            ? mezFalseFacadeMaterialId || null
-            : null,
-        });
-        const mezId = mezRes.data.id;
-        if (mezSectionsEnabled) {
-          reqs.push(
-            api.put(`/products/${idProduct}/sections`, [
-              { qty: mezSectionsQty, mezzanineId: mezId },
-            ]),
-          );
-        }
-        if (mezPartitionsEnabled && mezPartitions.length > 0) {
-          reqs.push(
-            api.put(
-              `/products/${idProduct}/partitions`,
-              mezPartitions.map((s) => ({ ...s, mezzanineId: mezId })),
-            ),
-          );
-        }
-        if (mezShelvesEnabled && mezShelves.length > 0) {
-          reqs.push(
-            api.put(
-              `/products/${idProduct}/shelves`,
-              mezShelves.map((s) => ({ ...s, mezzanineId: mezId })),
-            ),
-          );
-        }
-        if (mezFacadesEnabled && mezFacades.length > 0) {
-          reqs.push(
-            api.put(
-              `/products/${idProduct}/facades`,
-              mezFacades.map((s) => ({
-                ...s,
-                mezzanineId: mezId,
-                materialId: s.isLdsp ? null : s.materialId || null,
-              })),
-            ),
-          );
-        }
-        if (mezDrawersEnabled && mezDrawers.length > 0) {
-          reqs.push(
-            api.put(
-              `/products/${idProduct}/drawers`,
-              mezDrawers.map((s) => ({ ...s, mezzanineId: mezId })),
-            ),
-          );
-        }
-      } else {
-        reqs.push(
-          api.delete(`/products/${idProduct}/mezzanine`).catch(() => {}),
-        );
-      }
-
-      if (countertopEnabled && ctMatId) {
-        reqs.push(
-          api.put(`/products/${idProduct}/countertop`, {
-            materialId: ctMatId,
-            width: num(ctWidth),
-            depth: num(ctDepth),
-            apronEnabled: ctApron,
-            apronMaterialId: ctApron ? ctApronMatId || null : null,
-            apronWidth: num(ctApronW),
-            apronHeight: num(ctApronH),
-          }),
-        );
-      } else if (!countertopEnabled) {
-        reqs.push(
-          api.delete(`/products/${idProduct}/countertop`).catch(() => {}),
-        );
       }
 
       await Promise.all(reqs);
@@ -544,70 +477,7 @@ export function useProductForm(
     }
   };
 
-  /* ── computed limits ── */
-  const W = num(width);
-  const H = num(height);
-  const D = num(depth);
-  const dimensionsReady = W > 0 && H > 0 && D > 0;
-  const mezH = num(mezHeight);
-  const mainH = mezzanineEnabled ? H - mezH : H;
-
-  const limits = useMemo(() => {
-    const maxSections = Math.max(1, Math.ceil(W / 300));
-    const maxPartitions = Math.max(1, Math.ceil(W / 150) - 1);
-    const tsc = sectionsQty || 1;
-    const tpc = partitionsEnabled
-      ? partitions.reduce((s, p) => s + p.qty, 0)
-      : 0;
-    const maxShelves = Math.max(1, (Math.ceil(mainH / 150) - 1) * (tsc + tpc));
-    const maxFacades = Math.max(1, Math.ceil(W / 300));
-    const mts = mezSectionsQty || 1;
-    const mtp = mezPartitionsEnabled
-      ? mezPartitions.reduce((s, p) => s + p.qty, 0)
-      : 0;
-    const mezMaxShelves = Math.max(
-      1,
-      (Math.ceil(mezH / 150) - 1) * (mts + mtp),
-    );
-    return {
-      maxSections,
-      maxPartitions,
-      totalSectionsCount: tsc,
-      totalPartitionsCount: tpc,
-      maxShelves,
-      maxFacades,
-      mezTotalSections: mts,
-      mezTotalPartitions: mtp,
-      mezMaxShelves,
-    };
-  }, [
-    W,
-    mainH,
-    mezH,
-    sectionsQty,
-    partitionsEnabled,
-    partitions,
-    mezSectionsQty,
-    mezPartitionsEnabled,
-    mezPartitions,
-  ]);
-
-  const hdfMaterials = useMemo(
-    () => materials.filter((m) => m.materialType.name === "ХДФ"),
-    [materials],
-  );
-
-  const bodyMaterials = useMemo(
-    () =>
-      materials.filter(
-        (m) =>
-          m.materialType.name !== "ХДФ" &&
-          m.materialType.name !== "Кромка" &&
-          (m.calcType === "SHEET" || m.calcType === "SQM"),
-      ),
-    [materials],
-  );
-
+  /* ── computed ── */
   const facadeMaterials = useMemo(
     () =>
       materials.filter(
@@ -617,21 +487,148 @@ export function useProductForm(
     [materials],
   );
 
+  /* Материалы корпуса: без Камня и ХДФ */
+  const bodyMaterials = useMemo(
+    () =>
+      materials.filter(
+        (m) =>
+          m.materialType.name !== "Камень" && m.materialType.name !== "ХДФ",
+      ),
+    [materials],
+  );
+
+  /* Задняя стенка: ХДФ + ЛДСП + МДФ */
+  const backWallMaterials = useMemo(
+    () =>
+      materials.filter((m) =>
+        ["ХДФ", "ЛДСП", "МДФ"].includes(m.materialType.name),
+      ),
+    [materials],
+  );
+
+  /* Столешница: Камень + ЛДСП + МДФ */
+  const countertopMaterials = useMemo(
+    () =>
+      materials.filter((m) =>
+        ["Камень", "ЛДСП", "МДФ"].includes(m.materialType.name),
+      ),
+    [materials],
+  );
+
   const facadeErrorKeys = useMemo(() => {
     const s = new Set<string>();
     errors.forEach((k) => {
-      if (k.startsWith("facadeMaterial_")) s.add(`_${k.split("_")[1]}`);
+      const idx = parseInt(k.split("_").pop()!, 10);
+      const f = facades[idx];
+      if (k.startsWith("facadeMaterial_") && f && !f.materialId)
+        s.add(`mat_${idx}`);
+      if (k.startsWith("facadeHinge_") && f && !f.hingeHardwareId)
+        s.add(`hinge_${idx}`);
+      if (k.startsWith("facadeHandle_") && f && !f.handleHardwareId)
+        s.add(`handle_${idx}`);
+      if (k.startsWith("facadeTipOn_") && f && !f.tipOnHardwareId)
+        s.add(`tipOn_${idx}`);
     });
     return s;
-  }, [errors]);
+  }, [errors, facades]);
 
-  const mezFacadeErrorKeys = useMemo(() => {
+  /* error sets for editors */
+  const sectionErrors = useMemo(() => {
     const s = new Set<string>();
     errors.forEach((k) => {
-      if (k.startsWith("mezFacadeMaterial_")) s.add(`_${k.split("_")[1]}`);
+      const idx = parseInt(k.split("_").pop()!, 10);
+      const sec = sections[idx];
+      if (k.startsWith("sectionMaterial_") && sec && !sec.materialId) s.add(k);
+      if (k.startsWith("backWallMaterial_") && sec && !sec.backWallMaterialId)
+        s.add(k);
+      if (k.startsWith("legsHardware_") && sec && !sec.legsHardwareId) s.add(k);
     });
     return s;
-  }, [errors]);
+  }, [errors, sections]);
+
+  const partitionErrors = useMemo(() => {
+    const s = new Set<string>();
+    errors.forEach((k) => {
+      const idx = parseInt(k.split("_").pop()!, 10);
+      if (
+        k.startsWith("partitionMaterial_") &&
+        partitions[idx] &&
+        !partitions[idx].materialId
+      )
+        s.add(`mat_${idx}`);
+    });
+    return s;
+  }, [errors, partitions]);
+
+  const shelfErrors = useMemo(() => {
+    const s = new Set<string>();
+    errors.forEach((k) => {
+      const idx = parseInt(k.split("_").pop()!, 10);
+      const sh = shelves[idx];
+      if (k.startsWith("shelfMaterial_") && sh && !sh.materialId)
+        s.add(`mat_${idx}`);
+      if (k.startsWith("shelfHolder_") && sh && !sh.holderHardwareId)
+        s.add(`hw_${idx}`);
+    });
+    return s;
+  }, [errors, shelves]);
+
+  const falseFacadeErrors = useMemo(() => {
+    const s = new Set<string>();
+    errors.forEach((k) => {
+      const idx = parseInt(k.split("_").pop()!, 10);
+      if (
+        k.startsWith("falseFacadeMaterial_") &&
+        falseFacades[idx] &&
+        !falseFacades[idx].materialId
+      )
+        s.add(`mat_${idx}`);
+    });
+    return s;
+  }, [errors, falseFacades]);
+
+  const drawerErrors = useMemo(() => {
+    const s = new Set<string>();
+    errors.forEach((k) => {
+      const idx = parseInt(k.split("_").pop()!, 10);
+      const dr = drawers[idx];
+      if (k.startsWith("drawerMaterial_") && dr && !dr.materialId)
+        s.add(`mat_${idx}`);
+      if (k.startsWith("drawerSlide_") && dr && !dr.slideHardwareId)
+        s.add(`hw_${idx}`);
+    });
+    return s;
+  }, [errors, drawers]);
+
+  /* ── hardware filtered by type ── */
+  const legsHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Ножки"),
+    [hardwareList],
+  );
+  const hingeHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Петли"),
+    [hardwareList],
+  );
+  const holderHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Полкодержатели"),
+    [hardwareList],
+  );
+  const slideHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Направляющие"),
+    [hardwareList],
+  );
+  const tandemHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Тандем"),
+    [hardwareList],
+  );
+  const handleHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Ручки"),
+    [hardwareList],
+  );
+  const tipOnHardware = useMemo(
+    () => hardwareList.filter((h) => h.hardwareType.name === "Tip-On"),
+    [hardwareList],
+  );
 
   return {
     /* data */
@@ -641,119 +638,51 @@ export function useProductForm(
     saving,
     t,
 
-    /* dimensions */
-    width,
-    setWidth,
-    height,
-    setHeight,
-    depth,
-    setDepth,
-    W,
-    H,
-    D,
-    dimensionsReady,
-    mainH,
-    mezH,
-
-    /* toggles + state */
+    /* toggles */
     sectionsEnabled,
-    setSectionsEnabled,
-    sectionsQty,
-    setSectionsQty,
-    backWallEnabled,
-    backWallMaterialId,
     partitionsEnabled,
+    shelvesEnabled,
+    facadesEnabled,
+    falseFacadesEnabled,
+    drawersEnabled,
+    countertopEnabled,
+    extrasEnabled,
+
+    /* sub items */
+    sections,
+    setSections: setSectionsTracked,
     partitions,
     setPartitions,
-    shelvesEnabled,
     shelves,
     setShelves,
-    facadesEnabled,
     facades,
-    falseFacadesEnabled,
-    falseFacadeQty,
-    falseFacadeMaterialId,
-    drawersEnabled,
+    falseFacades,
+    setFalseFacades,
     drawers,
     setDrawers,
-    mezzanineEnabled,
-    setMezzanineEnabled,
-    countertopEnabled,
-    setCountertopEnabled,
-    extrasEnabled,
+    countertops,
+    setCountertops,
     extras,
     setExtras,
 
-    /* mezzanine */
-    mezHeight,
-    setMezHeight,
-    mezSectionsEnabled,
-    setMezSectionsEnabled,
-    mezSectionsQty,
-    setMezSectionsQty,
-    mezPartitionsEnabled,
-    mezPartitions,
-    setMezPartitions,
-    mezShelvesEnabled,
-    mezShelves,
-    setMezShelves,
-    mezFacadesEnabled,
-    mezFacades,
-    mezDrawersEnabled,
-    mezDrawers,
-    setMezDrawers,
-    mezBackWallEnabled,
-    mezBackWallMaterialId,
-    mezSameAsBody,
-    setMezSameAsBody,
-    mezBodyMaterialId,
-    mezFalseFacadesEnabled,
-    mezFalseFacadeQty,
-    mezFalseFacadeMaterialId,
-
-    /* countertop */
-    ctMatId,
-    ctWidth,
-    setCtWidth,
-    ctDepth,
-    setCtDepth,
-    ctApron,
-    setCtApron,
-    ctApronMatId,
-    ctApronW,
-    setCtApronW,
-    ctApronH,
-    setCtApronH,
+    /* defaults from last section */
+    defaultWidth,
+    defaultHeight,
+    defaultDepth,
+    defaultMaterialId,
 
     /* toggle callbacks */
+    toggleSections,
     togglePartitions,
     toggleShelves,
     toggleDrawers,
-    toggleBackWall,
     toggleFacades,
     toggleFalseFacades,
     toggleExtras,
-    toggleMezPartitions,
-    toggleMezShelves,
-    toggleMezDrawers,
-    toggleMezBackWall,
-    toggleMezFacades,
-    toggleMezFalseFacades,
-
-    /* material change callbacks */
-    onBackWallMaterialChange,
-    onFalseFacadeMaterialChange,
-    onMezBackWallMaterialChange,
-    onMezBodyMaterialChange,
-    onMezFalseFacadeMaterialChange,
-    onCtMaterialChange,
-    onApronMaterialChange,
+    setCountertopEnabled,
 
     /* facade setters */
     setFacadesWithClear,
-    setMezFacadesWithClear,
-    onFalseFacadeQtyChange,
-    onMezFalseFacadeQtyChange,
 
     /* validation & save */
     hasError,
@@ -761,11 +690,24 @@ export function useProductForm(
     handleSave,
 
     /* computed */
-    limits,
-    hdfMaterials,
-    bodyMaterials,
     facadeMaterials,
+    bodyMaterials,
+    backWallMaterials,
+    countertopMaterials,
     facadeErrorKeys,
-    mezFacadeErrorKeys,
+    sectionErrors,
+    partitionErrors,
+    shelfErrors,
+    falseFacadeErrors,
+    drawerErrors,
+
+    /* hardware */
+    legsHardware,
+    hingeHardware,
+    holderHardware,
+    slideHardware,
+    tandemHardware,
+    handleHardware,
+    tipOnHardware,
   };
 }

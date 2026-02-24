@@ -40,11 +40,7 @@ export class SettingsController {
     @Param('materialId') materialId: string,
     @Body() dto: UpdateUserMaterialPriceDto,
   ) {
-    return this.settings.updateUserMaterialPrice(
-      req.user.id,
-      materialId,
-      dto.price,
-    );
+    return this.settings.updateUserMaterialPrice(req.user.id, materialId, dto);
   }
 
   /* ═══ USER HARDWARE ═══ */
@@ -60,11 +56,7 @@ export class SettingsController {
     @Param('hardwareId') hardwareId: string,
     @Body() dto: UpdateUserHardwarePriceDto,
   ) {
-    return this.settings.updateUserHardwarePrice(
-      req.user.id,
-      hardwareId,
-      dto.price,
-    );
+    return this.settings.updateUserHardwarePrice(req.user.id, hardwareId, dto);
   }
 
   /* ═══ USER SERVICE ═══ */

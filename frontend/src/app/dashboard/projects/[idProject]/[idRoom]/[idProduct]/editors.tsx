@@ -11,13 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { selectOnFocus } from "@/lib/utils";
+import type { CountertopData, FalseFacadeItem } from "@/types";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { memo } from "react";
 
-import type { ExtraItem, MatOption, SubItem, TFunc } from "./types";
-import { clamp, dec, num } from "./types";
+import type { ExtraItem, HwOption, MatOption, SubItem, TFunc } from "./types";
+import { dec, num } from "./types";
 
 /* ── Section wrapper with icon + toggle ── */
 export const ToggleSection = memo(function ToggleSection({
@@ -36,7 +38,7 @@ export const ToggleSection = memo(function ToggleSection({
   children?: React.ReactNode;
 }) {
   return (
-    <Card className="gap-0 py-0 overflow-hidden transition-all break-inside-avoid mb-2 lg:mb-2">
+    <Card className="gap-0 py-0 overflow-hidden transition-all break-inside-avoid">
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -80,7 +82,7 @@ export const ToggleSection = memo(function ToggleSection({
   );
 });
 
-/* ── sub-switch row (for nested toggles) ── */
+/* ── sub-switch row ── */
 export const SwitchRow = memo(function SwitchRow({
   label,
   checked,
@@ -129,44 +131,6 @@ export const SwitchRow = memo(function SwitchRow({
   );
 });
 
-/* ── qty select ── */
-export const QtySelect = memo(function QtySelect({
-  value,
-  onChange,
-  min,
-  max,
-  label,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  min: number;
-  max: number;
-  label?: string;
-}) {
-  const safeMax = Math.max(min, Math.floor(max));
-  const opts: number[] = [];
-  for (let n = min; n <= safeMax; n++) opts.push(n);
-  return (
-    <div className="space-y-1.5">
-      {label && (
-        <Label className="text-xs text-muted-foreground">{label}</Label>
-      )}
-      <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger className="h-9 w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {opts.map((n) => (
-            <SelectItem key={n} value={String(n)}>
-              {n}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-});
-
 /* ── material select ── */
 export const MatSelect = memo(function MatSelect({
   value,
@@ -208,100 +172,282 @@ export const MatSelect = memo(function MatSelect({
   );
 });
 
-/* ── dimension editor ── */
-export const DimensionEditor = memo(function DimensionEditor({
+/* ── hardware select ── */
+export const HwSelect = memo(function HwSelect({
+  value,
+  onChange,
+  label,
+  items,
+  t,
+  error,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  items: HwOption[];
+  t: TFunc;
+  error?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label
+        className={`text-xs ${error ? "text-destructive" : disabled ? "text-muted-foreground/50" : "text-muted-foreground"}`}
+      >
+        {label}
+      </Label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger
+          className={`h-9 w-full ${error ? "ring-2 ring-destructive/50 border-destructive" : ""} ${disabled ? "opacity-50" : ""}`}
+        >
+          <SelectValue placeholder={t("common.select")} />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((h) => (
+            <SelectItem key={h.id} value={h.id}>
+              {h.hardwareType.name} {h.brand ? `(${h.brand})` : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+});
+
+/* ── qty select ── */
+export const QtySelect = memo(function QtySelect({
+  value,
+  onChange,
+  min,
+  max,
+  label,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  label?: string;
+}) {
+  const safeMax = Math.max(min, Math.floor(max));
+  const opts: number[] = [];
+  for (let n = min; n <= safeMax; n++) opts.push(n);
+  return (
+    <div className="space-y-1.5">
+      {label && (
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+      )}
+      <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+        <SelectTrigger className="h-9 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {opts.map((n) => (
+            <SelectItem key={n} value={String(n)}>
+              {n}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+});
+
+/* ════════════════════════════════════════════════════
+   SECTIONS EDITOR
+   Each section: qty, width, height, depth, materialId,
+   backWallEnabled, backWallMaterialId
+   ════════════════════════════════════════════════════ */
+export const SectionsEditor = memo(function SectionsEditor({
   items,
   setItems,
-  dimLabel,
-  dimKey,
-  maxQty,
-  dimMin,
-  dimMax,
-  defaultDim,
-  qtyLabel,
+  materials,
+  backWallMaterials,
+  legsHardware,
   t,
+  defaultItem,
+  errors,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
-  dimLabel: string;
-  dimKey: "width" | "height";
-  maxQty: number;
-  dimMin: number;
-  dimMax: number;
-  defaultDim?: number;
-  qtyLabel?: string;
+  materials: MatOption[];
+  backWallMaterials: MatOption[];
+  legsHardware: HwOption[];
   t: TFunc;
+  defaultItem: {
+    width: number;
+    height: number;
+    depth: number;
+    materialId: string;
+  };
+  errors?: Set<string>;
 }) {
-  const usedTotal = items.reduce((s, x) => s + x.qty, 0);
   return (
     <div className="space-y-2">
-      {items.map((s, i) => {
-        const othersSum = usedTotal - s.qty;
-        const maxForThis = Math.max(1, maxQty - othersSum);
-        return (
-          <div
-            key={i}
-            className="relative rounded-lg border bg-background p-3 pr-10"
+      {items.map((s, i) => (
+        <div
+          key={i}
+          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+            aria-label={t("common.deleteItem")}
+            onClick={() => setItems(items.filter((_, j) => j !== i))}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-              aria-label={t("common.deleteItem")}
-              onClick={() => setItems(items.filter((_, j) => j !== i))}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {dimLabel} ({t("common.mm")})
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={dimMin}
-                  max={dimMax}
-                  value={s[dimKey] ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...s, [dimKey]: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                  onBlur={() => {
-                    const v = clamp(s[dimKey] ?? dimMin, dimMin, dimMax);
-                    if (v !== (s[dimKey] ?? 0)) {
-                      const copy = [...items];
-                      copy[i] = { ...s, [dimKey]: v };
-                      setItems(copy);
-                    }
-                  }}
-                />
-              </div>
-              <QtySelect
-                label={qtyLabel || t("product.qty")}
-                value={s.qty}
-                onChange={(v) => {
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.width")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={s.width ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
                   const copy = [...items];
-                  copy[i] = { ...s, qty: v };
+                  copy[i] = { ...s, width: num(e.target.value) };
                   setItems(copy);
                 }}
-                min={1}
-                max={maxForThis}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.height")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={s.height ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...s, height: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.depth")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={s.depth ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...s, depth: num(e.target.value) };
+                  setItems(copy);
+                }}
               />
             </div>
           </div>
-        );
-      })}
+          <QtySelect
+            label={t("product.qty")}
+            value={s.qty}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...s, qty: v };
+              setItems(copy);
+            }}
+            min={1}
+            max={20}
+          />
+          <MatSelect
+            label={t("product.material")}
+            value={s.materialId || ""}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...s, materialId: v };
+              setItems(copy);
+            }}
+            materials={materials}
+            t={t}
+            error={errors?.has(`sectionMaterial_${i}`)}
+          />
+          <SwitchRow
+            label={t("product.backWall")}
+            checked={s.backWallEnabled ?? false}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = {
+                ...s,
+                backWallEnabled: v,
+                backWallMaterialId: v
+                  ? s.backWallMaterialId || defaultItem.materialId || undefined
+                  : undefined,
+              };
+              setItems(copy);
+            }}
+          >
+            <MatSelect
+              label={t("product.backWallMaterial")}
+              value={s.backWallMaterialId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...s, backWallMaterialId: v };
+                setItems(copy);
+              }}
+              materials={backWallMaterials}
+              t={t}
+              error={errors?.has(`backWallMaterial_${i}`)}
+            />
+          </SwitchRow>
+          <SwitchRow
+            label={t("product.legs")}
+            checked={s.legsEnabled ?? false}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = {
+                ...s,
+                legsEnabled: v,
+                legsHardwareId: v ? s.legsHardwareId : undefined,
+              };
+              setItems(copy);
+            }}
+          >
+            {legsHardware.length > 0 && (
+              <HwSelect
+                label={t("product.legsBrand")}
+                value={s.legsHardwareId || ""}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...s, legsHardwareId: v };
+                  setItems(copy);
+                }}
+                items={legsHardware}
+                t={t}
+                error={errors?.has(`legsHardware_${i}`)}
+              />
+            )}
+          </SwitchRow>
+        </div>
+      ))}
       <Button
         variant="outline"
         size="sm"
-        className="w-full"
-        disabled={usedTotal >= maxQty}
+        className="w-full border-dashed"
         onClick={() =>
-          setItems([...items, { qty: 1, [dimKey]: defaultDim ?? dimMin }])
+          setItems([
+            ...items,
+            {
+              qty: 1,
+              width: defaultItem.width,
+              height: defaultItem.height,
+              depth: defaultItem.depth,
+              materialId: defaultItem.materialId,
+              backWallMaterialId: defaultItem.materialId || undefined,
+            },
+          ])
         }
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -311,210 +457,499 @@ export const DimensionEditor = memo(function DimensionEditor({
   );
 });
 
-/* ── facades editor ── */
-export const FacadesEditor = memo(function FacadesEditor({
+/* ════════════════════════════════════════════════════
+   GENERIC COMPONENT EDITOR
+   For Partitions (height+depth+material+qty)
+   and Shelves (width+depth+material+qty)
+   ════════════════════════════════════════════════════ */
+export const ComponentEditor = memo(function ComponentEditor({
   items,
   setItems,
+  dim1Key,
+  dim1Label,
+  dim2Key,
+  dim2Label,
   materials,
-  maxQty,
-  maxW,
-  maxH,
-  defaultW,
-  defaultH,
   t,
-  errorKeys,
+  hardwareLabel,
+  hardwareItems,
+  hardwareField,
+  defaultItem,
+  errors,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
+  dim1Key: "width" | "height";
+  dim1Label: string;
+  dim2Key: "depth";
+  dim2Label: string;
   materials: MatOption[];
-  maxQty: number;
-  maxW: number;
-  maxH: number;
-  defaultW?: number;
-  defaultH?: number;
   t: TFunc;
-  errorKeys?: Set<string>;
+  hardwareLabel?: string;
+  hardwareItems?: HwOption[];
+  hardwareField?: "holderHardwareId";
+  defaultItem?: { dim1: number; dim2: number; materialId: string };
+  errors?: Set<string>;
 }) {
-  const usedTotal = items.reduce((s, x) => s + x.qty, 0);
   return (
     <div className="space-y-2">
-      {items.map((f, i) => {
-        const othersSum = usedTotal - f.qty;
-        const maxForThis = Math.max(1, maxQty - othersSum);
-        const maxWidthForFacade = Math.floor(maxW / Math.max(1, f.qty));
-        return (
-          <div
-            key={i}
-            className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+      {items.map((s, i) => (
+        <div
+          key={i}
+          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+            aria-label={t("common.deleteItem")}
+            onClick={() => setItems(items.filter((_, j) => j !== i))}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-              aria-label={t("common.deleteItem")}
-              onClick={() => setItems(items.filter((_, j) => j !== i))}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.width")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={300}
-                  max={maxWidthForFacade}
-                  value={f.width ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...f, width: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                  onBlur={() => {
-                    const v = clamp(f.width ?? 300, 300, maxWidthForFacade);
-                    if (v !== (f.width ?? 0)) {
-                      const copy = [...items];
-                      copy[i] = { ...f, width: v };
-                      setItems(copy);
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.height")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={300}
-                  max={maxH}
-                  value={f.height ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...f, height: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                  onBlur={() => {
-                    const v = clamp(f.height ?? 300, 300, maxH);
-                    if (v !== (f.height ?? 0)) {
-                      const copy = [...items];
-                      copy[i] = { ...f, height: v };
-                      setItems(copy);
-                    }
-                  }}
-                />
-              </div>
-              {(f.openType ?? "HANDLE") === "HANDLE" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("product.handles")}
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    className="h-9"
-                    min={0}
-                    value={f.handleQty ?? 0}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => {
-                      const copy = [...items];
-                      copy[i] = { ...f, handleQty: num(e.target.value) };
-                      setItems(copy);
-                    }}
-                  />
-                </div>
-              )}
-              <QtySelect
-                label={t("product.facadeQty")}
-                value={f.qty}
-                onChange={(v) => {
-                  const newMaxW = Math.floor(maxW / Math.max(1, v));
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {dim1Label} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={s[dim1Key] ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
                   const copy = [...items];
-                  copy[i] = {
-                    ...f,
-                    qty: v,
-                    width: Math.max(300, newMaxW),
-                  };
-                  setItems(copy);
-                }}
-                min={1}
-                max={maxForThis}
-              />
-            </div>
-            {/* per-facade openType toggle */}
-            <div className="flex w-full">
-              <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5 sm:w-auto">
-                {(["HANDLE", "TIP_ON"] as const).map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
-                      (f.openType ?? "HANDLE") === opt
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-foreground"
-                    }`}
-                    onClick={() => {
-                      const copy = [...items];
-                      copy[i] = {
-                        ...f,
-                        openType: opt,
-                        handleQty: opt === "TIP_ON" ? 0 : f.handleQty,
-                      };
-                      setItems(copy);
-                    }}
-                  >
-                    {opt === "HANDLE" ? t("product.handleOpenType") : "Tip-On"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2.5">
-              <Switch
-                checked={f.isLdsp ?? false}
-                onCheckedChange={(v) => {
-                  const copy = [...items];
-                  copy[i] = { ...f, isLdsp: v };
+                  copy[i] = { ...s, [dim1Key]: num(e.target.value) };
                   setItems(copy);
                 }}
               />
-              <Label className="text-sm">{t("product.ldspBody")}</Label>
             </div>
-            <div className={f.isLdsp ? "pointer-events-none opacity-40" : ""}>
-              <MatSelect
-                label={t("product.material")}
-                value={f.materialId || ""}
-                onChange={(v) => {
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {dim2Label} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={s[dim2Key] ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
                   const copy = [...items];
-                  copy[i] = { ...f, materialId: v };
+                  copy[i] = { ...s, [dim2Key]: num(e.target.value) };
                   setItems(copy);
                 }}
-                materials={materials}
-                t={t}
-                error={!f.isLdsp && errorKeys?.has(`_${i}`)}
               />
             </div>
+            <QtySelect
+              label={t("product.qty")}
+              value={s.qty}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...s, qty: v };
+                setItems(copy);
+              }}
+              min={1}
+              max={20}
+            />
           </div>
-        );
-      })}
+          <MatSelect
+            label={t("product.material")}
+            value={s.materialId || ""}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...s, materialId: v };
+              setItems(copy);
+            }}
+            materials={materials}
+            t={t}
+            error={errors?.has(`mat_${i}`)}
+          />
+          {hardwareField && hardwareItems && hardwareItems.length > 0 && (
+            <HwSelect
+              label={hardwareLabel || ""}
+              value={(s[hardwareField] as string) || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...s, [hardwareField]: v };
+                setItems(copy);
+              }}
+              items={hardwareItems}
+              t={t}
+              error={errors?.has(`hw_${i}`)}
+            />
+          )}
+        </div>
+      ))}
       <Button
         variant="outline"
         size="sm"
-        className="w-full"
-        disabled={usedTotal >= maxQty}
+        className="w-full border-dashed"
         onClick={() =>
           setItems([
             ...items,
             {
               qty: 1,
-              width: defaultW ?? 300,
-              height: defaultH ?? 300,
+              [dim1Key]: defaultItem?.dim1 ?? 600,
+              [dim2Key]: defaultItem?.dim2 ?? 600,
+              materialId: defaultItem?.materialId || undefined,
+            } as SubItem,
+          ])
+        }
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        {t("common.add")}
+      </Button>
+    </div>
+  );
+});
+
+/* ════════════════════════════════════════════════════
+   FALSE FACADES EDITOR
+   Each: qty, height, depth, materialId
+   ════════════════════════════════════════════════════ */
+export const FalseFacadesEditor = memo(function FalseFacadesEditor({
+  items,
+  setItems,
+  materials,
+  t,
+  defaultItem,
+  errors,
+}: {
+  items: FalseFacadeItem[];
+  setItems: (v: FalseFacadeItem[]) => void;
+  materials: MatOption[];
+  t: TFunc;
+  defaultItem?: { height: number; depth: number; materialId: string };
+  errors?: Set<string>;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((ff, i) => (
+        <div
+          key={i}
+          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+            aria-label={t("common.deleteItem")}
+            onClick={() => setItems(items.filter((_, j) => j !== i))}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.height")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={ff.height}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...ff, height: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.depth")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={ff.depth}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...ff, depth: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <QtySelect
+              label={t("product.qty")}
+              value={ff.qty}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...ff, qty: v };
+                setItems(copy);
+              }}
+              min={1}
+              max={20}
+            />
+          </div>
+          <MatSelect
+            label={t("product.material")}
+            value={ff.materialId || ""}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...ff, materialId: v };
+              setItems(copy);
+            }}
+            materials={materials}
+            t={t}
+            error={errors?.has(`mat_${i}`)}
+          />
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full border-dashed"
+        onClick={() =>
+          setItems([
+            ...items,
+            {
+              qty: 1,
+              height: defaultItem?.height ?? 2000,
+              depth: defaultItem?.depth ?? 600,
+              materialId: defaultItem?.materialId || undefined,
+            },
+          ])
+        }
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        {t("common.add")}
+      </Button>
+    </div>
+  );
+});
+
+/* ════════════════════════════════════════════════════
+   FACADES EDITOR
+   Order: габариты → кол-во → материал → петли → тип открывания → (ручки|tip-on)
+   ════════════════════════════════════════════════════ */
+export const FacadesEditor = memo(function FacadesEditor({
+  items,
+  setItems,
+  materials,
+  t,
+  errorKeys,
+  hingeHardware,
+  handleHardware,
+  tipOnHardware,
+  defaultWidth,
+  defaultHeight,
+}: {
+  items: SubItem[];
+  setItems: (v: SubItem[]) => void;
+  materials: MatOption[];
+  t: TFunc;
+  errorKeys?: Set<string>;
+  hingeHardware?: HwOption[];
+  handleHardware?: HwOption[];
+  tipOnHardware?: HwOption[];
+  defaultWidth?: number;
+  defaultHeight?: number;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((f, i) => (
+        <div
+          key={i}
+          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+            aria-label={t("common.deleteItem")}
+            onClick={() => setItems(items.filter((_, j) => j !== i))}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          {/* Row 1: габариты */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.width")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={f.width ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...f, width: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.height")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={f.height ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...f, height: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+          </div>
+          {/* Row 2: кол-во 100% */}
+          <QtySelect
+            label={t("product.qty")}
+            value={f.qty}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...f, qty: v };
+              setItems(copy);
+            }}
+            min={1}
+            max={20}
+          />
+          {/* Row 3: материал */}
+          <MatSelect
+            label={t("product.material")}
+            value={f.materialId || ""}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...f, materialId: v };
+              setItems(copy);
+            }}
+            materials={materials}
+            t={t}
+            error={errorKeys?.has(`mat_${i}`)}
+          />
+          {/* Row 4: петли */}
+          {hingeHardware && hingeHardware.length > 0 && (
+            <HwSelect
+              label={t("product.hinges")}
+              value={f.hingeHardwareId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...f, hingeHardwareId: v };
+                setItems(copy);
+              }}
+              items={hingeHardware}
+              t={t}
+              error={errorKeys?.has(`hinge_${i}`)}
+            />
+          )}
+          {/* Row 5: тип открывания */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">
+              {t("product.facadeOpenType")}
+            </Label>
+            <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5">
+              {(["HANDLE", "TIP_ON"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    (f.openType ?? "HANDLE") === opt
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-foreground"
+                  }`}
+                  onClick={() => {
+                    const copy = [...items];
+                    copy[i] = {
+                      ...f,
+                      openType: opt,
+                      handleQty: opt === "TIP_ON" ? 0 : f.handleQty,
+                      handleHardwareId:
+                        opt === "TIP_ON" ? undefined : f.handleHardwareId,
+                      tipOnHardwareId:
+                        opt === "HANDLE" ? undefined : f.tipOnHardwareId,
+                    };
+                    setItems(copy);
+                  }}
+                >
+                  {opt === "HANDLE" ? t("product.handleOpenType") : "Tip-On"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Row 6: зависимые поля */}
+          {(f.openType ?? "HANDLE") === "HANDLE" ? (
+            <div className="space-y-2.5">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.handles")}
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={f.handleQty ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const val = num(e.target.value);
+                    const copy = [...items];
+                    copy[i] = {
+                      ...f,
+                      handleQty: val,
+                      handleHardwareId:
+                        val === 0 ? undefined : f.handleHardwareId,
+                    };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              {handleHardware && handleHardware.length > 0 && (
+                <HwSelect
+                  label={t("product.handleBrand")}
+                  value={f.handleHardwareId || ""}
+                  onChange={(v) => {
+                    const copy = [...items];
+                    copy[i] = { ...f, handleHardwareId: v };
+                    setItems(copy);
+                  }}
+                  items={handleHardware}
+                  t={t}
+                  error={errorKeys?.has(`handle_${i}`)}
+                  disabled={(f.handleQty ?? 0) === 0}
+                />
+              )}
+            </div>
+          ) : (
+            tipOnHardware &&
+            tipOnHardware.length > 0 && (
+              <HwSelect
+                label={t("product.tipOnBrand")}
+                value={f.tipOnHardwareId || ""}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...f, tipOnHardwareId: v };
+                  setItems(copy);
+                }}
+                items={tipOnHardware}
+                t={t}
+                error={errorKeys?.has(`tipOn_${i}`)}
+              />
+            )
+          )}
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full border-dashed"
+        onClick={() =>
+          setItems([
+            ...items,
+            {
+              qty: 1,
+              width: defaultWidth ?? 600,
+              height: defaultHeight ?? 600,
               materialId: "",
               handleQty: 0,
               openType: "HANDLE" as const,
@@ -529,183 +964,390 @@ export const FacadesEditor = memo(function FacadesEditor({
   );
 });
 
-/* ── drawers editor ── */
+/* ════════════════════════════════════════════════════
+   DRAWERS EDITOR
+   Each: qty, width, height, depth, materialId, handleQty, slideType
+   ════════════════════════════════════════════════════ */
 export const DrawersEditor = memo(function DrawersEditor({
   items,
   setItems,
-  prodH,
-  prodW,
-  totalSections,
-  totalPartitions,
+  materials,
   t,
+  slideHardware,
+  tandemHardware,
+  defaultMaterialId,
+  errors,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
-  prodH: number;
-  prodW: number;
-  totalSections: number;
-  totalPartitions: number;
+  materials: MatOption[];
   t: TFunc;
+  slideHardware?: HwOption[];
+  tandemHardware?: HwOption[];
+  defaultMaterialId?: string;
+  errors?: Set<string>;
 }) {
-  const maxDrawerW =
-    totalSections + totalPartitions > 0
-      ? Math.floor(prodW / (totalSections + totalPartitions))
-      : prodW;
-  const multiplier = Math.max(1, totalSections + totalPartitions);
-  const effectiveH = prodH * multiplier;
-  const usedHeightTotal = items.reduce(
-    (s, x) => s + (x.height ?? 150) * x.qty,
-    0,
-  );
   return (
     <div className="space-y-2">
-      {items.map((d, i) => {
-        const drawerH = Math.max(d.height ?? 150, 150);
-        const othersUsedH = usedHeightTotal - (d.height ?? 150) * d.qty;
-        const remainingH = Math.max(0, effectiveH - othersUsedH);
-        const maxQtyForThis =
-          drawerH > 0 ? Math.max(1, Math.floor(remainingH / drawerH)) : 1;
-        return (
-          <div
-            key={i}
-            className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+      {items.map((d, i) => (
+        <div
+          key={i}
+          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+            aria-label={t("common.deleteItem")}
+            onClick={() => setItems(items.filter((_, j) => j !== i))}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-              aria-label={t("common.deleteItem")}
-              onClick={() => setItems(items.filter((_, j) => j !== i))}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.width")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={150}
-                  max={maxDrawerW}
-                  value={d.width ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...d, width: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                  onBlur={() => {
-                    const v = clamp(d.width ?? 150, 150, maxDrawerW);
-                    if (v !== (d.width ?? 0)) {
-                      const copy = [...items];
-                      copy[i] = { ...d, width: v };
-                      setItems(copy);
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.height")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={150}
-                  max={300}
-                  value={d.height ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...d, height: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                  onBlur={() => {
-                    const v = clamp(d.height ?? 150, 150, 300);
-                    if (v !== (d.height ?? 0)) {
-                      const copy = [...items];
-                      copy[i] = { ...d, height: v };
-                      setItems(copy);
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.handles")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={0}
-                  value={d.handleQty ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    const copy = [...items];
-                    copy[i] = { ...d, handleQty: num(e.target.value) };
-                    setItems(copy);
-                  }}
-                />
-              </div>
-              <QtySelect
-                label={t("product.drawerQty")}
-                value={d.qty}
-                onChange={(v) => {
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          {/* Row 1: габариты */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.width")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={d.width ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
                   const copy = [...items];
-                  copy[i] = { ...d, qty: v };
+                  copy[i] = { ...d, width: num(e.target.value) };
                   setItems(copy);
                 }}
-                min={1}
-                max={maxQtyForThis}
               />
             </div>
-            {/* per-drawer slideType toggle */}
-            <div className="flex w-full">
-              <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5 sm:w-auto">
-                {(["GUIDE", "TANDEM"] as const).map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none ${
-                      (d.slideType ?? "GUIDE") === opt
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-foreground"
-                    }`}
-                    onClick={() => {
-                      const copy = [...items];
-                      copy[i] = { ...d, slideType: opt };
-                      setItems(copy);
-                    }}
-                  >
-                    {opt === "GUIDE"
-                      ? t("product.drawerSlideGuide")
-                      : t("product.drawerSlideTandem")}
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.height")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={d.height ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...d, height: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.depth")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={d.depth ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...d, depth: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
             </div>
           </div>
-        );
-      })}
+          {/* Row 2: кол-во ручек + кол-во ящиков 50/50 */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.handles")}
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={d.handleQty ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...d, handleQty: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <QtySelect
+              label={t("product.drawerQty")}
+              value={d.qty}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...d, qty: v };
+                setItems(copy);
+              }}
+              min={1}
+              max={20}
+            />
+          </div>
+          {/* Row 3: материал */}
+          <MatSelect
+            label={t("product.material")}
+            value={d.materialId || ""}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...d, materialId: v };
+              setItems(copy);
+            }}
+            materials={materials}
+            t={t}
+            error={errors?.has(`mat_${i}`)}
+          />
+          {/* Row 4: тип направляющих */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">
+              {t("product.slideType")}
+            </Label>
+            <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5">
+              {(["GUIDE", "TANDEM"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    (d.slideType ?? "GUIDE") === opt
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-foreground"
+                  }`}
+                  onClick={() => {
+                    const copy = [...items];
+                    copy[i] = {
+                      ...d,
+                      slideType: opt,
+                      slideHardwareId: undefined,
+                    };
+                    setItems(copy);
+                  }}
+                >
+                  {opt === "GUIDE"
+                    ? t("product.drawerSlideGuide")
+                    : t("product.drawerSlideTandem")}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(() => {
+            const hwList =
+              (d.slideType ?? "GUIDE") === "TANDEM"
+                ? tandemHardware
+                : slideHardware;
+            return hwList && hwList.length > 0 ? (
+              <HwSelect
+                label={
+                  (d.slideType ?? "GUIDE") === "TANDEM"
+                    ? t("product.tandemHardware")
+                    : t("product.slideHardware")
+                }
+                value={d.slideHardwareId || ""}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...d, slideHardwareId: v };
+                  setItems(copy);
+                }}
+                items={hwList}
+                t={t}
+                error={errors?.has(`hw_${i}`)}
+              />
+            ) : null;
+          })()}
+        </div>
+      ))}
       <Button
         variant="outline"
         size="sm"
-        className="w-full"
-        disabled={usedHeightTotal >= effectiveH}
+        className="w-full border-dashed"
         onClick={() =>
           setItems([
             ...items,
             {
               qty: 1,
-              width: maxDrawerW || 150,
+              width: 500,
               height: 150,
+              depth: 400,
+              materialId: defaultMaterialId || undefined,
               handleQty: 0,
               slideType: "GUIDE" as const,
+            },
+          ])
+        }
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        {t("common.add")}
+      </Button>
+    </div>
+  );
+});
+
+/* ════════════════════════════════════════════════════
+   COUNTERTOPS EDITOR
+   Each: materialId, width, depth, apronEnabled,
+   apronMaterialId, apronWidth, apronHeight
+   ════════════════════════════════════════════════════ */
+export const CountertopsEditor = memo(function CountertopsEditor({
+  items,
+  setItems,
+  materials,
+  t,
+  hasError,
+  defaultWidth,
+  defaultDepth,
+}: {
+  items: CountertopData[];
+  setItems: (v: CountertopData[]) => void;
+  materials: MatOption[];
+  t: TFunc;
+  hasError: (key: string) => boolean;
+  defaultWidth?: number;
+  defaultDepth?: number;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((ct, i) => (
+        <div
+          key={i}
+          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+            aria-label={t("common.deleteItem")}
+            onClick={() => setItems(items.filter((_, j) => j !== i))}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+          <MatSelect
+            label={t("product.material")}
+            value={ct.materialId || ""}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...ct, materialId: v };
+              setItems(copy);
+            }}
+            materials={materials}
+            t={t}
+            error={hasError(`countertopMaterial_${i}`)}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.width")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={ct.width}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...ct, width: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.depth")} ({t("common.mm")})
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                className="h-9"
+                value={ct.depth}
+                onFocus={selectOnFocus}
+                onChange={(e) => {
+                  const copy = [...items];
+                  copy[i] = { ...ct, depth: num(e.target.value) };
+                  setItems(copy);
+                }}
+              />
+            </div>
+          </div>
+          <Separator />
+          <SwitchRow
+            label={t("product.apron")}
+            checked={ct.apronEnabled}
+            onChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...ct, apronEnabled: v };
+              setItems(copy);
+            }}
+          >
+            <div className="space-y-2">
+              <MatSelect
+                label={t("product.apronMaterial")}
+                value={ct.apronMaterialId || ""}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...ct, apronMaterialId: v };
+                  setItems(copy);
+                }}
+                materials={materials}
+                t={t}
+                error={hasError(`apronMaterial_${i}`)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("product.width")} ({t("common.mm")})
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    className="h-9"
+                    value={ct.apronWidth ?? 0}
+                    onFocus={selectOnFocus}
+                    onChange={(e) => {
+                      const copy = [...items];
+                      copy[i] = { ...ct, apronWidth: num(e.target.value) };
+                      setItems(copy);
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("product.height")} ({t("common.mm")})
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    className="h-9"
+                    value={ct.apronHeight ?? 0}
+                    onFocus={selectOnFocus}
+                    onChange={(e) => {
+                      const copy = [...items];
+                      copy[i] = { ...ct, apronHeight: num(e.target.value) };
+                      setItems(copy);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </SwitchRow>
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full border-dashed"
+        onClick={() =>
+          setItems([
+            ...items,
+            {
+              width: defaultWidth ?? 600,
+              depth: defaultDepth ?? 600,
+              apronEnabled: false,
+              apronMaterialId: null,
+              apronWidth: null,
+              apronHeight: null,
             },
           ])
         }
@@ -781,7 +1423,7 @@ export const ExtrasEditor = memo(function ExtrasEditor({
       <Button
         variant="outline"
         size="sm"
-        className="w-full"
+        className="w-full border-dashed"
         onClick={() => setItems([...items, { name: "", price: 0 }])}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />

@@ -20,7 +20,7 @@ import {
   UpsertDrawerDto,
   UpsertExtraDto,
   UpsertFacadeDto,
-  UpsertMezzanineDto,
+  UpsertFalseFacadeDto,
   UpsertPartitionDto,
   UpsertSectionDto,
   UpsertShelfDto,
@@ -131,36 +131,26 @@ export class ProductsController {
     return this.svc.upsertDrawers(id, items, req.user.id);
   }
 
-  /** PUT /api/products/:id/mezzanine */
-  @Put(':id/mezzanine')
-  upsertMezzanine(
+  /** PUT /api/products/:id/false-facades */
+  @Put(':id/false-facades')
+  upsertFalseFacades(
     @Param('id') id: string,
-    @Body() dto: UpsertMezzanineDto,
+    @Body(new ParseArrayPipe({ items: UpsertFalseFacadeDto }))
+    items: UpsertFalseFacadeDto[],
     @Req() req: any,
   ) {
-    return this.svc.upsertMezzanine(id, dto, req.user.id);
+    return this.svc.upsertFalseFacades(id, items, req.user.id);
   }
 
-  /** DELETE /api/products/:id/mezzanine */
-  @Delete(':id/mezzanine')
-  removeMezzanine(@Param('id') id: string, @Req() req: any) {
-    return this.svc.removeMezzanine(id, req.user.id);
-  }
-
-  /** PUT /api/products/:id/countertop */
-  @Put(':id/countertop')
-  upsertCountertop(
+  /** PUT /api/products/:id/countertops */
+  @Put(':id/countertops')
+  upsertCountertops(
     @Param('id') id: string,
-    @Body() dto: UpsertCountertopDto,
+    @Body(new ParseArrayPipe({ items: UpsertCountertopDto }))
+    items: UpsertCountertopDto[],
     @Req() req: any,
   ) {
-    return this.svc.upsertCountertop(id, dto, req.user.id);
-  }
-
-  /** DELETE /api/products/:id/countertop */
-  @Delete(':id/countertop')
-  removeCountertop(@Param('id') id: string, @Req() req: any) {
-    return this.svc.removeCountertop(id, req.user.id);
+    return this.svc.upsertCountertops(id, items, req.user.id);
   }
 
   /** PUT /api/products/:id/extras */

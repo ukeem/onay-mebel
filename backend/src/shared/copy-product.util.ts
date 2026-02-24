@@ -13,101 +13,76 @@ type PrismaTx = Prisma.TransactionClient;
 /** Product shape returned by findUnique with full sub-component includes */
 export interface ProductWithSubComponents {
   productTypeId: string;
-  width: number;
-  height: number;
-  depth: number;
-  bodyMaterialId: string | null;
   sectionsEnabled: boolean;
-  backWallEnabled: boolean;
-  backWallMaterialId: string | null;
   partitionsEnabled: boolean;
   shelvesEnabled: boolean;
   facadesEnabled: boolean;
   falseFacadesEnabled: boolean;
-  falseFacadeQty: number;
-  falseFacadeMaterialId: string | null;
   drawersEnabled: boolean;
-  mezzanineEnabled: boolean;
   countertopEnabled: boolean;
   extrasEnabled: boolean;
 
-  sections: Array<{ qty: number; mezzanineId: string | null }>;
+  sections: Array<{
+    qty: number;
+    width: number;
+    height: number;
+    depth: number;
+    materialId: string | null;
+    backWallEnabled: boolean;
+    backWallMaterialId: string | null;
+    legsEnabled: boolean;
+    legsHardwareId: string | null;
+  }>;
   partitions: Array<{
     height: number;
+    depth: number;
     qty: number;
-    mezzanineId: string | null;
+    materialId: string | null;
   }>;
-  shelves: Array<{ width: number; qty: number; mezzanineId: string | null }>;
+  shelves: Array<{
+    width: number;
+    depth: number;
+    qty: number;
+    materialId: string | null;
+    holderHardwareId: string | null;
+  }>;
   facades: Array<{
     materialId: string | null;
-    isLdsp: boolean;
     width: number;
     height: number;
     qty: number;
     handleQty: number;
     openType: FacadeOpenType | null;
-    mezzanineId: string | null;
+    hingeHardwareId: string | null;
+    handleHardwareId: string | null;
+    tipOnHardwareId: string | null;
   }>;
   drawers: Array<{
     width: number;
     height: number;
+    depth: number;
     qty: number;
     handleQty: number;
     slideType: DrawerSlideType | null;
-    mezzanineId: string | null;
+    materialId: string | null;
+    slideHardwareId: string | null;
   }>;
-  extras: Array<{ name: string; price: any }>;
-  mezzanine: {
-    id: string;
+  falseFacades: Array<{
+    qty: number;
     height: number;
-    bodyMaterialId: string | null;
-    sectionsEnabled: boolean;
-    backWallEnabled: boolean;
-    backWallMaterialId: string | null;
-    partitionsEnabled: boolean;
-    shelvesEnabled: boolean;
-    facadesEnabled: boolean;
-    falseFacadesEnabled: boolean;
-    falseFacadeQty: number;
-    falseFacadeMaterialId: string | null;
-    drawersEnabled: boolean;
-    sections: Array<{ qty: number; mezzanineId: string | null }>;
-    partitions: Array<{
-      height: number;
-      qty: number;
-      mezzanineId: string | null;
-    }>;
-    shelves: Array<{ width: number; qty: number; mezzanineId: string | null }>;
-    facades: Array<{
-      materialId: string | null;
-      isLdsp: boolean;
-      width: number;
-      height: number;
-      qty: number;
-      handleQty: number;
-      openType: FacadeOpenType | null;
-      mezzanineId: string | null;
-    }>;
-    drawers: Array<{
-      width: number;
-      height: number;
-      qty: number;
-      handleQty: number;
-      slideType: DrawerSlideType | null;
-      mezzanineId: string | null;
-    }>;
-  } | null;
-  countertop: {
-    materialId: string;
-    isLdsp: boolean;
+    depth: number;
+    materialId: string | null;
+  }>;
+  countertops: Array<{
+    materialId: string | null;
     width: number;
     depth: number;
     apronEnabled: boolean;
     apronMaterialId: string | null;
-    apronIsLdsp: boolean;
     apronWidth: number | null;
     apronHeight: number | null;
-  } | null;
+  }>;
+  extras: Array<{ name: string; price: any }>;
 }
 
 /** Prisma include for fetching a product with all sub-components needed for copy */
@@ -117,17 +92,9 @@ export const PRODUCT_COPY_INCLUDE = {
   shelves: true,
   facades: true,
   drawers: true,
+  falseFacades: true,
+  countertops: true,
   extras: true,
-  mezzanine: {
-    include: {
-      sections: true,
-      partitions: true,
-      shelves: true,
-      facades: true,
-      drawers: true,
-    },
-  },
-  countertop: true,
 } as const;
 
 /**
@@ -144,130 +111,120 @@ export async function copyProductData(
     data: {
       roomId: newRoomId,
       productTypeId: src.productTypeId,
-      width: src.width,
-      height: src.height,
-      depth: src.depth,
-      bodyMaterialId: src.bodyMaterialId,
       sectionsEnabled: src.sectionsEnabled,
-      backWallEnabled: src.backWallEnabled,
-      backWallMaterialId: src.backWallMaterialId,
       partitionsEnabled: src.partitionsEnabled,
       shelvesEnabled: src.shelvesEnabled,
       facadesEnabled: src.facadesEnabled,
       falseFacadesEnabled: src.falseFacadesEnabled,
-      falseFacadeQty: src.falseFacadeQty,
-      falseFacadeMaterialId: src.falseFacadeMaterialId,
       drawersEnabled: src.drawersEnabled,
-      mezzanineEnabled: src.mezzanineEnabled,
       countertopEnabled: src.countertopEnabled,
       extrasEnabled: src.extrasEnabled,
     },
   });
 
-  // 2. Mezzanine (first — needed for mezzanineId mapping)
-  const mezzanineIdMap: Record<string, string> = {};
-  if (src.mezzanine) {
-    const mez = src.mezzanine;
-    const newMez = await tx.productMezzanine.create({
-      data: {
-        productId: newProduct.id,
-        height: mez.height,
-        bodyMaterialId: mez.bodyMaterialId,
-        sectionsEnabled: mez.sectionsEnabled,
-        backWallEnabled: mez.backWallEnabled,
-        backWallMaterialId: mez.backWallMaterialId,
-        partitionsEnabled: mez.partitionsEnabled,
-        shelvesEnabled: mez.shelvesEnabled,
-        facadesEnabled: mez.facadesEnabled,
-        falseFacadesEnabled: mez.falseFacadesEnabled,
-        falseFacadeQty: mez.falseFacadeQty,
-        falseFacadeMaterialId: mez.falseFacadeMaterialId,
-        drawersEnabled: mez.drawersEnabled,
-      },
-    });
-    mezzanineIdMap[mez.id] = newMez.id;
-  }
-
-  // 3. Sections
+  // 2. Sections
   for (const s of src.sections) {
     await tx.productSection.create({
       data: {
         productId: newProduct.id,
-        mezzanineId: s.mezzanineId ? mezzanineIdMap[s.mezzanineId] : null,
         qty: s.qty,
+        width: s.width,
+        height: s.height,
+        depth: s.depth,
+        materialId: s.materialId,
+        backWallEnabled: s.backWallEnabled,
+        backWallMaterialId: s.backWallMaterialId,
+        legsEnabled: s.legsEnabled,
+        legsHardwareId: s.legsHardwareId,
       },
     });
   }
 
-  // 4. Partitions
+  // 3. Partitions
   for (const p of src.partitions) {
     await tx.productPartition.create({
       data: {
         productId: newProduct.id,
-        mezzanineId: p.mezzanineId ? mezzanineIdMap[p.mezzanineId] : null,
         height: p.height,
+        depth: p.depth,
         qty: p.qty,
+        materialId: p.materialId,
       },
     });
   }
 
-  // 5. Shelves
+  // 4. Shelves
   for (const sh of src.shelves) {
     await tx.productShelf.create({
       data: {
         productId: newProduct.id,
-        mezzanineId: sh.mezzanineId ? mezzanineIdMap[sh.mezzanineId] : null,
         width: sh.width,
+        depth: sh.depth,
         qty: sh.qty,
+        materialId: sh.materialId,
+        holderHardwareId: sh.holderHardwareId,
       },
     });
   }
 
-  // 6. Facades
+  // 5. Facades
   for (const f of src.facades) {
     await tx.productFacade.create({
       data: {
         productId: newProduct.id,
-        mezzanineId: f.mezzanineId ? mezzanineIdMap[f.mezzanineId] : null,
         materialId: f.materialId,
-        isLdsp: f.isLdsp,
         width: f.width,
         height: f.height,
         qty: f.qty,
         handleQty: f.handleQty,
         openType: f.openType ?? undefined,
+        hingeHardwareId: f.hingeHardwareId,
+        handleHardwareId: f.handleHardwareId,
+        tipOnHardwareId: f.tipOnHardwareId,
       },
     });
   }
 
-  // 7. Drawers
+  // 6. Drawers
   for (const d of src.drawers) {
     await tx.productDrawer.create({
       data: {
         productId: newProduct.id,
-        mezzanineId: d.mezzanineId ? mezzanineIdMap[d.mezzanineId] : null,
         width: d.width,
         height: d.height,
+        depth: d.depth,
         qty: d.qty,
         handleQty: d.handleQty,
         slideType: d.slideType ?? undefined,
+        materialId: d.materialId,
+        slideHardwareId: d.slideHardwareId,
       },
     });
   }
 
-  // 8. Countertop
-  if (src.countertop) {
-    const ct = src.countertop;
+  // 7. False Facades
+  for (const ff of src.falseFacades) {
+    await tx.productFalseFacade.create({
+      data: {
+        productId: newProduct.id,
+        qty: ff.qty,
+        height: ff.height,
+        depth: ff.depth,
+        materialId: ff.materialId,
+      },
+    });
+  }
+
+  // 8. Countertops
+  for (const ct of src.countertops) {
     await tx.productCountertop.create({
       data: {
         productId: newProduct.id,
         materialId: ct.materialId,
-        isLdsp: ct.isLdsp,
         width: ct.width,
         depth: ct.depth,
         apronEnabled: ct.apronEnabled,
         apronMaterialId: ct.apronMaterialId,
-        apronIsLdsp: ct.apronIsLdsp,
         apronWidth: ct.apronWidth,
         apronHeight: ct.apronHeight,
       },

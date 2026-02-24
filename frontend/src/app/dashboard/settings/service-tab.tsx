@@ -440,20 +440,28 @@ function PaymentStagesSection() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [stages, setStages] = useState<number[]>([20, 20, 20, 20, 20]);
+  const [notes, setNotes] = useState<string[]>(["", "", "", "", ""]);
   const [locked, setLocked] = useState<Set<number>>(new Set());
 
   const fetchData = useCallback(async () => {
     try {
       const res = await api.get("/settings/payment-stages");
-      const data: { stageNumber: number; percentage: number }[] = res.data;
+      const data: { stageNumber: number; percentage: number; note?: string }[] =
+        res.data;
       if (data.length > 0) {
         const arr = [0, 0, 0, 0, 0];
+        const notesArr = ["", "", "", "", ""];
         data.forEach((s) => {
           if (s.stageNumber >= 1 && s.stageNumber <= 5) {
             arr[s.stageNumber - 1] = s.percentage;
+            notesArr[s.stageNumber - 1] = s.note ?? "";
           }
         });
         setStages(arr);
+        setNotes(notesArr);
+        setLocked(
+          new Set(arr.map((v, i) => (v > 0 ? i : -1)).filter((i) => i >= 0)),
+        );
       }
     } catch {
       // keep defaults 20/20/20/20/20
@@ -476,7 +484,8 @@ function PaymentStagesSection() {
       (s, i) => (locked.has(i) ? s + stages[i] : s),
       0,
     );
-    return lockedSum >= 100;
+    if (lockedSum >= 100) return true;
+    return total >= 100 && stages[idx] === 0;
   };
 
   const handleChange = (idx: number, rawVal: string) => {
@@ -534,6 +543,7 @@ function PaymentStagesSection() {
         .map((v, i) => ({
           stageNumber: i + 1,
           percentage: v,
+          note: notes[i]?.trim() || undefined,
         }))
         .filter((s) => s.percentage > 0);
 
@@ -560,25 +570,39 @@ function PaymentStagesSection() {
       </h2>
       <div className="grid gap-3">
         {stages.map((val, idx) => (
-          <div key={idx} className="flex items-center gap-3">
-            <Label className="w-20 shrink-0">
-              {t("settings.paymentStages.stage")} {idx + 1}
-            </Label>
-            <div className="relative flex-1">
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={val === 0 ? "" : String(val)}
-                onChange={(e) => handleChange(idx, e.target.value)}
-                onFocus={selectOnFocus}
-                disabled={isDisabled(idx)}
-                placeholder="0"
-                className="pr-8"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                %
-              </span>
+          <div key={idx} className="rounded-md border p-3">
+            <div className="mb-2 flex items-center gap-3">
+              <Label className="w-20 shrink-0">
+                {t("settings.paymentStages.stage")} {idx + 1}
+              </Label>
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={val === 0 ? "" : String(val)}
+                  onChange={(e) => handleChange(idx, e.target.value)}
+                  onFocus={selectOnFocus}
+                  disabled={isDisabled(idx)}
+                  placeholder="0"
+                  className="pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  %
+                </span>
+              </div>
             </div>
+            <Input
+              value={notes[idx]}
+              onChange={(e) =>
+                setNotes((prev) => {
+                  const next = [...prev];
+                  next[idx] = e.target.value;
+                  return next;
+                })
+              }
+              disabled={isDisabled(idx)}
+              placeholder={t("settings.paymentStages.notePlaceholder")}
+            />
           </div>
         ))}
       </div>

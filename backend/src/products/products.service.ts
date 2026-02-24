@@ -12,38 +12,42 @@ import {
   UpsertDrawerDto,
   UpsertExtraDto,
   UpsertFacadeDto,
-  UpsertMezzanineDto,
+  UpsertFalseFacadeDto,
   UpsertPartitionDto,
   UpsertSectionDto,
   UpsertShelfDto,
 } from './dto/products.dto';
 
+const MAT_INCLUDE = { include: { materialType: true } } as const;
+const HW_INCLUDE = { include: { hardwareType: true } } as const;
+
 const PRODUCT_INCLUDE = {
   productType: true,
-  bodyMaterial: { include: { materialType: true } },
-  backWallMaterial: { include: { materialType: true } },
-  falseFacadeMaterial: { include: { materialType: true } },
-  sections: true,
-  partitions: true,
-  shelves: true,
-  facades: { include: { material: { include: { materialType: true } } } },
-  drawers: true,
-  mezzanine: {
+  sections: {
     include: {
-      bodyMaterial: { include: { materialType: true } },
-      backWallMaterial: true,
-      falseFacadeMaterial: true,
-      sections: true,
-      partitions: true,
-      shelves: true,
-      facades: { include: { material: true } },
-      drawers: true,
+      material: MAT_INCLUDE,
+      backWallMaterial: MAT_INCLUDE,
+      legsHardware: HW_INCLUDE,
     },
   },
-  countertop: {
+  partitions: { include: { material: MAT_INCLUDE } },
+  shelves: { include: { material: MAT_INCLUDE, holderHardware: HW_INCLUDE } },
+  facades: {
     include: {
-      material: { include: { materialType: true } },
-      apronMaterial: { include: { materialType: true } },
+      material: MAT_INCLUDE,
+      hingeHardware: HW_INCLUDE,
+      handleHardware: HW_INCLUDE,
+      tipOnHardware: HW_INCLUDE,
+    },
+  },
+  falseFacades: { include: { material: MAT_INCLUDE } },
+  drawers: {
+    include: { material: MAT_INCLUDE, slideHardware: HW_INCLUDE },
+  },
+  countertops: {
+    include: {
+      material: MAT_INCLUDE,
+      apronMaterial: MAT_INCLUDE,
     },
   },
   extras: true,
@@ -82,15 +86,12 @@ export class ProductsService {
       data: {
         roomId: dto.roomId,
         productTypeId: dto.productTypeId,
-        width: dto.width ?? 0,
-        height: dto.height ?? 0,
-        depth: dto.depth ?? 600,
       },
       include: PRODUCT_INCLUDE,
     });
   }
 
-  /* ── update product (main fields + switchers) ── */
+  /* ── update product (switchers) ── */
   async update(id: string, dto: UpdateProductDto, userId: string) {
     await this.ensureProductOwner(id, userId);
     return this.prisma.product.update({
@@ -130,26 +131,30 @@ export class ProductsService {
   ) {
     await this.ensureProductOwner(productId, userId);
     return this.prisma.$transaction(async (tx) => {
-      // delete removed — scope by mezzanineId from items
-      const mezId = items.find((i) => i.mezzanineId)?.mezzanineId ?? null;
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productSection.deleteMany({
-        where: { productId, mezzanineId: mezId, id: { notIn: keepIds } },
+        where: { productId, id: { notIn: keepIds } },
       });
       const results = [];
       for (const item of items) {
+        const data = {
+          qty: item.qty,
+          width: item.width,
+          height: item.height,
+          depth: item.depth,
+          materialId: item.materialId || null,
+          backWallEnabled: item.backWallEnabled ?? false,
+          backWallMaterialId: item.backWallMaterialId || null,
+          legsEnabled: item.legsEnabled ?? false,
+          legsHardwareId: item.legsEnabled ? item.legsHardwareId || null : null,
+        };
         if (item.id) {
           results.push(
-            await tx.productSection.update({
-              where: { id: item.id },
-              data: { qty: item.qty },
-            }),
+            await tx.productSection.update({ where: { id: item.id }, data }),
           );
         } else {
           results.push(
-            await tx.productSection.create({
-              data: { productId, qty: item.qty, mezzanineId: item.mezzanineId },
-            }),
+            await tx.productSection.create({ data: { productId, ...data } }),
           );
         }
       }
@@ -165,30 +170,25 @@ export class ProductsService {
   ) {
     await this.ensureProductOwner(productId, userId);
     return this.prisma.$transaction(async (tx) => {
-      const mezId = items.find((i) => i.mezzanineId)?.mezzanineId ?? null;
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productPartition.deleteMany({
-        where: { productId, mezzanineId: mezId, id: { notIn: keepIds } },
+        where: { productId, id: { notIn: keepIds } },
       });
       const results = [];
       for (const item of items) {
+        const data = {
+          qty: item.qty,
+          height: item.height,
+          depth: item.depth,
+          materialId: item.materialId || null,
+        };
         if (item.id) {
           results.push(
-            await tx.productPartition.update({
-              where: { id: item.id },
-              data: { qty: item.qty, height: item.height },
-            }),
+            await tx.productPartition.update({ where: { id: item.id }, data }),
           );
         } else {
           results.push(
-            await tx.productPartition.create({
-              data: {
-                productId,
-                qty: item.qty,
-                height: item.height,
-                mezzanineId: item.mezzanineId,
-              },
-            }),
+            await tx.productPartition.create({ data: { productId, ...data } }),
           );
         }
       }
@@ -204,30 +204,26 @@ export class ProductsService {
   ) {
     await this.ensureProductOwner(productId, userId);
     return this.prisma.$transaction(async (tx) => {
-      const mezId = items.find((i) => i.mezzanineId)?.mezzanineId ?? null;
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productShelf.deleteMany({
-        where: { productId, mezzanineId: mezId, id: { notIn: keepIds } },
+        where: { productId, id: { notIn: keepIds } },
       });
       const results = [];
       for (const item of items) {
+        const data = {
+          qty: item.qty,
+          width: item.width,
+          depth: item.depth,
+          materialId: item.materialId || null,
+          holderHardwareId: item.holderHardwareId || null,
+        };
         if (item.id) {
           results.push(
-            await tx.productShelf.update({
-              where: { id: item.id },
-              data: { qty: item.qty, width: item.width },
-            }),
+            await tx.productShelf.update({ where: { id: item.id }, data }),
           );
         } else {
           results.push(
-            await tx.productShelf.create({
-              data: {
-                productId,
-                qty: item.qty,
-                width: item.width,
-                mezzanineId: item.mezzanineId,
-              },
-            }),
+            await tx.productShelf.create({ data: { productId, ...data } }),
           );
         }
       }
@@ -243,22 +239,22 @@ export class ProductsService {
   ) {
     await this.ensureProductOwner(productId, userId);
     return this.prisma.$transaction(async (tx) => {
-      const mezId = items.find((i) => i.mezzanineId)?.mezzanineId ?? null;
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productFacade.deleteMany({
-        where: { productId, mezzanineId: mezId, id: { notIn: keepIds } },
+        where: { productId, id: { notIn: keepIds } },
       });
       const results = [];
       for (const item of items) {
-        const ldsp = item.isLdsp ?? false;
         const data = {
-          materialId: ldsp ? null : item.materialId || null,
-          isLdsp: ldsp,
+          materialId: item.materialId || null,
           width: item.width,
           height: item.height,
           qty: item.qty,
           handleQty: item.handleQty ?? 0,
-          openType: item.openType ?? 'HANDLE',
+          openType: item.openType ?? ('HANDLE' as const),
+          hingeHardwareId: item.hingeHardwareId || null,
+          handleHardwareId: item.handleHardwareId || null,
+          tipOnHardwareId: item.tipOnHardwareId || null,
         };
         if (item.id) {
           results.push(
@@ -266,9 +262,7 @@ export class ProductsService {
           );
         } else {
           results.push(
-            await tx.productFacade.create({
-              data: { ...data, productId, mezzanineId: item.mezzanineId },
-            }),
+            await tx.productFacade.create({ data: { productId, ...data } }),
           );
         }
       }
@@ -284,19 +278,21 @@ export class ProductsService {
   ) {
     await this.ensureProductOwner(productId, userId);
     return this.prisma.$transaction(async (tx) => {
-      const mezId = items.find((i) => i.mezzanineId)?.mezzanineId ?? null;
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productDrawer.deleteMany({
-        where: { productId, mezzanineId: mezId, id: { notIn: keepIds } },
+        where: { productId, id: { notIn: keepIds } },
       });
       const results = [];
       for (const item of items) {
         const data = {
           width: item.width,
           height: item.height,
+          depth: item.depth,
           qty: item.qty,
           handleQty: item.handleQty ?? 0,
-          slideType: item.slideType ?? 'GUIDE',
+          slideType: item.slideType ?? ('GUIDE' as const),
+          materialId: item.materialId || null,
+          slideHardwareId: item.slideHardwareId || null,
         };
         if (item.id) {
           results.push(
@@ -304,8 +300,45 @@ export class ProductsService {
           );
         } else {
           results.push(
-            await tx.productDrawer.create({
-              data: { ...data, productId, mezzanineId: item.mezzanineId },
+            await tx.productDrawer.create({ data: { productId, ...data } }),
+          );
+        }
+      }
+      return results;
+    });
+  }
+
+  /* ── False Facades ── */
+  async upsertFalseFacades(
+    productId: string,
+    items: UpsertFalseFacadeDto[],
+    userId: string,
+  ) {
+    await this.ensureProductOwner(productId, userId);
+    return this.prisma.$transaction(async (tx) => {
+      const keepIds = items.filter((i) => i.id).map((i) => i.id!);
+      await tx.productFalseFacade.deleteMany({
+        where: { productId, id: { notIn: keepIds } },
+      });
+      const results = [];
+      for (const item of items) {
+        const data = {
+          qty: item.qty,
+          height: item.height,
+          depth: item.depth,
+          materialId: item.materialId || null,
+        };
+        if (item.id) {
+          results.push(
+            await tx.productFalseFacade.update({
+              where: { id: item.id },
+              data,
+            }),
+          );
+        } else {
+          results.push(
+            await tx.productFalseFacade.create({
+              data: { productId, ...data },
             }),
           );
         }
@@ -314,62 +347,41 @@ export class ProductsService {
     });
   }
 
-  /* ── Mezzanine ── */
-  async upsertMezzanine(
+  /* ── Countertops ── */
+  async upsertCountertops(
     productId: string,
-    dto: UpsertMezzanineDto,
+    items: UpsertCountertopDto[],
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.productMezzanine.upsert({
-      where: { productId },
-      create: { productId, ...dto },
-      update: { ...dto },
-      include: {
-        bodyMaterial: { include: { materialType: true } },
-        sections: true,
-        partitions: true,
-        shelves: true,
-        facades: true,
-        drawers: true,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const keepIds = items.filter((i) => i.id).map((i) => i.id!);
+      await tx.productCountertop.deleteMany({
+        where: { productId, id: { notIn: keepIds } },
+      });
+      const results = [];
+      for (const item of items) {
+        const data = {
+          materialId: item.materialId || null,
+          width: item.width,
+          depth: item.depth ?? 600,
+          apronEnabled: item.apronEnabled ?? false,
+          apronMaterialId: item.apronMaterialId || null,
+          apronWidth: item.apronWidth ?? null,
+          apronHeight: item.apronHeight ?? null,
+        };
+        if (item.id) {
+          results.push(
+            await tx.productCountertop.update({ where: { id: item.id }, data }),
+          );
+        } else {
+          results.push(
+            await tx.productCountertop.create({ data: { productId, ...data } }),
+          );
+        }
+      }
+      return results;
     });
-  }
-
-  async removeMezzanine(productId: string, userId: string) {
-    await this.ensureProductOwner(productId, userId);
-    const existing = await this.prisma.productMezzanine.findUnique({
-      where: { productId },
-    });
-    if (!existing) return { deleted: true };
-    return this.prisma.productMezzanine.delete({ where: { productId } });
-  }
-
-  /* ── Countertop ── */
-  async upsertCountertop(
-    productId: string,
-    dto: UpsertCountertopDto,
-    userId: string,
-  ) {
-    await this.ensureProductOwner(productId, userId);
-    return this.prisma.productCountertop.upsert({
-      where: { productId },
-      create: { productId, ...dto },
-      update: { ...dto },
-      include: {
-        material: { include: { materialType: true } },
-        apronMaterial: { include: { materialType: true } },
-      },
-    });
-  }
-
-  async removeCountertop(productId: string, userId: string) {
-    await this.ensureProductOwner(productId, userId);
-    const existing = await this.prisma.productCountertop.findUnique({
-      where: { productId },
-    });
-    if (!existing) return { deleted: true };
-    return this.prisma.productCountertop.delete({ where: { productId } });
   }
 
   /* ── Extras ── */
@@ -430,6 +442,5 @@ export class ProductsService {
     if (!product) throw new NotFoundException('Изделие не найдено');
     if (product.room.project.userId !== userId)
       throw new ForbiddenException('Нет доступа');
-    return product;
   }
 }

@@ -19,21 +19,6 @@ export class CreateProductDto {
 
   @IsString()
   productTypeId: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  width?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  height?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  depth?: number;
 }
 
 export class UpdateProductDto {
@@ -41,38 +26,11 @@ export class UpdateProductDto {
   @IsString()
   productTypeId?: string;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  width?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  height?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  depth?: number;
-
-  @IsOptional()
-  @IsString()
-  bodyMaterialId?: string;
-
   /* ── switchers ── */
 
   @IsOptional()
   @IsBoolean()
   sectionsEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  backWallEnabled?: boolean;
-
-  @IsOptional()
-  @IsString()
-  backWallMaterialId?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -91,21 +49,8 @@ export class UpdateProductDto {
   falseFacadesEnabled?: boolean;
 
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  falseFacadeQty?: number;
-
-  @IsOptional()
-  @IsString()
-  falseFacadeMaterialId?: string;
-
-  @IsOptional()
   @IsBoolean()
   drawersEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  mezzanineEnabled?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -127,9 +72,37 @@ export class UpsertSectionDto {
   @Min(1)
   qty: number;
 
+  @IsInt()
+  @Min(0)
+  width: number;
+
+  @IsInt()
+  @Min(0)
+  height: number;
+
+  @IsInt()
+  @Min(0)
+  depth: number;
+
   @IsOptional()
   @IsString()
-  mezzanineId?: string;
+  materialId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  backWallEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  backWallMaterialId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  legsEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  legsHardwareId?: string | null;
 }
 
 /* ── Partitions ── */
@@ -144,12 +117,16 @@ export class UpsertPartitionDto {
   qty: number;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   height: number;
+
+  @IsInt()
+  @Min(0)
+  depth: number;
 
   @IsOptional()
   @IsString()
-  mezzanineId?: string;
+  materialId?: string | null;
 }
 
 /* ── Shelves ── */
@@ -164,12 +141,20 @@ export class UpsertShelfDto {
   qty: number;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   width: number;
+
+  @IsInt()
+  @Min(0)
+  depth: number;
 
   @IsOptional()
   @IsString()
-  mezzanineId?: string;
+  materialId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  holderHardwareId?: string | null;
 }
 
 /* ── Facades ── */
@@ -183,16 +168,12 @@ export class UpsertFacadeDto {
   @IsString()
   materialId?: string | null;
 
-  @IsOptional()
-  @IsBoolean()
-  isLdsp?: boolean;
-
   @IsInt()
-  @Min(1)
+  @Min(0)
   width: number;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   height: number;
 
   @IsInt()
@@ -210,7 +191,15 @@ export class UpsertFacadeDto {
 
   @IsOptional()
   @IsString()
-  mezzanineId?: string;
+  hingeHardwareId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  handleHardwareId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  tipOnHardwareId?: string | null;
 }
 
 /* ── Drawers ── */
@@ -221,12 +210,16 @@ export class UpsertDrawerDto {
   id?: string;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   width: number;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   height: number;
+
+  @IsInt()
+  @Min(0)
+  depth: number;
 
   @IsInt()
   @Min(1)
@@ -243,79 +236,55 @@ export class UpsertDrawerDto {
 
   @IsOptional()
   @IsString()
-  mezzanineId?: string;
+  materialId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  slideHardwareId?: string | null;
 }
 
-/* ── Mezzanine ── */
+/* ── False Facades ── */
 
-export class UpsertMezzanineDto {
+export class UpsertFalseFacadeDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @IsInt()
   @Min(1)
-  height: number;
+  qty: number;
 
-  @IsOptional()
-  @IsString()
-  bodyMaterialId?: string | null;
-
-  @IsOptional()
-  @IsBoolean()
-  sectionsEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  backWallEnabled?: boolean;
-
-  @IsOptional()
-  @IsString()
-  backWallMaterialId?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  partitionsEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  shelvesEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  facadesEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  falseFacadesEnabled?: boolean;
-
-  @IsOptional()
   @IsInt()
   @Min(0)
-  falseFacadeQty?: number;
+  height: number;
+
+  @IsInt()
+  @Min(0)
+  depth: number;
 
   @IsOptional()
   @IsString()
-  falseFacadeMaterialId?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  drawersEnabled?: boolean;
+  materialId?: string | null;
 }
 
 /* ── Countertop ── */
 
 export class UpsertCountertopDto {
+  @IsOptional()
   @IsString()
-  materialId: string;
+  id?: string;
 
   @IsOptional()
-  @IsBoolean()
-  isLdsp?: boolean;
+  @IsString()
+  materialId?: string | null;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   width: number;
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   depth?: number;
 
   @IsOptional()
@@ -324,11 +293,7 @@ export class UpsertCountertopDto {
 
   @IsOptional()
   @IsString()
-  apronMaterialId?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  apronIsLdsp?: boolean;
+  apronMaterialId?: string | null;
 
   @IsOptional()
   @IsInt()

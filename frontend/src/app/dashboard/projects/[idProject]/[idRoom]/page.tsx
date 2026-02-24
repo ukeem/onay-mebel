@@ -277,9 +277,7 @@ export default function RoomPage({
                 {/* Bottom row: dimensions + actions */}
                 <div className="mt-1.5 flex items-center pl-11">
                   <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                    {p.width || p.height || p.depth
-                      ? `${p.width ?? "—"} × ${p.height ?? "—"} × ${p.depth ?? "—"} ${t("common.mm")}`
-                      : "\u00A0"}
+                    {p.name || "\u00A0"}
                   </p>
                   <div
                     className="shrink-0 flex items-center -mr-2"

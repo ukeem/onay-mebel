@@ -35,33 +35,40 @@ export class CalculationsService {
             products: {
               include: {
                 productType: true,
-                bodyMaterial: { include: { materialType: true } },
-                backWallMaterial: { include: { materialType: true } },
-                falseFacadeMaterial: { include: { materialType: true } },
-                sections: true,
-                partitions: true,
-                shelves: true,
-                facades: {
-                  include: { material: { include: { materialType: true } } },
-                },
-                drawers: true,
-                mezzanine: {
+                sections: {
                   include: {
-                    bodyMaterial: { include: { materialType: true } },
+                    material: { include: { materialType: true } },
                     backWallMaterial: { include: { materialType: true } },
-                    falseFacadeMaterial: { include: { materialType: true } },
-                    sections: true,
-                    partitions: true,
-                    shelves: true,
-                    facades: {
-                      include: {
-                        material: { include: { materialType: true } },
-                      },
-                    },
-                    drawers: true,
+                    legsHardware: { include: { hardwareType: true } },
                   },
                 },
-                countertop: {
+                partitions: {
+                  include: { material: { include: { materialType: true } } },
+                },
+                shelves: {
+                  include: {
+                    material: { include: { materialType: true } },
+                    holderHardware: { include: { hardwareType: true } },
+                  },
+                },
+                facades: {
+                  include: {
+                    material: { include: { materialType: true } },
+                    hingeHardware: { include: { hardwareType: true } },
+                    handleHardware: { include: { hardwareType: true } },
+                    tipOnHardware: { include: { hardwareType: true } },
+                  },
+                },
+                falseFacades: {
+                  include: { material: { include: { materialType: true } } },
+                },
+                drawers: {
+                  include: {
+                    material: { include: { materialType: true } },
+                    slideHardware: { include: { hardwareType: true } },
+                  },
+                },
+                countertops: {
                   include: {
                     material: { include: { materialType: true } },
                     apronMaterial: { include: { materialType: true } },
@@ -97,10 +104,23 @@ export class CalculationsService {
       matPriceMap.set(um.materialId, toNum(um.price));
     }
 
-    /* Hardware price map: hardwareType.name -> price */
+    /* Hardware price map: hardwareType.name -> price (fallback) */
     const hwPriceMap = new Map<string, number>();
     for (const uh of userHardware) {
       hwPriceMap.set(uh.hardware.hardwareType.name, toNum(uh.price));
+    }
+
+    /* Hardware price map by ID: hardwareId -> { price, brand, typeName } */
+    const hwIdMap = new Map<
+      string,
+      { price: number; brand: string; typeName: string }
+    >();
+    for (const uh of userHardware) {
+      hwIdMap.set(uh.hardwareId, {
+        price: toNum(uh.price),
+        brand: uh.hardware.brand ?? '',
+        typeName: uh.hardware.hardwareType.name,
+      });
     }
 
     const svc = userService ?? defaultService();
@@ -119,7 +139,6 @@ export class CalculationsService {
     const roomResults: any[] = [];
     let productsSum = 0;
     let productsSumNoReserve = 0;
-    let _totalBodySheets = 0;
     let totalAllSheets = 0;
     let totalEdgeLm = 0;
     let totalProductCount = 0;
@@ -133,11 +152,11 @@ export class CalculationsService {
           matPriceMap,
           hwPriceMap,
           userMaterials,
+          hwIdMap,
         );
         productResults.push(pr);
         productsSum += pr.cleanPrice;
         productsSumNoReserve += pr.cleanPrice;
-        _totalBodySheets += pr.bodySheets;
         totalAllSheets += pr.totalSheets;
         totalEdgeLm += pr.edgeLm;
         totalProductCount++;
@@ -152,6 +171,104 @@ export class CalculationsService {
           0,
         ),
       });
+    }
+
+    /* ═══ Post-correction: aggregate SHEET materials across all products ═══ */
+    {
+      // Collect raw areas per materialId across all products in all rooms
+      const globalSheetArea = new Map<
+        string,
+        {
+          totalRawMm2: number;
+          sheetArea: number;
+          unitPrice: number;
+          entries: { det: any; pr: any; rawMm2: number }[];
+        }
+      >();
+
+      for (const room of roomResults) {
+        for (const pr of room.products) {
+          for (const det of pr.details) {
+            if (
+              det.type === 'material' &&
+              det.rawAreaMm2 != null &&
+              det.sheetArea
+            ) {
+              const key = det.materialId;
+              const existing = globalSheetArea.get(key);
+              if (existing) {
+                existing.totalRawMm2 += det.rawAreaMm2;
+                existing.entries.push({ det, pr, rawMm2: det.rawAreaMm2 });
+              } else {
+                globalSheetArea.set(key, {
+                  totalRawMm2: det.rawAreaMm2,
+                  sheetArea: det.sheetArea,
+                  unitPrice: det.unitPrice,
+                  entries: [{ det, pr, rawMm2: det.rawAreaMm2 }],
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Recalculate sheets from global area and redistribute
+      for (const [, info] of globalSheetArea) {
+        if (info.entries.length <= 1) continue; // single product — no correction needed
+
+        const globalAreaM2 = info.totalRawMm2 / 1_000_000;
+        const globalSheets =
+          info.sheetArea > 0 ? Math.ceil(globalAreaM2 / info.sheetArea) : 0;
+        const oldSheetsSum = info.entries.reduce(
+          (s, e) => s + (e.det.qty as number),
+          0,
+        );
+
+        if (globalSheets >= oldSheetsSum) continue; // no savings
+
+        const oldTotalCost = oldSheetsSum * info.unitPrice;
+        const newTotalCost = globalSheets * info.unitPrice;
+        const costDiff = oldTotalCost - newTotalCost;
+        const sheetsDiff = oldSheetsSum - globalSheets;
+
+        // Distribute new sheets proportionally by raw area
+        let sheetsAssigned = 0;
+        for (let i = 0; i < info.entries.length; i++) {
+          const e = info.entries[i];
+          const isLast = i === info.entries.length - 1;
+          const proportion = e.rawMm2 / info.totalRawMm2;
+          const newQty = isLast
+            ? globalSheets - sheetsAssigned
+            : Math.max(0, Math.round(globalSheets * proportion));
+          sheetsAssigned += newQty;
+
+          const oldQty = e.det.qty as number;
+          const oldCost = e.det.cost as number;
+          const newCost = newQty * info.unitPrice;
+          const diff = oldCost - newCost;
+
+          e.det.qty = newQty;
+          e.det.cost = Math.round(newCost);
+
+          // Update product-level sums
+          e.pr.materialCost = Math.round((e.pr.materialCost as number) - diff);
+          e.pr.cleanPrice = Math.round((e.pr.cleanPrice as number) - diff);
+          e.pr.totalSheets = (e.pr.totalSheets as number) - (oldQty - newQty);
+        }
+
+        // Update global totals
+        productsSum -= costDiff;
+        productsSumNoReserve -= costDiff;
+        totalAllSheets -= sheetsDiff;
+      }
+
+      // Recalculate room-level cleanPrice
+      for (const room of roomResults) {
+        room.roomClean = room.products.reduce(
+          (s: number, p: any) => s + (p.cleanPrice as number),
+          0,
+        );
+      }
     }
 
     /* ═══ Workshop (цех) ═══ */
@@ -187,7 +304,7 @@ export class CalculationsService {
       const base =
         (productsSumNoReserve + workshopTotal) * profitValue + reserveAmount;
       const discountAmount = (base * discount) / 100;
-      totalForClient = base - discountAmount;
+      totalForClient = base - discountAmount + deliveryCost;
       cleanProfit =
         base -
         discountAmount -
@@ -199,13 +316,14 @@ export class CalculationsService {
     } else {
       const base = productsSum + workshopTotal;
       const discountAmount = (base * discount) / 100;
-      totalForClient = base - discountAmount + profitValue;
+      totalForClient = base - discountAmount + profitValue + deliveryCost;
       cleanProfit = profitValue;
     }
 
     /* Build material/hardware alternatives for brand selection on detail page */
     const materialOptions: any[] = [];
     for (const um of userMaterials) {
+      if (um.enabled === false) continue;
       materialOptions.push({
         materialId: um.materialId,
         materialType: um.material.materialType?.name ?? '',
@@ -218,6 +336,7 @@ export class CalculationsService {
     }
     const hardwareOptions: any[] = [];
     for (const uh of userHardware) {
+      if (uh.enabled === false) continue;
       hardwareOptions.push({
         hardwareId: uh.hardwareId,
         hardwareType: uh.hardware.hardwareType?.name ?? '',
@@ -234,7 +353,15 @@ export class CalculationsService {
       string,
       { totalForClient: number; cleanProfit: number; productsSum: number }
     > = {};
-    for (const tier of ['standard', 'comfort', 'premium']) {
+
+    /* Comfort = already-computed main totals (user-selected materials) */
+    tierTotals['comfort'] = {
+      totalForClient: Math.round(totalForClient),
+      cleanProfit: Math.round(cleanProfit),
+      productsSum: Math.round(productsSum),
+    };
+
+    for (const tier of ['standard', 'premium']) {
       // Build price maps for this tier from tierPrices
       const tierMatPrice = new Map<string, number>();
       for (const [typeName, items] of Object.entries(tierPrices.materials)) {
@@ -305,7 +432,7 @@ export class CalculationsService {
         const base =
           (tierProductsSumNoReserve + tWorkshopTotal) * profitValue +
           tierReserve;
-        tTotalForClient = Math.round(base);
+        tTotalForClient = Math.round(base + tDeliveryCost);
         tCleanProfit = Math.round(
           base -
             tTechCost -
@@ -316,7 +443,7 @@ export class CalculationsService {
         );
       } else {
         const base = tierProductsSum + tWorkshopTotal;
-        tTotalForClient = Math.round(base + profitValue);
+        tTotalForClient = Math.round(base + profitValue + tDeliveryCost);
         tCleanProfit = Math.round(profitValue);
       }
 
@@ -484,6 +611,7 @@ export class CalculationsService {
     const sawingPrice = d.sawingPrice ?? 0;
     const drillingPrice = d.drillingPrice ?? 0;
     const edgeBandingPrice = d.edgeBandingPrice ?? 0;
+    const deliveryPrice = d.deliveryPrice ?? 0;
 
     /* compute totals per tier */
     const tierResults: Record<
@@ -540,17 +668,25 @@ export class CalculationsService {
       const workshopTotal = sawCost + drillCost + edgeCost;
       const proposalReserve = productsSum - productsSumNoReserve;
 
+      // Delivery cost (same formula as frontend)
+      let deliveryCost = 0;
+      if (totalProductCount > 0) {
+        deliveryCost =
+          deliveryPrice +
+          Math.max(0, totalProductCount - 1) * (deliveryPrice / 3);
+      }
+
       let totalForClient: number;
       if (profitType === 'COEF') {
         const base =
           (productsSumNoReserve + workshopTotal) * profitValue +
           proposalReserve;
         const disc = (base * discountPct) / 100;
-        totalForClient = Math.round(base - disc);
+        totalForClient = Math.round(base - disc + deliveryCost);
       } else {
         const base = productsSum + workshopTotal;
         const disc = (base * discountPct) / 100;
-        totalForClient = Math.round(base - disc + profitValue);
+        totalForClient = Math.round(base - disc + profitValue + deliveryCost);
       }
 
       const totalBeforeDiscount =
@@ -692,6 +828,20 @@ export class CalculationsService {
 
             // Product price display
             const productPriceHtml = `<span class="price-current">${fmt(finalPrice)}</span>`;
+            const safeImageUrl =
+              typeof pr.image === 'string' &&
+              /^\/uploads\/[A-Za-z0-9._-]+$/.test(pr.image)
+                ? pr.image
+                : '';
+            const productImageSrc = safeImageUrl
+              ? logoToDataUri(safeImageUrl)
+              : '';
+            const productImageHtml = productImageSrc
+              ? `<div class="product-image-wrap"><img class="product-image" src="${productImageSrc}" alt="Изображение изделия"/></div>`
+              : '';
+            const productContentClass = productImageHtml
+              ? 'product-content with-image'
+              : 'product-content';
 
             productsHtml += `
             <div class="product-block">
@@ -699,7 +849,10 @@ export class CalculationsService {
                 <span class="product-name">${pr.productType} — ${pr.dimensions}</span>
                 <span class="product-price">${productPriceHtml}</span>
               </div>
-              <div class="details-list">${detailsHtml}</div>
+              <div class="${productContentClass}">
+                ${productImageHtml}
+                <div class="details-list">${detailsHtml}</div>
+              </div>
             </div>`;
           }
 
@@ -735,9 +888,20 @@ export class CalculationsService {
               const amount = Math.round(
                 (tr.totalForClient * st.percentage) / 100,
               );
+              const note =
+                typeof st.note === 'string' && st.note.trim().length > 0
+                  ? st.note.trim()
+                  : '';
+              const safeNote = note ? escapeHtml(note) : '';
               return `<div class="payment-stage">
-                <span class="payment-stage-label" data-i18n-stage="${st.stageNumber}" data-pct="${st.percentage}">Этап ${st.stageNumber}: ${st.percentage}%</span>
-                <span class="payment-stage-amount">${fmt(amount)}</span>
+                <div class="payment-stage-top">
+                  <div class="payment-stage-line">
+                    <span class="payment-stage-chip" data-i18n-stage="${st.stageNumber}">Этап ${st.stageNumber}</span>
+                    <span class="payment-stage-percent">${st.percentage}%</span>
+                  </div>
+                  <span class="payment-stage-amount">${fmt(amount)}</span>
+                </div>
+                ${safeNote ? `<div class="payment-stage-note">${safeNote}</div>` : ''}
               </div>`;
             })
             .join('');
@@ -1088,10 +1252,11 @@ export class CalculationsService {
       border-radius: 14px;
       padding: 16px 18px;
       border: 1px solid var(--border);
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
     .product-block:hover {
       border-color: var(--accent);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
     }
     .product-header {
       display: flex;
@@ -1110,20 +1275,48 @@ export class CalculationsService {
       color: var(--accent);
       white-space: nowrap;
     }
+    .product-content {
+      margin-top: 10px;
+    }
+    .product-content.with-image {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .product-image-wrap {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #fff;
+      box-shadow: 0 1px 6px rgba(15, 23, 42, 0.06);
+    }
+    .product-image {
+      display: block;
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
 
     /* ─── Details list ─── */
     .details-list {
-      margin-top: 10px;
       padding-top: 8px;
       border-top: 1px dashed var(--border);
       columns: 2;
       column-gap: 12px;
     }
+    .product-content.with-image .details-list {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+      border-left: 1px dashed var(--border);
+      padding-left: 12px;
+    }
     .detail-item {
       display: flex;
       align-items: baseline;
       gap: 6px;
-      padding: 2px 0;
+      padding: 3px 0;
       break-inside: avoid;
     }
     .detail-dot {
@@ -1256,21 +1449,55 @@ export class CalculationsService {
       border: 1px solid var(--border);
     }
     .payment-stage {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
+      display: block;
+      padding: 10px 0;
       border-bottom: 1px dashed var(--border);
     }
     .payment-stage:last-child { border-bottom: none; }
-    .payment-stage-label {
-      font-size: 13px;
+    .payment-stage-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+    .payment-stage-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .payment-stage-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-elevated);
+      font-size: 11px;
+      font-weight: 700;
       color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .payment-stage-percent {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .payment-stage-note {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+      width: 100%;
     }
     .payment-stage-amount {
       font-size: 13px;
       font-weight: 700;
       color: var(--text);
+      white-space: nowrap;
+      padding-top: 2px;
     }
 
     /* ─── Contacts ─── */
@@ -1381,8 +1608,23 @@ export class CalculationsService {
       .tier-total .total-label { font-size: 16px; font-weight: 700; }
       .tier-total .grand-new { font-size: 20px; }
       .product-block { break-inside: avoid; box-shadow: none; border: 1px solid #e2e8f0; }
+      .product-content.with-image { grid-template-columns: 250px 1fr; }
       .kp-header { box-shadow: none; }
       .print-btn { display: none !important; }
+    }
+    @media (max-width: 900px) {
+      .product-content.with-image {
+        grid-template-columns: 1fr;
+      }
+      .product-content.with-image .details-list {
+        border-left: none;
+        border-top: 1px dashed var(--border);
+        padding-left: 0;
+        padding-top: 10px;
+      }
+      .product-image {
+        height: 220px;
+      }
     }
     @media (max-width: 640px) {
       .page-wrapper { padding: 12px 12px 76px; }
@@ -1390,9 +1632,13 @@ export class CalculationsService {
       .kp-project { font-size: 18px; }
       .tabs-wrap { margin: 0 -12px 12px; padding: 4px 12px; }
       .product-block { padding: 14px 16px; }
+      .product-image { width: 100%; height: auto; }
       .total-bar { padding: 12px 16px; }
       .grand-new { font-size: 18px; }
       .details-list { columns: 1; }
+      .payment-stage-amount {
+        padding-top: 0;
+      }
     }
   </style>
 </head>
@@ -1514,8 +1760,7 @@ export class CalculationsService {
       });
       document.querySelectorAll('[data-i18n-stage]').forEach(function(el) {
         var num = el.getAttribute('data-i18n-stage');
-        var pct = el.getAttribute('data-pct');
-        el.textContent = strings.stage + ' ' + num + ': ' + pct + '%';
+        el.textContent = strings.stage + ' ' + num;
       });
       try { localStorage.setItem('kp-lang', KP_LANG); } catch(e) {}
     }
@@ -1538,871 +1783,297 @@ export class CalculationsService {
     matPrice: Map<string, number>,
     hwPrice: Map<string, number>,
     userMaterials?: any[],
+    hwIdMap?: Map<string, { price: number; brand: string; typeName: string }>,
   ) {
-    const W = product.width;
-    const H = product.height;
-    const D = product.depth;
-    const mainH =
-      product.mezzanineEnabled && product.mezzanine?.height
-        ? H - product.mezzanine.height
-        : H;
-
     let materialCost = 0;
     let hardwareCost = 0;
     const details: any[] = [];
 
-    /* Body material info — auto-select cheapest ЛДСП if not set */
-    let bodyMatId = product.bodyMaterialId;
-    let bodyMaterial = findMat(product, bodyMatId);
-    let bodyPrice = matPrice.get(bodyMatId) ?? 0;
-
-    if (!bodyMatId && userMaterials?.length) {
-      const ldspMats = userMaterials
-        .filter((um) => um.material?.materialType?.name === 'ЛДСП')
-        .sort((a, b) => toNum(a.price) - toNum(b.price));
-      if (ldspMats.length > 0) {
-        const cheapest = ldspMats[0];
-        bodyMatId = cheapest.materialId;
-        bodyMaterial = cheapest.material;
-        bodyPrice = toNum(cheapest.price);
+    /* ═══ Material grouping: materialId → accumulated area ═══ */
+    const matGroups = new Map<
+      string,
+      {
+        areaMm2: number;
+        lengthMm: number;
+        material: any;
+        labels: string[];
+        components: Set<string>;
       }
-    }
+    >();
 
-    const sheetL = bodyMaterial?.length ?? 2800;
-    const sheetW = bodyMaterial?.width ?? 2070;
-    const sheetArea = (sheetL / 1000) * (sheetW / 1000); // m²
+    const addArea = (
+      materialId: string | null | undefined,
+      material: any,
+      areaMm2: number,
+      label: string,
+      lengthMm = 0,
+      component = '',
+    ) => {
+      if (!materialId) return;
+      const existing = matGroups.get(materialId);
+      if (existing) {
+        existing.areaMm2 += areaMm2;
+        existing.lengthMm += lengthMm;
+        existing.labels.push(label);
+        if (component) existing.components.add(component);
+      } else {
+        const components = new Set<string>();
+        if (component) components.add(component);
+        matGroups.set(materialId, {
+          areaMm2,
+          lengthMm,
+          material,
+          labels: [label],
+          components,
+        });
+      }
+    };
 
-    /* ═══ Collect ALL body ЛДСП area (mm²) ═══ */
-    let bodyAreaMm2 = 0;
     let totalSectionQty = 0;
     let totalShelfQty = 0;
+    let dimW = 0;
+    let dimH = 0;
+    let dimD = 0;
 
-    // Top + bottom (always)
-    bodyAreaMm2 += W * D * 2;
-
-    // Side panels: from sections (2 per section) or basic box (2)
+    /* ═══ SECTIONS ═══ */
     if (product.sectionsEnabled && product.sections?.length > 0) {
       for (const sec of product.sections) {
-        if (!sec.mezzanineId) {
-          totalSectionQty += sec.qty;
-          bodyAreaMm2 += mainH * D * 2 * sec.qty;
-        }
-      }
-    } else {
-      bodyAreaMm2 += D * mainH * 2;
-    }
+        const W = sec.width;
+        const H = sec.height;
+        const D = sec.depth;
+        const qty = sec.qty;
+        totalSectionQty += qty;
 
-    // Partitions
-    if (product.partitionsEnabled && product.partitions) {
-      for (const part of product.partitions) {
-        if (!part.mezzanineId) {
-          const partH = Math.min(part.height, mainH);
-          bodyAreaMm2 += D * partH * part.qty;
-        }
-      }
-    }
+        dimW += W * qty;
+        dimH = Math.max(dimH, H);
+        dimD = Math.max(dimD, D);
 
-    // Shelves
-    if (product.shelvesEnabled && product.shelves) {
-      for (const sh of product.shelves) {
-        if (!sh.mezzanineId) {
-          bodyAreaMm2 += sh.width * D * sh.qty;
-          totalShelfQty += sh.qty;
-        }
-      }
-    }
+        // Body: top+bottom (W×D×2) + sides (H×D×2)
+        let sectionArea = (W * D * 2 + H * D * 2) * qty;
 
-    // Drawers body material: (front×2 + bottom + side×2) × qty
-    if (product.drawersEnabled && product.drawers) {
-      for (const dr of product.drawers) {
-        if (!dr.mezzanineId) {
-          bodyAreaMm2 +=
-            (dr.width * dr.height * 2 + dr.width * D + dr.height * D * 2) *
-            dr.qty;
-        }
-      }
-    }
-
-    // ЛДСП facades with SAME material as body → add to body area
-    if (product.facadesEnabled && product.facades) {
-      for (const f of product.facades) {
-        if (!f.mezzanineId && f.isLdsp) {
-          const facadeH = Math.min(f.height, mainH);
-          bodyAreaMm2 += f.width * facadeH * f.qty;
-        }
-      }
-    }
-
-    /* ═══ Mezzanine body ═══ */
-    let mezTotalShelfQty = 0;
-    let mezBodyAreaMm2 = 0; // собирается отдельно, потом объединяется или нет
-    if (product.mezzanineEnabled && product.mezzanine) {
-      const mez = product.mezzanine;
-      const mezH = mez.height;
-
-      // top + bottom
-      mezBodyAreaMm2 += W * D * 2;
-
-      // sides from sections or basic
-      if (mez.sectionsEnabled && mez.sections?.length > 0) {
-        for (const sec of mez.sections) {
-          mezBodyAreaMm2 += mezH * D * 2 * sec.qty;
-        }
-      } else {
-        mezBodyAreaMm2 += D * mezH * 2;
-      }
-
-      if (mez.partitionsEnabled && mez.partitions) {
-        for (const part of mez.partitions) {
-          const partH = Math.min(part.height, mezH);
-          mezBodyAreaMm2 += D * partH * part.qty;
-        }
-      }
-
-      if (mez.shelvesEnabled && mez.shelves) {
-        for (const sh of mez.shelves) {
-          mezBodyAreaMm2 += sh.width * D * sh.qty;
-          mezTotalShelfQty += sh.qty;
-        }
-      }
-
-      if (mez.drawersEnabled && mez.drawers) {
-        for (const dr of mez.drawers) {
-          mezBodyAreaMm2 +=
-            (dr.width * dr.height * 2 + dr.width * D + dr.height * D * 2) *
-            dr.qty;
-        }
-      }
-
-      // Mezzanine ЛДСП facades with same body material
-      if (mez.facadesEnabled && mez.facades) {
-        for (const f of mez.facades) {
-          if (f.isLdsp) {
-            const facadeH = Math.min(f.height, mezH);
-            mezBodyAreaMm2 += f.width * facadeH * f.qty;
+        // Back wall: W × H
+        if (sec.backWallEnabled) {
+          const bwArea = W * H * qty;
+          if (
+            sec.backWallMaterialId &&
+            sec.backWallMaterialId !== sec.materialId
+          ) {
+            addArea(
+              sec.backWallMaterialId,
+              sec.backWallMaterial,
+              bwArea,
+              `Зад.стенка ${W}×${H}, ${qty} шт`,
+              0,
+              'Зад.стенка',
+            );
+          } else {
+            sectionArea += bwArea;
           }
         }
-      }
 
-      /* Если материал антресоли = как корпус (bodyMaterialId == null), суммируем площадь.
-         Иначе считаем отдельно по calcType материала антресоли. */
-      if (!mez.bodyMaterialId) {
-        // Как корпус — добавляем в общую площадь
-        bodyAreaMm2 += mezBodyAreaMm2;
-      }
-      // else: обрабатывается ниже, после подсчёта body sheets
-    }
-
-    /* Calculate body sheets */
-    const bodyAreaM2 = bodyAreaMm2 / 1_000_000;
-    const bodySheets = sheetArea > 0 ? Math.ceil(bodyAreaM2 / sheetArea) : 0;
-    const bodyCost = bodySheets * bodyPrice;
-    materialCost += bodyCost;
-    details.push({
-      id: 'body',
-      type: 'material',
-      label: 'Корпус осн.',
-      materialId: bodyMatId,
-      materialType: 'ЛДСП',
-      brand: bodyMaterial?.brand ?? '',
-      qty: bodySheets,
-      unit: 'л.',
-      unitPrice: bodyPrice,
-      cost: Math.round(bodyCost),
-      enabled: true,
-    });
-
-    /* ═══ Mezzanine separate material ═══ */
-    let mezBodySheets = 0;
-    if (
-      product.mezzanineEnabled &&
-      product.mezzanine?.bodyMaterialId &&
-      mezBodyAreaMm2 > 0
-    ) {
-      const mezMat =
-        product.mezzanine.bodyMaterial ??
-        findMat(product, product.mezzanine.bodyMaterialId);
-      const mezMatPrice = matPrice.get(product.mezzanine.bodyMaterialId) ?? 0;
-      const mezCalcType = mezMat?.calcType ?? 'SHEET';
-
-      if (mezCalcType === 'SHEET') {
-        const mezSheetL = mezMat?.length ?? 2800;
-        const mezSheetW = mezMat?.width ?? 2070;
-        const mezSheetArea = (mezSheetL / 1000) * (mezSheetW / 1000);
-        const mezAreaM2 = mezBodyAreaMm2 / 1_000_000;
-        mezBodySheets =
-          mezSheetArea > 0 ? Math.ceil(mezAreaM2 / mezSheetArea) : 0;
-        const mezCost = mezBodySheets * mezMatPrice;
-        materialCost += mezCost;
-        details.push({
-          id: 'mez-body',
-          type: 'material',
-          label: 'Корпус антр.',
-          materialId: product.mezzanine.bodyMaterialId,
-          materialType: mezMat?.materialType?.name ?? 'ЛДСП',
-          brand: mezMat?.brand ?? '',
-          qty: mezBodySheets,
-          unit: 'л.',
-          unitPrice: mezMatPrice,
-          cost: Math.round(mezCost),
-          enabled: true,
-        });
-      } else {
-        // SQM — считаем по площади в м²
-        const mezAreaM2 = mezBodyAreaMm2 / 1_000_000;
-        const mezCost = mezAreaM2 * mezMatPrice;
-        materialCost += mezCost;
-        details.push({
-          id: 'mez-body',
-          type: 'material',
-          label: 'Корпус антр.',
-          materialId: product.mezzanine.bodyMaterialId,
-          materialType: mezMat?.materialType?.name ?? '',
-          brand: mezMat?.brand ?? '',
-          qty: Math.round(mezAreaM2 * 100) / 100,
-          unit: 'м²',
-          unitPrice: mezMatPrice,
-          cost: Math.round(mezCost),
-          enabled: true,
-        });
+        addArea(
+          sec.materialId,
+          sec.material,
+          sectionArea,
+          `Секция ${W}×${H}×${D}, ${qty} шт`,
+          0,
+          'Секции',
+        );
       }
     }
 
-    /* ═══ ЛДСП facades with DIFFERENT material ═══ */
-    let otherLdspSheets = 0;
-    const calcDiffLdsp = (facades: any[], maxH: number, prefix: string) => {
-      if (!facades) return;
-      const ldspMap = new Map<string, number>();
-      for (const f of facades) {
-        if (f.materialId && f.material?.materialType?.name === 'ЛДСП') {
-          const facadeH = Math.min(f.height, maxH);
-          ldspMap.set(
-            f.materialId,
-            (ldspMap.get(f.materialId) ?? 0) + f.width * facadeH * f.qty,
+    /* ═══ PARTITIONS ═══ */
+    if (product.partitionsEnabled && product.partitions?.length > 0) {
+      for (const part of product.partitions) {
+        const area = part.height * part.depth * part.qty;
+        addArea(
+          part.materialId,
+          part.material,
+          area,
+          `Перегородка ${part.height}×${part.depth}, ${part.qty} шт`,
+          0,
+          'Перегородки',
+        );
+      }
+    }
+
+    /* ═══ SHELVES ═══ */
+    if (product.shelvesEnabled && product.shelves?.length > 0) {
+      for (const sh of product.shelves) {
+        const area = sh.width * sh.depth * sh.qty;
+        addArea(
+          sh.materialId,
+          sh.material,
+          area,
+          `Полка ${sh.width}×${sh.depth}, ${sh.qty} шт`,
+          0,
+          'Полки',
+        );
+        totalShelfQty += sh.qty;
+      }
+    }
+
+    /* ═══ DRAWERS ═══ */
+    if (product.drawersEnabled && product.drawers?.length > 0) {
+      for (const dr of product.drawers) {
+        const area =
+          (dr.width * dr.height * 2 +
+            dr.width * dr.depth +
+            dr.height * dr.depth * 2) *
+          dr.qty;
+        addArea(
+          dr.materialId,
+          dr.material,
+          area,
+          `Ящик ${dr.width}×${dr.height}×${dr.depth}, ${dr.qty} шт`,
+          0,
+          'Ящики',
+        );
+      }
+    }
+
+    /* ═══ FACADES ═══ */
+    let nonSheetPerimLm = 0;
+    if (product.facadesEnabled && product.facades?.length > 0) {
+      for (const f of product.facades) {
+        const area = f.width * f.height * f.qty;
+        addArea(
+          f.materialId,
+          f.material,
+          area,
+          `Фасад ${f.width}×${f.height}, ${f.qty} шт`,
+          0,
+          'Фасады',
+        );
+        if ((f.material?.calcType ?? 'SHEET') !== 'SHEET') {
+          nonSheetPerimLm += ((2 * (f.width + f.height)) / 1000) * f.qty;
+        }
+      }
+    }
+
+    /* ═══ FALSE FACADES ═══ */
+    if (product.falseFacadesEnabled && product.falseFacades?.length > 0) {
+      for (const ff of product.falseFacades) {
+        const area = ff.height * ff.depth * ff.qty;
+        addArea(
+          ff.materialId,
+          ff.material,
+          area,
+          `Фальш ${ff.height}×${ff.depth}, ${ff.qty} шт`,
+          0,
+          'Фальш-фасады',
+        );
+        if ((ff.material?.calcType ?? 'SHEET') !== 'SHEET') {
+          nonSheetPerimLm += ((2 * (ff.height + ff.depth)) / 1000) * ff.qty;
+        }
+      }
+    }
+
+    /* ═══ COUNTERTOPS ═══ */
+    if (product.countertopEnabled && product.countertops?.length > 0) {
+      for (const ct of product.countertops) {
+        if (ct.materialId) {
+          const area = ct.width * ct.depth;
+          addArea(
+            ct.materialId,
+            ct.material,
+            area,
+            `Столешница ${ct.width}×${ct.depth}`,
+            ct.width,
+            'Столешница',
+          );
+        }
+        if (ct.apronEnabled && ct.apronMaterialId) {
+          const apW = ct.apronWidth ?? ct.width;
+          const apH = ct.apronHeight ?? 600;
+          const area = apW * apH;
+          addArea(
+            ct.apronMaterialId,
+            ct.apronMaterial,
+            area,
+            `Фартук ${apW}×${apH}`,
+            apW,
+            'Фартук',
           );
         }
       }
-      for (const [matId, areaMm2] of ldspMap) {
-        const mat = findMat(product, matId);
-        const price = matPrice.get(matId) ?? 0;
-        const sL = mat?.length ?? 2800;
-        const sW2 = mat?.width ?? 2070;
-        const sArea = (sL / 1000) * (sW2 / 1000);
-        const aM2 = areaMm2 / 1_000_000;
-        const sheets = sArea > 0 ? Math.ceil(aM2 / sArea) : 0;
-        const cost = sheets * price;
-        materialCost += cost;
-        otherLdspSheets += sheets;
-        details.push({
-          id: `facade-ldsp-${prefix}-${matId}`,
-          type: 'material',
-          label: `${prefix} ЛДСП (${mat?.brand ?? ''})`,
-          materialId: matId,
-          materialType: 'ЛДСП',
-          brand: mat?.brand ?? '',
-          qty: sheets,
-          unit: 'л.',
-          unitPrice: price,
-          cost: Math.round(cost),
-          enabled: true,
-        });
-      }
-    };
-    if (product.facadesEnabled)
-      calcDiffLdsp(
-        product.facades?.filter((f: any) => !f.mezzanineId),
-        mainH,
-        'Фасад осн.',
-      );
-    if (product.mezzanineEnabled && product.mezzanine?.facadesEnabled)
-      calcDiffLdsp(
-        product.mezzanine?.facades,
-        product.mezzanine.height,
-        'Фасад антр.',
-      );
+    }
 
-    /* ═══ Non-ЛДСП facades ═══ */
-    let nonLdspFacadePerimLm = 0;
-    const calcNonLdspFacades = (
-      facades: any[],
-      maxH: number,
-      prefix: string,
-    ) => {
-      if (!facades) return;
-      for (const f of facades) {
-        if (
-          !f.isLdsp &&
-          f.materialId &&
-          f.material?.materialType?.name !== 'ЛДСП'
-        ) {
-          const mat = findMat(product, f.materialId);
-          const price = matPrice.get(f.materialId) ?? 0;
-          const calcType = mat?.calcType ?? 'SQM';
-          const facadeH = Math.min(f.height, maxH);
-          const area = (f.width / 1000) * (facadeH / 1000) * f.qty;
-          let cost = 0;
-          if (calcType === 'SHEET') {
-            const sL = mat?.length ?? 2800;
-            const sW2 = mat?.width ?? 2070;
-            const sArea = (sL / 1000) * (sW2 / 1000);
-            cost = sArea > 0 ? Math.ceil(area / sArea) * price : 0;
-          } else if (calcType === 'SQM') {
-            cost = area * price;
-          } else {
-            cost = (f.width / 1000) * f.qty * price;
-          }
-          materialCost += cost;
+    /* ═══ COMPUTE MATERIAL COSTS BY GROUP ═══ */
+    let totalSheets = 0;
 
-          // accumulate perimeter for edge banding
-          nonLdspFacadePerimLm += ((2 * (f.width + facadeH)) / 1000) * f.qty;
+    for (const [matId, group] of matGroups) {
+      const price = matPrice.get(matId) ?? 0;
+      const mat = group.material;
+      const calcType = mat?.calcType ?? 'SHEET';
+      const areaM2 = group.areaMm2 / 1_000_000;
 
-          let qty: number;
-          let unit: string;
-          let unitPrice: number;
-          if (calcType === 'SQM') {
-            qty = Math.round(area * 100) / 100;
-            unit = 'м²';
-            unitPrice = price;
-          } else if (calcType === 'LM') {
-            qty = Math.round((f.width / 1000) * f.qty * 100) / 100;
-            unit = 'п.м.';
-            unitPrice = price;
-          } else {
-            // SHEET
-            qty = f.qty;
-            unit = 'шт.';
-            unitPrice = Math.round(cost / f.qty);
-          }
+      let cost = 0;
+      let qty = 0;
+      let unit = '';
 
-          details.push({
-            id: `facade-${prefix}-${f.materialId}-${f.width}x${facadeH}`,
-            type: 'material',
-            label: `${prefix} ${mat?.materialType?.name ?? ''} ${f.width}×${facadeH}, ${f.qty} шт`,
-            materialId: f.materialId,
-            materialType: mat?.materialType?.name ?? '',
-            brand: mat?.brand ?? '',
-            qty,
-            unit,
-            unitPrice,
-            cost: Math.round(cost),
-            enabled: true,
-          });
-        }
-      }
-    };
-    if (product.facadesEnabled)
-      calcNonLdspFacades(
-        product.facades?.filter((f: any) => !f.mezzanineId),
-        mainH,
-        'Фасад осн.',
-      );
-    if (product.mezzanineEnabled && product.mezzanine?.facadesEnabled)
-      calcNonLdspFacades(
-        product.mezzanine?.facades,
-        product.mezzanine.height,
-        'Фасад антр.',
-      );
-
-    /* ═══ Back wall ═══ */
-    if (product.backWallEnabled && product.backWallMaterialId) {
-      const bwMat = findMat(product, product.backWallMaterialId);
-      const bwPrice = matPrice.get(product.backWallMaterialId) ?? 0;
-      const bwCalc = bwMat?.calcType ?? 'SHEET';
-      const bwAreaM2 = (W / 1000) * (mainH / 1000);
-      let bwCost = 0;
-      let bwQty = 0;
-      let bwUnit = 'м²';
-      if (bwCalc === 'SHEET') {
-        const sL = bwMat?.length ?? 2800;
-        const sW2 = bwMat?.width ?? 2070;
-        const sArea = (sL / 1000) * (sW2 / 1000);
-        bwQty = sArea > 0 ? Math.ceil(bwAreaM2 / sArea) : 0;
-        bwCost = bwQty * bwPrice;
-        bwUnit = 'л.';
+      if (calcType === 'SHEET') {
+        const sheetL = mat?.length ?? 2800;
+        const sheetW = mat?.width ?? 2070;
+        const sheetAreaVal = (sheetL / 1000) * (sheetW / 1000);
+        const sheets = sheetAreaVal > 0 ? Math.ceil(areaM2 / sheetAreaVal) : 0;
+        cost = sheets * price;
+        qty = sheets;
+        unit = 'л.';
+        totalSheets += sheets;
+        /* store raw area for cross-product post-correction */
+        (group as any)._sheetAreaVal = sheetAreaVal;
+      } else if (calcType === 'SQM') {
+        qty = Math.round(areaM2 * 100) / 100;
+        cost = areaM2 * price;
+        unit = 'м²';
       } else {
-        bwQty = +bwAreaM2.toFixed(2);
-        bwCost = bwAreaM2 * bwPrice;
-        bwUnit = 'м²';
+        /* LM: use accumulated length if available, otherwise derive from area */
+        const lengthM =
+          group.lengthMm > 0
+            ? group.lengthMm / 1000
+            : mat?.width
+              ? group.areaMm2 / mat.width / 1000
+              : areaM2;
+        qty = Math.round(lengthM * 100) / 100;
+        cost = lengthM * price;
+        unit = 'м.п.';
       }
-      materialCost += bwCost;
+
+      materialCost += cost;
+
+      const typeName = mat?.materialType?.name ?? '';
+      const brand = mat?.brand ?? '';
+
+      const componentsSuffix =
+        group.components.size > 0
+          ? ` (${[...group.components].join(', ')})`
+          : '';
+
       details.push({
-        id: 'backwall',
+        id: `mat-${matId}`,
         type: 'material',
-        label: `Зад. стенка осн. ${bwMat?.materialType?.name ?? 'ХДФ'} ${W}×${mainH}`,
-        materialId: product.backWallMaterialId,
-        materialType: bwMat?.materialType?.name ?? 'ХДФ',
-        brand: bwMat?.brand ?? '',
-        qty: bwQty,
-        unit: bwUnit,
-        unitPrice: Math.round(bwQty > 0 ? bwCost / bwQty : 0),
-        cost: Math.round(bwCost),
+        label: (typeName || 'Материал') + componentsSuffix,
+        materialId: matId,
+        materialType: typeName,
+        brand,
+        qty,
+        unit,
+        unitPrice: price,
+        cost: Math.round(cost),
         enabled: true,
+        ...(calcType === 'SHEET'
+          ? {
+              rawAreaMm2: group.areaMm2,
+              sheetArea: (group as any)._sheetAreaVal,
+            }
+          : {}),
       });
     }
 
-    // Mezzanine back wall
-    if (
-      product.mezzanineEnabled &&
-      product.mezzanine?.backWallEnabled &&
-      product.mezzanine?.backWallMaterialId
-    ) {
-      const mez = product.mezzanine;
-      const bwMat = findMat(product, mez.backWallMaterialId);
-      const bwPrice = matPrice.get(mez.backWallMaterialId) ?? 0;
-      const bwCalc = bwMat?.calcType ?? 'SHEET';
-      const bwAreaM2 = (W / 1000) * (mez.height / 1000);
-      let bwCost = 0;
-      let bwQty = 0;
-      let bwUnit = 'м²';
-      if (bwCalc === 'SHEET') {
-        const sL = bwMat?.length ?? 2800;
-        const sW2 = bwMat?.width ?? 2070;
-        const sArea = (sL / 1000) * (sW2 / 1000);
-        bwQty = sArea > 0 ? Math.ceil(bwAreaM2 / sArea) : 0;
-        bwCost = bwQty * bwPrice;
-        bwUnit = 'л.';
-      } else {
-        bwQty = +bwAreaM2.toFixed(2);
-        bwCost = bwAreaM2 * bwPrice;
-        bwUnit = 'м²';
-      }
-      materialCost += bwCost;
-      details.push({
-        id: 'mez-backwall',
-        type: 'material',
-        label: `Зад. стенка антр. ${bwMat?.materialType?.name ?? 'ХДФ'} ${W}×${mez.height}`,
-        materialId: mez.backWallMaterialId,
-        materialType: bwMat?.materialType?.name ?? 'ХДФ',
-        brand: bwMat?.brand ?? '',
-        qty: bwQty,
-        unit: bwUnit,
-        unitPrice: Math.round(bwQty > 0 ? bwCost / bwQty : 0),
-        cost: Math.round(bwCost),
-        enabled: true,
-      });
-    }
+    /* ═══ EDGE BANDING ═══ */
+    const edgeLm = totalSheets * 25 + nonSheetPerimLm;
 
-    /* ═══ False facades ═══ */
-    let falseFacadePerimLm = 0;
-    if (
-      product.falseFacadesEnabled &&
-      product.falseFacadeQty > 0 &&
-      product.falseFacadeMaterialId
-    ) {
-      const ffMat = findMat(product, product.falseFacadeMaterialId);
-      const ffPrice = matPrice.get(product.falseFacadeMaterialId) ?? 0;
-      const ffCalc = ffMat?.calcType ?? 'SQM';
-      const ffH = mainH; // ограничение по высоте основной части
-      const ffAreaM2 = (D / 1000) * (ffH / 1000) * product.falseFacadeQty;
-      let ffCost = 0;
-      let ffQty = 0;
-      let ffUnit = 'м²';
-      if (ffCalc === 'SHEET') {
-        const sL = ffMat?.length ?? 2800;
-        const sW2 = ffMat?.width ?? 2070;
-        const sArea = (sL / 1000) * (sW2 / 1000);
-        ffQty = sArea > 0 ? Math.ceil(ffAreaM2 / sArea) : 0;
-        ffCost = ffQty * ffPrice;
-        ffUnit = 'л.';
-      } else if (ffCalc === 'LM') {
-        ffQty = +((ffH / 1000) * product.falseFacadeQty).toFixed(2);
-        ffCost = ffQty * ffPrice;
-        ffUnit = 'м.п.';
-      } else {
-        ffQty = +ffAreaM2.toFixed(2);
-        ffCost = ffAreaM2 * ffPrice;
-        ffUnit = 'м²';
-      }
-      materialCost += ffCost;
-      // accumulate perimeter for edge banding
-      falseFacadePerimLm += ((2 * (D + ffH)) / 1000) * product.falseFacadeQty;
-      details.push({
-        id: 'false-facade',
-        type: 'material',
-        label: `Фальш осн. ${ffMat?.materialType?.name ?? ''} ${D}×${ffH}, ${product.falseFacadeQty} шт`,
-        materialId: product.falseFacadeMaterialId,
-        materialType: ffMat?.materialType?.name ?? '',
-        brand: ffMat?.brand ?? '',
-        qty: ffQty,
-        unit: ffUnit,
-        unitPrice: Math.round(ffQty > 0 ? ffCost / ffQty : 0),
-        cost: Math.round(ffCost),
-        enabled: true,
-      });
-    }
-
-    if (
-      product.mezzanineEnabled &&
-      product.mezzanine?.falseFacadesEnabled &&
-      product.mezzanine?.falseFacadeQty > 0
-    ) {
-      const mez = product.mezzanine;
-      if (mez.falseFacadeMaterialId) {
-        const mezFfMat = findMat(product, mez.falseFacadeMaterialId);
-        const ffPrice = matPrice.get(mez.falseFacadeMaterialId) ?? 0;
-        const ffCalc = mezFfMat?.calcType ?? 'SQM';
-        const ffH = mez.height; // ограничение по высоте антресоли
-        const ffAreaM2 = (D / 1000) * (ffH / 1000) * mez.falseFacadeQty;
-        let ffCost = 0;
-        let ffQty = 0;
-        let ffUnit = 'м²';
-        if (ffCalc === 'SHEET') {
-          const sL = mezFfMat?.length ?? 2800;
-          const sW2 = mezFfMat?.width ?? 2070;
-          const sArea = (sL / 1000) * (sW2 / 1000);
-          ffQty = sArea > 0 ? Math.ceil(ffAreaM2 / sArea) : 0;
-          ffCost = ffQty * ffPrice;
-          ffUnit = 'л.';
-        } else if (ffCalc === 'LM') {
-          ffQty = +((ffH / 1000) * mez.falseFacadeQty).toFixed(2);
-          ffCost = ffQty * ffPrice;
-          ffUnit = 'м.п.';
-        } else {
-          ffQty = +ffAreaM2.toFixed(2);
-          ffCost = ffAreaM2 * ffPrice;
-          ffUnit = 'м²';
-        }
-        materialCost += ffCost;
-        // accumulate perimeter for edge banding
-        falseFacadePerimLm += ((2 * (D + ffH)) / 1000) * mez.falseFacadeQty;
-        details.push({
-          id: 'mez-false-facade',
-          type: 'material',
-          label: `Фальш антр. ${mezFfMat?.materialType?.name ?? ''} ${D}×${ffH}, ${mez.falseFacadeQty} шт`,
-          materialId: mez.falseFacadeMaterialId,
-          materialType: mezFfMat?.materialType?.name ?? '',
-          brand: mezFfMat?.brand ?? '',
-          qty: ffQty,
-          unit: ffUnit,
-          unitPrice: Math.round(ffQty > 0 ? ffCost / ffQty : 0),
-          cost: Math.round(ffCost),
-          enabled: true,
-        });
-      }
-    }
-
-    /* ═══ Countertop ═══ */
-    if (product.countertopEnabled && product.countertop) {
-      const ct = product.countertop;
-      if (ct.materialId) {
-        const ctMat = findMat(product, ct.materialId);
-        const ctPrice = matPrice.get(ct.materialId) ?? 0;
-        const ctCalc = ctMat?.calcType ?? 'SHEET';
-        let ctCost = 0;
-        let ctQty = 0;
-        let ctUnit = 'м²';
-        if (ctCalc === 'SHEET') {
-          const sL = ctMat?.length ?? 2800;
-          ctQty = Math.ceil(ct.width / sL);
-          ctCost = ctQty * ctPrice;
-          ctUnit = 'л.';
-        } else if (ctCalc === 'SQM') {
-          const areaM2 = (ct.width / 1000) * (ct.depth / 1000);
-          ctQty = +areaM2.toFixed(2);
-          ctCost = areaM2 * ctPrice;
-          ctUnit = 'м²';
-        } else {
-          ctQty = +(ct.width / 1000).toFixed(2);
-          ctCost = (ct.width / 1000) * ctPrice;
-          ctUnit = 'м.п.';
-        }
-        materialCost += ctCost;
-        details.push({
-          id: 'countertop',
-          type: 'material',
-          label: `Столешница ${ctMat?.materialType?.name ?? ''} ${ct.width}×${ct.depth}`,
-          materialId: ct.materialId,
-          materialType: ctMat?.materialType?.name ?? '',
-          brand: ctMat?.brand ?? '',
-          qty: ctQty,
-          unit: ctUnit,
-          unitPrice: Math.round(ctQty > 0 ? ctCost / ctQty : 0),
-          cost: Math.round(ctCost),
-          enabled: true,
-        });
-      }
-      if (ct.apronEnabled && ct.apronMaterialId) {
-        const apMat = findMat(product, ct.apronMaterialId);
-        const apPrice = matPrice.get(ct.apronMaterialId) ?? 0;
-        const apCalc = apMat?.calcType ?? 'SHEET';
-        const apW = ct.apronWidth ?? ct.width;
-        const apH = ct.apronHeight ?? 600;
-        let apCost = 0;
-        let apQty = 0;
-        let apUnit = 'м²';
-        if (apCalc === 'SHEET') {
-          const sL = apMat?.length ?? 2800;
-          apQty = Math.ceil(apW / sL);
-          apCost = apQty * apPrice;
-          apUnit = 'л.';
-        } else if (apCalc === 'SQM') {
-          const areaM2 = (apW / 1000) * (apH / 1000);
-          apQty = +areaM2.toFixed(2);
-          apCost = areaM2 * apPrice;
-          apUnit = 'м²';
-        } else {
-          apQty = +(apW / 1000).toFixed(2);
-          apCost = (apW / 1000) * apPrice;
-          apUnit = 'м.п.';
-        }
-        materialCost += apCost;
-        details.push({
-          id: 'apron',
-          type: 'material',
-          label: `Фартук ${apMat?.materialType?.name ?? ''} ${apW}×${apH}`,
-          materialId: ct.apronMaterialId,
-          materialType: apMat?.materialType?.name ?? '',
-          brand: apMat?.brand ?? '',
-          qty: apQty,
-          unit: apUnit,
-          unitPrice: Math.round(apQty > 0 ? apCost / apQty : 0),
-          cost: Math.round(apCost),
-          enabled: true,
-        });
-      }
-    }
-
-    /* ═══════════ HARDWARE ═══════════ */
-
-    /* Hinges: ≤699→2, 700-1199→3, 1200-1699→4, 1700-2199→5, ... */
-    let totalHinges = 0;
-    const calcHinges = (facades: any[], maxH: number) => {
-      if (!facades) return;
-      for (const f of facades) {
-        const facadeH = Math.min(f.height, maxH);
-        const perFacade = 2 + Math.max(0, Math.floor((facadeH - 200) / 500));
-        totalHinges += perFacade * f.qty;
-      }
-    };
-    if (product.facadesEnabled)
-      calcHinges(
-        product.facades?.filter((f: any) => !f.mezzanineId),
-        mainH,
-      );
-    if (product.mezzanineEnabled && product.mezzanine?.facadesEnabled)
-      calcHinges(product.mezzanine?.facades, product.mezzanine.height);
-    if (totalHinges > 0) {
-      const hingePrice = hwPrice.get('Петли') ?? 0;
-      const hingeCost = totalHinges * hingePrice;
-      hardwareCost += hingeCost;
-      details.push({
-        id: 'hinges',
-        type: 'hardware',
-        label: `Петли (${totalHinges} шт.)`,
-        hardwareType: 'Петли',
-        brand: '',
-        qty: totalHinges,
-        unit: 'шт.',
-        unitPrice: hingePrice,
-        cost: Math.round(hingeCost),
-        enabled: true,
-      });
-    }
-
-    /* Handles — only from facades with openType=HANDLE */
-    let totalHandles = 0;
-    const collectHandles = (facades: any[], drawers: any[]) => {
-      for (const f of facades ?? []) {
-        if (f.openType !== 'TIP_ON' && f.handleQty > 0)
-          totalHandles += f.handleQty * f.qty;
-      }
-      for (const dr of drawers ?? []) {
-        if (dr.handleQty > 0) totalHandles += dr.handleQty * dr.qty;
-      }
-    };
-    collectHandles(
-      product.facadesEnabled
-        ? product.facades?.filter((f: any) => !f.mezzanineId)
-        : [],
-      product.drawersEnabled
-        ? product.drawers?.filter((d: any) => !d.mezzanineId)
-        : [],
-    );
-    if (product.mezzanineEnabled && product.mezzanine) {
-      collectHandles(
-        product.mezzanine.facadesEnabled ? product.mezzanine.facades : [],
-        product.mezzanine.drawersEnabled ? product.mezzanine.drawers : [],
-      );
-    }
-    if (totalHandles > 0) {
-      const handlePrice = hwPrice.get('Ручки') ?? 0;
-      const handleCost = totalHandles * handlePrice;
-      hardwareCost += handleCost;
-      details.push({
-        id: 'handles',
-        type: 'hardware',
-        label: `Ручки (${totalHandles} шт.)`,
-        hardwareType: 'Ручки',
-        brand: '',
-        qty: totalHandles,
-        unit: 'шт.',
-        unitPrice: handlePrice,
-        cost: Math.round(handleCost),
-        enabled: true,
-      });
-    }
-
-    /* Tip-On — from all facades (main + mezzanine) with openType=TIP_ON */
-    let totalTipOn = 0;
-    const collectTipOn = (facades: any[]) => {
-      for (const f of facades ?? []) {
-        if (f.openType === 'TIP_ON') totalTipOn += f.qty;
-      }
-    };
-    if (product.facadesEnabled) {
-      collectTipOn(product.facades?.filter((f: any) => !f.mezzanineId));
-    }
-    if (product.mezzanineEnabled && product.mezzanine?.facadesEnabled) {
-      collectTipOn(product.mezzanine.facades);
-    }
-    if (totalTipOn > 0) {
-      const tipOnPrice = hwPrice.get('Tip-On') ?? 0;
-      const tipOnCost = totalTipOn * tipOnPrice;
-      hardwareCost += tipOnCost;
-      details.push({
-        id: 'tip-on',
-        type: 'hardware',
-        label: `Tip-On (${totalTipOn} шт.)`,
-        hardwareType: 'Tip-On',
-        brand: '',
-        qty: totalTipOn,
-        unit: 'шт.',
-        unitPrice: tipOnPrice,
-        cost: Math.round(tipOnCost),
-        enabled: true,
-      });
-    }
-
-    /* Legs: only for main sections (NOT mezzanine per TZ) */
-    if (totalSectionQty > 0) {
-      const wSection = W / totalSectionQty;
-      const legsPerSection =
-        4 + 2 * Math.max(0, Math.floor((wSection - 200) / 500));
-      const totalLegs = legsPerSection * totalSectionQty;
-      const legPrice = hwPrice.get('Ножки') ?? 0;
-      const legCost = totalLegs * legPrice;
-      hardwareCost += legCost;
-      details.push({
-        id: 'legs',
-        type: 'hardware',
-        label: `Ножки (${totalLegs} шт.)`,
-        hardwareType: 'Ножки',
-        brand: '',
-        qty: totalLegs,
-        unit: 'шт.',
-        unitPrice: legPrice,
-        cost: Math.round(legCost),
-        enabled: true,
-      });
-    }
-
-    /* Shelf holders: 4 × sum(shelf_qty) */
-    const totalShelfHolders = 4 * (totalShelfQty + mezTotalShelfQty);
-    if (totalShelfHolders > 0) {
-      const shPrice = hwPrice.get('Полкодержатели') ?? 0;
-      const shCost = totalShelfHolders * shPrice;
-      hardwareCost += shCost;
-      details.push({
-        id: 'shelf-holders',
-        type: 'hardware',
-        label: `Полкодержатели (${totalShelfHolders} шт.)`,
-        hardwareType: 'Полкодержатели',
-        brand: '',
-        qty: totalShelfHolders,
-        unit: 'шт.',
-        unitPrice: shPrice,
-        cost: Math.round(shCost),
-        enabled: true,
-      });
-    }
-
-    /* Drawer slides: split by slideType (GUIDE vs TANDEM) */
-    let totalGuides = 0;
-    let totalTandems = 0;
-    const collectSlides = (drawers: any[]) => {
-      for (const dr of drawers ?? []) {
-        if (dr.slideType === 'TANDEM') {
-          totalTandems += dr.qty;
-        } else {
-          totalGuides += dr.qty;
-        }
-      }
-    };
-    if (product.drawersEnabled && product.drawers) {
-      collectSlides(product.drawers.filter((d: any) => !d.mezzanineId));
-    }
-    if (
-      product.mezzanineEnabled &&
-      product.mezzanine?.drawersEnabled &&
-      product.mezzanine?.drawers
-    ) {
-      collectSlides(product.mezzanine.drawers);
-    }
-    if (totalGuides > 0) {
-      const guidePrice = hwPrice.get('Направляющие') ?? 0;
-      const guideCost = totalGuides * guidePrice;
-      hardwareCost += guideCost;
-      details.push({
-        id: 'slides',
-        type: 'hardware',
-        label: `Направляющие (${totalGuides} шт.)`,
-        hardwareType: 'Направляющие',
-        brand: '',
-        qty: totalGuides,
-        unit: 'шт.',
-        unitPrice: guidePrice,
-        cost: Math.round(guideCost),
-        enabled: true,
-      });
-    }
-    if (totalTandems > 0) {
-      const tandemPrice = hwPrice.get('Тандем') ?? 0;
-      const tandemCost = totalTandems * tandemPrice;
-      hardwareCost += tandemCost;
-      details.push({
-        id: 'tandems',
-        type: 'hardware',
-        label: `Тандем (${totalTandems} шт.)`,
-        hardwareType: 'Тандем',
-        brand: '',
-        qty: totalTandems,
-        unit: 'шт.',
-        unitPrice: tandemPrice,
-        cost: Math.round(tandemCost),
-        enabled: true,
-      });
-    }
-
-    /* Konfirmats (approximate) */
-    const konfPrice = hwPrice.get('Конфирмат') ?? 0;
-    const konfQty = 20;
-    const konfCost = konfQty * konfPrice;
-    hardwareCost += konfCost;
-    if (konfCost > 0) {
-      details.push({
-        id: 'konfirmats',
-        type: 'hardware',
-        label: `Конфирмат (${konfQty} шт.)`,
-        hardwareType: 'Конфирмат',
-        brand: '',
-        qty: konfQty,
-        unit: 'шт.',
-        unitPrice: konfPrice,
-        cost: Math.round(konfCost),
-        enabled: true,
-      });
-    }
-
-    /* ═══ Edge banding (м.п.) ═══ */
-    // ЛДСП корпуса (main+mez) × 25 + ЛДСП фасады другого мат. × 25
-    // + периметр не-ЛДСП фасадов + периметр фальш-фасадов
-    const edgeLm =
-      (bodySheets + mezBodySheets) * 25 +
-      otherLdspSheets * 25 +
-      nonLdspFacadePerimLm +
-      falseFacadePerimLm;
-
-    // Find edge material from user materials (type = Кромка)
     const edgeMat = userMaterials?.find(
       (um: any) =>
         um.material?.materialType?.name === 'Кромка' ||
@@ -2427,6 +2098,293 @@ export class CalculationsService {
       });
     }
 
+    /* ═══════════ HARDWARE ═══════════ */
+
+    /* ── helper: resolve hardware price & brand by ID, fallback to type name ── */
+    const resolveHw = (
+      hwId: string | null | undefined,
+      typeName: string,
+    ): { price: number; brand: string } => {
+      if (hwId && hwIdMap) {
+        const entry = hwIdMap.get(hwId);
+        if (entry) return { price: entry.price, brand: entry.brand };
+      }
+      return { price: hwPrice.get(typeName) ?? 0, brand: '' };
+    };
+
+    /* Hinges: ≤699→2, 700-1199→3, ... — per facade, using facade’s hingeHardwareId */
+    {
+      let totalHinges = 0;
+      let hingeCost = 0;
+      let hingeBrand = '';
+      let hingeUnitPrice = 0;
+      if (product.facadesEnabled && product.facades) {
+        for (const f of product.facades) {
+          const perFacade = 2 + Math.max(0, Math.floor((f.height - 200) / 500));
+          const qty = perFacade * f.qty;
+          const hw = resolveHw(f.hingeHardwareId, 'Петли');
+          totalHinges += qty;
+          hingeCost += qty * hw.price;
+          if (hw.brand) hingeBrand = hw.brand;
+          hingeUnitPrice = hw.price;
+        }
+      }
+      if (totalHinges > 0) {
+        hardwareCost += hingeCost;
+        details.push({
+          id: 'hinges',
+          type: 'hardware',
+          label: `Петли (${totalHinges} шт.)`,
+          hardwareType: 'Петли',
+          brand: hingeBrand,
+          qty: totalHinges,
+          unit: 'шт.',
+          unitPrice: hingeUnitPrice,
+          cost: Math.round(hingeCost),
+          enabled: true,
+        });
+      }
+    }
+
+    /* Handles — from facades (handleHardwareId) */
+    {
+      let totalHandles = 0;
+      let handleCost = 0;
+      let handleBrand = '';
+      let handleUnitPrice = 0;
+      if (product.facadesEnabled) {
+        for (const f of product.facades ?? []) {
+          if (f.openType !== 'TIP_ON' && f.handleQty > 0) {
+            const qty = f.handleQty * f.qty;
+            const hw = resolveHw(f.handleHardwareId, 'Ручки');
+            totalHandles += qty;
+            handleCost += qty * hw.price;
+            if (hw.brand) handleBrand = hw.brand;
+            handleUnitPrice = hw.price;
+          }
+        }
+      }
+      if (product.drawersEnabled) {
+        for (const dr of product.drawers ?? []) {
+          if (dr.handleQty > 0) {
+            const qty = dr.handleQty * dr.qty;
+            const hw = resolveHw(null, 'Ручки');
+            totalHandles += qty;
+            handleCost += qty * hw.price;
+            if (!handleBrand && hw.brand) handleBrand = hw.brand;
+            if (!handleUnitPrice) handleUnitPrice = hw.price;
+          }
+        }
+      }
+      if (totalHandles > 0) {
+        hardwareCost += handleCost;
+        details.push({
+          id: 'handles',
+          type: 'hardware',
+          label: `Ручки (${totalHandles} шт.)`,
+          hardwareType: 'Ручки',
+          brand: handleBrand,
+          qty: totalHandles,
+          unit: 'шт.',
+          unitPrice: handleUnitPrice,
+          cost: Math.round(handleCost),
+          enabled: true,
+        });
+      }
+    }
+
+    /* Tip-On — from facades with openType=TIP_ON (tipOnHardwareId) */
+    {
+      let totalTipOn = 0;
+      let tipOnCost = 0;
+      let tipOnBrand = '';
+      let tipOnUnitPrice = 0;
+      if (product.facadesEnabled) {
+        for (const f of product.facades ?? []) {
+          if (f.openType === 'TIP_ON') {
+            const qty = f.qty;
+            const hw = resolveHw(f.tipOnHardwareId, 'Tip-On');
+            totalTipOn += qty;
+            tipOnCost += qty * hw.price;
+            if (hw.brand) tipOnBrand = hw.brand;
+            tipOnUnitPrice = hw.price;
+          }
+        }
+      }
+      if (totalTipOn > 0) {
+        hardwareCost += tipOnCost;
+        details.push({
+          id: 'tip-on',
+          type: 'hardware',
+          label: `Tip-On (${totalTipOn} шт.)`,
+          hardwareType: 'Tip-On',
+          brand: tipOnBrand,
+          qty: totalTipOn,
+          unit: 'шт.',
+          unitPrice: tipOnUnitPrice,
+          cost: Math.round(tipOnCost),
+          enabled: true,
+        });
+      }
+    }
+
+    /* Legs: per section (legsHardwareId) */
+    if (product.sectionsEnabled && product.sections?.length > 0) {
+      let totalLegs = 0;
+      let legCost = 0;
+      let legBrand = '';
+      let legUnitPrice = 0;
+      for (const sec of product.sections) {
+        if (!sec.legsEnabled) continue;
+        const legsPerSection =
+          4 + 2 * Math.max(0, Math.floor((sec.width - 200) / 500));
+        const qty = legsPerSection * sec.qty;
+        const hw = resolveHw(sec.legsHardwareId, 'Ножки');
+        totalLegs += qty;
+        legCost += qty * hw.price;
+        if (hw.brand) legBrand = hw.brand;
+        legUnitPrice = hw.price;
+      }
+      if (totalLegs > 0) {
+        hardwareCost += legCost;
+        details.push({
+          id: 'legs',
+          type: 'hardware',
+          label: `Ножки (${totalLegs} шт.)`,
+          hardwareType: 'Ножки',
+          brand: legBrand,
+          qty: totalLegs,
+          unit: 'шт.',
+          unitPrice: legUnitPrice,
+          cost: Math.round(legCost),
+          enabled: true,
+        });
+      }
+    }
+
+    /* Shelf holders: 4 × qty per shelf (holderHardwareId) */
+    {
+      let totalShelfHolders = 0;
+      let shCost = 0;
+      let shBrand = '';
+      let shUnitPrice = 0;
+      if (product.shelvesEnabled && product.shelves) {
+        for (const sh of product.shelves) {
+          const qty = 4 * sh.qty;
+          const hw = resolveHw(sh.holderHardwareId, 'Полкодержатели');
+          totalShelfHolders += qty;
+          shCost += qty * hw.price;
+          if (hw.brand) shBrand = hw.brand;
+          shUnitPrice = hw.price;
+        }
+      }
+      if (totalShelfHolders > 0) {
+        hardwareCost += shCost;
+        details.push({
+          id: 'shelf-holders',
+          type: 'hardware',
+          label: `Полкодержатели (${totalShelfHolders} шт.)`,
+          hardwareType: 'Полкодержатели',
+          brand: shBrand,
+          qty: totalShelfHolders,
+          unit: 'шт.',
+          unitPrice: shUnitPrice,
+          cost: Math.round(shCost),
+          enabled: true,
+        });
+      }
+    }
+
+    /* Drawer slides: split by slideType, using slideHardwareId */
+    {
+      let totalGuides = 0;
+      let guideCost = 0;
+      let guideBrand = '';
+      let guideUnitPrice = 0;
+      let totalTandems = 0;
+      let tandemCost = 0;
+      let tandemBrand = '';
+      let tandemUnitPrice = 0;
+      if (product.drawersEnabled && product.drawers) {
+        for (const dr of product.drawers) {
+          const qty = dr.qty;
+          if (dr.slideType === 'TANDEM') {
+            const hw = resolveHw(dr.slideHardwareId, 'Тандем');
+            totalTandems += qty;
+            tandemCost += qty * hw.price;
+            if (hw.brand) tandemBrand = hw.brand;
+            tandemUnitPrice = hw.price;
+          } else {
+            const hw = resolveHw(dr.slideHardwareId, 'Направляющие');
+            totalGuides += qty;
+            guideCost += qty * hw.price;
+            if (hw.brand) guideBrand = hw.brand;
+            guideUnitPrice = hw.price;
+          }
+        }
+      }
+      if (totalGuides > 0) {
+        hardwareCost += guideCost;
+        details.push({
+          id: 'slides',
+          type: 'hardware',
+          label: `Направляющие (${totalGuides} шт.)`,
+          hardwareType: 'Направляющие',
+          brand: guideBrand,
+          qty: totalGuides,
+          unit: 'шт.',
+          unitPrice: guideUnitPrice,
+          cost: Math.round(guideCost),
+          enabled: true,
+        });
+      }
+      if (totalTandems > 0) {
+        hardwareCost += tandemCost;
+        details.push({
+          id: 'tandems',
+          type: 'hardware',
+          label: `Тандем (${totalTandems} шт.)`,
+          hardwareType: 'Тандем',
+          brand: tandemBrand,
+          qty: totalTandems,
+          unit: 'шт.',
+          unitPrice: tandemUnitPrice,
+          cost: Math.round(tandemCost),
+          enabled: true,
+        });
+      }
+    }
+
+    /* Konfirmats (approximate) */
+    let konfPrice = hwPrice.get('Конфирмат') ?? 0;
+    let konfBrand = '';
+    if (hwIdMap) {
+      for (const [, entry] of hwIdMap) {
+        if (entry.typeName === 'Конфирмат') {
+          konfPrice = entry.price;
+          konfBrand = entry.brand;
+          break;
+        }
+      }
+    }
+    const konfQty = 20;
+    const konfCost = konfQty * konfPrice;
+    hardwareCost += konfCost;
+    if (konfCost > 0) {
+      details.push({
+        id: 'konfirmats',
+        type: 'hardware',
+        label: `Конфирмат (${konfQty} шт.)`,
+        hardwareType: 'Конфирмат',
+        brand: konfBrand,
+        qty: konfQty,
+        unit: 'шт.',
+        unitPrice: konfPrice,
+        cost: Math.round(konfCost),
+        enabled: true,
+      });
+    }
+
     /* ═══ Extras ═══ */
     let extrasCost = 0;
     if (product.extrasEnabled && product.extras) {
@@ -2436,7 +2394,8 @@ export class CalculationsService {
         details.push({
           id: `extra-${ex.id}`,
           type: 'extra',
-          label: `Доп: ${ex.name}`,
+          label: 'Дополнительно',
+          brand: ex.name,
           qty: 1,
           unit: 'шт.',
           unitPrice: Math.round(c),
@@ -2448,18 +2407,19 @@ export class CalculationsService {
 
     const cleanPrice = materialCost + hardwareCost + extrasCost;
 
+    const dimensions =
+      dimW > 0 || dimH > 0 || dimD > 0 ? `${dimW}×${dimH}×${dimD}` : '-';
+
     return {
       productId: product.id,
       productType: product.productType.name,
-      dimensions: `${W}×${H}×${D}`,
+      dimensions,
       materialCost: Math.round(materialCost),
       hardwareCost: Math.round(hardwareCost),
       extrasCost: Math.round(extrasCost),
       cleanPrice: Math.round(cleanPrice),
-      bodySheets,
-      totalSheets: bodySheets + otherLdspSheets + mezBodySheets,
+      totalSheets,
       edgeLm,
-      bodyAreaMm2,
       details,
     };
   }
@@ -2480,6 +2440,15 @@ function toNum(val: any): number {
   if (val === null || val === undefined) return 0;
   if (val instanceof Decimal) return val.toNumber();
   return Number(val) || 0;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /** Convert /uploads/filename.ext to base64 data URI for self-contained HTML */
@@ -2532,26 +2501,28 @@ function stripQtyFromLabel(label: string): string {
 }
 
 function findMat(product: any, materialId: string): any {
-  if (product.bodyMaterial?.id === materialId) return product.bodyMaterial;
-  if (product.backWallMaterial?.id === materialId)
-    return product.backWallMaterial;
-  if (product.falseFacadeMaterial?.id === materialId)
-    return product.falseFacadeMaterial;
+  for (const s of product.sections ?? []) {
+    if (s.material?.id === materialId) return s.material;
+    if (s.backWallMaterial?.id === materialId) return s.backWallMaterial;
+  }
+  for (const p of product.partitions ?? []) {
+    if (p.material?.id === materialId) return p.material;
+  }
+  for (const sh of product.shelves ?? []) {
+    if (sh.material?.id === materialId) return sh.material;
+  }
   for (const f of product.facades ?? []) {
     if (f.material?.id === materialId) return f.material;
   }
-  if (product.countertop?.material?.id === materialId)
-    return product.countertop.material;
-  if (product.countertop?.apronMaterial?.id === materialId)
-    return product.countertop.apronMaterial;
-  if (product.mezzanine?.bodyMaterial?.id === materialId)
-    return product.mezzanine.bodyMaterial;
-  if (product.mezzanine?.backWallMaterial?.id === materialId)
-    return product.mezzanine.backWallMaterial;
-  if (product.mezzanine?.falseFacadeMaterial?.id === materialId)
-    return product.mezzanine.falseFacadeMaterial;
-  for (const f of product.mezzanine?.facades ?? []) {
-    if (f.material?.id === materialId) return f.material;
+  for (const ff of product.falseFacades ?? []) {
+    if (ff.material?.id === materialId) return ff.material;
+  }
+  for (const dr of product.drawers ?? []) {
+    if (dr.material?.id === materialId) return dr.material;
+  }
+  for (const ct of product.countertops ?? []) {
+    if (ct.material?.id === materialId) return ct.material;
+    if (ct.apronMaterial?.id === materialId) return ct.apronMaterial;
   }
   return null;
 }
@@ -2578,36 +2549,15 @@ function computeTierPrices(userMaterials: any[], userHardware: any[]) {
   }
 
   for (const [typeName, items] of Object.entries(matByType)) {
-    if (items.length < 2) {
-      materials[typeName] = [
-        { ...items[0], tier: 'standard' },
-        { ...items[0], tier: 'comfort' },
-        { ...items[0], tier: 'premium' },
-      ];
-      continue;
-    }
-
     const sorted = [...items].sort((a: any, b: any) => a.price - b.price);
-    const minP = sorted[0].price;
-    const maxP = sorted[sorted.length - 1].price;
-    const avg = (minP + maxP) / 2;
-
-    let comfIdx = 0;
-    let minDiff = Infinity;
-    for (let i = 0; i < sorted.length; i++) {
-      const diff = Math.abs(sorted[i].price - avg);
-      if (
-        diff < minDiff ||
-        (diff === minDiff && sorted[i].price < sorted[comfIdx].price)
-      ) {
-        minDiff = diff;
-        comfIdx = i;
-      }
-    }
-
+    /* Standard = cheapest, Premium = most expensive.
+       Comfort is NOT derived here — it uses the user's actual chosen material
+       (already in details[].unitPrice). We still include a comfort entry
+       that equals the cheapest for backward compat, but it is never used
+       for price replacement in the tier loop. */
     materials[typeName] = [
       { ...sorted[0], tier: 'standard' },
-      { ...sorted[comfIdx], tier: 'comfort' },
+      { ...sorted[0], tier: 'comfort' }, // placeholder, not used for price calc
       { ...sorted[sorted.length - 1], tier: 'premium' },
     ];
   }
@@ -2626,36 +2576,10 @@ function computeTierPrices(userMaterials: any[], userHardware: any[]) {
   }
 
   for (const [typeName, items] of Object.entries(hwByType)) {
-    if (items.length < 2) {
-      hardware[typeName] = [
-        { ...items[0], tier: 'standard' },
-        { ...items[0], tier: 'comfort' },
-        { ...items[0], tier: 'premium' },
-      ];
-      continue;
-    }
-
     const sorted = [...items].sort((a: any, b: any) => a.price - b.price);
-    const minP = sorted[0].price;
-    const maxP = sorted[sorted.length - 1].price;
-    const avg = (minP + maxP) / 2;
-
-    let comfIdx = 0;
-    let minDiff = Infinity;
-    for (let i = 0; i < sorted.length; i++) {
-      const diff = Math.abs(sorted[i].price - avg);
-      if (
-        diff < minDiff ||
-        (diff === minDiff && sorted[i].price < sorted[comfIdx].price)
-      ) {
-        minDiff = diff;
-        comfIdx = i;
-      }
-    }
-
     hardware[typeName] = [
       { ...sorted[0], tier: 'standard' },
-      { ...sorted[comfIdx], tier: 'comfort' },
+      { ...sorted[0], tier: 'comfort' }, // placeholder, comfort uses actual product prices
       { ...sorted[sorted.length - 1], tier: 'premium' },
     ];
   }

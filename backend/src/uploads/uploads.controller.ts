@@ -19,7 +19,7 @@ export class UploadsController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+    FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024 } }),
   )
   async upload(@UploadedFile() file: Express.Multer.File) {
     const url = await this.uploadsService.saveFile(file);

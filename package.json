@@ -10,6 +10,7 @@
     "install:all": "cd frontend && npm install && cd ../backend && npm install"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "tailwindcss": "^4.1.18"
   }
 }

@@ -79,6 +79,7 @@ export interface ServiceTemplate {
 export interface UserMaterial {
   id: string;
   price: string;
+  enabled: boolean;
   material: {
     id: string;
     brand: string | null;
@@ -93,6 +94,7 @@ export interface UserMaterial {
 export interface UserHardware {
   id: string;
   price: string;
+  enabled: boolean;
   hardware: {
     id: string;
     brand: string | null;
@@ -143,10 +145,8 @@ export interface ProductType {
 /** Lightweight product (list views) */
 export interface ProductSummary {
   id: string;
+  name: string;
   productType: ProductType;
-  width: number | null;
-  height: number | null;
-  depth: number | null;
 }
 
 /** Room in project list */
@@ -185,47 +185,49 @@ export interface MatOption {
   materialType: { name: string };
 }
 
+export interface HwOption {
+  id: string;
+  brand: string | null;
+  hardwareType: { name: string };
+}
+
 export interface SubItem {
   id?: string;
   qty: number;
   width?: number;
   height?: number;
+  depth?: number;
   materialId?: string;
-  isLdsp?: boolean;
+  backWallEnabled?: boolean;
+  backWallMaterialId?: string;
   handleQty?: number;
   openType?: FacadeOpenType;
   slideType?: DrawerSlideType;
-  mezzanineId?: string;
+  // hardware references
+  legsEnabled?: boolean;
+  legsHardwareId?: string;
+  hingeHardwareId?: string;
+  handleHardwareId?: string;
+  tipOnHardwareId?: string;
+  holderHardwareId?: string;
+  slideHardwareId?: string;
 }
 
-export interface MezzanineData {
-  id: string;
+export interface FalseFacadeItem {
+  id?: string;
+  qty: number;
   height: number;
-  bodyMaterialId: string | null;
-  sectionsEnabled: boolean;
-  backWallEnabled: boolean;
-  backWallMaterialId: string | null;
-  partitionsEnabled: boolean;
-  shelvesEnabled: boolean;
-  facadesEnabled: boolean;
-  falseFacadesEnabled: boolean;
-  falseFacadeQty: number;
-  falseFacadeMaterialId: string | null;
-  drawersEnabled: boolean;
-  sections: SubItem[];
-  partitions: SubItem[];
-  shelves: SubItem[];
-  facades: SubItem[];
-  drawers: SubItem[];
+  depth: number;
+  materialId?: string;
 }
 
 export interface CountertopData {
   id?: string;
-  materialId: string;
+  materialId?: string;
   width: number;
   depth: number;
   apronEnabled: boolean;
-  apronMaterialId: string | null;
+  apronMaterialId?: string | null;
   apronWidth: number | null;
   apronHeight: number | null;
 }
@@ -239,30 +241,21 @@ export interface ExtraItem {
 export interface ProductData {
   id: string;
   productType: ProductType;
-  width: number;
-  height: number;
-  depth: number;
-  bodyMaterialId?: string | null;
   sectionsEnabled: boolean;
-  backWallEnabled: boolean;
-  backWallMaterialId: string | null;
   partitionsEnabled: boolean;
   shelvesEnabled: boolean;
   facadesEnabled: boolean;
   falseFacadesEnabled: boolean;
-  falseFacadeQty: number;
-  falseFacadeMaterialId: string | null;
   drawersEnabled: boolean;
-  mezzanineEnabled: boolean;
   countertopEnabled: boolean;
   extrasEnabled: boolean;
   sections: SubItem[];
   partitions: SubItem[];
   shelves: SubItem[];
   facades: SubItem[];
+  falseFacades: FalseFacadeItem[];
   drawers: SubItem[];
-  mezzanine: MezzanineData | null;
-  countertop: CountertopData | null;
+  countertops: CountertopData[];
   extras: ExtraItem[];
   room: {
     project: { id: string; name: string };

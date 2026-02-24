@@ -22,7 +22,14 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/lib/api";
-import { ArrowLeft, FileText, History } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  History,
+  ImagePlus,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -47,6 +54,7 @@ interface DetailItem {
 interface ProductResult {
   productId: string;
   productType: string;
+  image?: string | null;
   dimensions: string;
   materialCost: number;
   hardwareCost: number;
@@ -132,6 +140,10 @@ interface CalcData {
   tierPrices?: TierPrices;
   enabledTiers?: string[];
   tierRoomsSnapshot?: Record<string, RoomResult[]>;
+  tierTotals?: Record<
+    string,
+    { totalForClient: number; cleanProfit: number; productsSum: number }
+  >;
   totals: Totals;
   technologistPercent: number;
   designerPercent: number;
@@ -159,6 +171,11 @@ function applyTierPrices(
   tierPrices: TierPrices,
   tier: Tier,
 ): RoomResult[] {
+  /* Comfort = user-selected materials, already in baseRooms. No replacement needed. */
+  if (tier === "comfort") {
+    return JSON.parse(JSON.stringify(baseRooms));
+  }
+
   const rooms: RoomResult[] = JSON.parse(JSON.stringify(baseRooms));
   for (const room of rooms) {
     for (const product of room.products) {
@@ -202,6 +219,122 @@ function applyTierPrices(
   return rooms;
 }
 
+/* ═══ Helper: compute totals for a set of rooms ═══ */
+function computeRoomTotals(
+  rooms: RoomResult[],
+  opts: {
+    techPct: number;
+    designPct: number;
+    assemblyPct: number;
+    sawPrice: number;
+    drillPrice: number;
+    edgePrice: number;
+    delivPrice: number;
+    discountPct: number;
+    profitType: "COEF" | "FIXED";
+    profitValue: number;
+    reservePct: number;
+  },
+) {
+  let productsSum = 0;
+  let productsSumNoReserve = 0;
+  let totalSheets = 0;
+  let totalEdgeLm = 0;
+  let totalProductCount = 0;
+  let materialSumRaw = 0;
+  let hardwareSumRaw = 0;
+  const roomSums: number[] = [];
+
+  for (const room of rooms) {
+    let roomSum = 0;
+    for (const pr of room.products) {
+      let pSum = 0;
+      for (const det of pr.details) {
+        if (det.enabled) {
+          const detCost = det.qty * det.unitPrice;
+          pSum += detCost;
+          if (det.type === "material") materialSumRaw += detCost;
+          else if (det.type === "hardware") hardwareSumRaw += detCost;
+        }
+      }
+      productsSumNoReserve += pSum;
+      pSum = Math.round(pSum * (1 + opts.reservePct / 100));
+      productsSum += pSum;
+      totalSheets += pr.totalSheets;
+      totalEdgeLm += pr.edgeLm;
+      totalProductCount++;
+      roomSum += pSum;
+    }
+    roomSums.push(roomSum);
+  }
+
+  const sawCost = totalSheets * opts.sawPrice;
+  const drillCost = totalSheets * opts.drillPrice;
+  const edgeCost = totalEdgeLm * opts.edgePrice;
+  const workshopTotal = sawCost + drillCost + edgeCost;
+
+  const marketPrice = (productsSumNoReserve + workshopTotal) * 2;
+  const techCost = (marketPrice * opts.techPct) / 100;
+  const designCost = (marketPrice * opts.designPct) / 100;
+  const assemblyCost = (marketPrice * opts.assemblyPct) / 100;
+
+  let deliveryCost = 0;
+  if (totalProductCount > 0) {
+    deliveryCost =
+      opts.delivPrice +
+      Math.max(0, totalProductCount - 1) * (opts.delivPrice / 3);
+  }
+
+  let totalForClient: number;
+  let cleanProfit: number;
+
+  const reserveAmount = productsSum - productsSumNoReserve;
+
+  if (opts.profitType === "COEF") {
+    const base =
+      (productsSumNoReserve + workshopTotal) * opts.profitValue + reserveAmount;
+    const disc = (base * opts.discountPct) / 100;
+    totalForClient = base - disc + deliveryCost;
+    cleanProfit =
+      base -
+      disc -
+      techCost -
+      designCost -
+      deliveryCost -
+      assemblyCost -
+      (productsSum + workshopTotal);
+  } else {
+    const base = productsSum + workshopTotal;
+    const disc = (base * opts.discountPct) / 100;
+    totalForClient = base - disc + opts.profitValue + deliveryCost;
+    cleanProfit = opts.profitValue;
+  }
+
+  const materialSum = Math.round(materialSumRaw * (1 + opts.reservePct / 100));
+  const hardwareSum = Math.round(hardwareSumRaw * (1 + opts.reservePct / 100));
+
+  return {
+    productsSum: Math.round(productsSum),
+    materialSum,
+    hardwareSum,
+    workshopTotal: Math.round(workshopTotal),
+    sawCost: Math.round(sawCost),
+    drillCost: Math.round(drillCost),
+    edgeCost: Math.round(edgeCost),
+    totalSheets,
+    totalEdgeLm: Math.round(totalEdgeLm * 100) / 100,
+    marketPrice: Math.round(marketPrice),
+    techCost: Math.round(techCost),
+    designCost: Math.round(designCost),
+    assemblyCost: Math.round(assemblyCost),
+    deliveryCost: Math.round(deliveryCost),
+    totalProductCount,
+    cleanProfit: Math.round(cleanProfit),
+    totalForClient: Math.round(totalForClient),
+    roomSums,
+  };
+}
+
 /* ═══ Component ═══ */
 export default function DetailPage({
   params,
@@ -215,6 +348,9 @@ export default function DetailPage({
   const [calc, setCalc] = useState<Calc | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingProductKey, setUploadingProductKey] = useState<string | null>(
+    null,
+  );
 
   /* Active tier */
   const [activeTier, setActiveTier] = useState<Tier>("comfort");
@@ -312,117 +448,39 @@ export default function DetailPage({
   }, [fetchCalc]);
 
   /* ═══ Client-side recalculation for active tier ═══ */
-  const computed = useMemo(() => {
-    let productsSum = 0;
-    let productsSumNoReserve = 0;
-    let totalSheets = 0;
-    let totalEdgeLm = 0;
-    let totalProductCount = 0;
-    let materialSumRaw = 0;
-    let hardwareSumRaw = 0;
-    const roomSums: number[] = [];
+  const computeOpts = useMemo(
+    () => ({
+      techPct,
+      designPct,
+      assemblyPct,
+      sawPrice,
+      drillPrice,
+      edgePrice,
+      delivPrice,
+      discountPct,
+      profitType,
+      profitValue,
+      reservePct,
+    }),
+    [
+      techPct,
+      designPct,
+      assemblyPct,
+      sawPrice,
+      drillPrice,
+      edgePrice,
+      delivPrice,
+      discountPct,
+      profitType,
+      profitValue,
+      reservePct,
+    ],
+  );
 
-    for (const room of rooms) {
-      let roomSum = 0;
-      for (const pr of room.products) {
-        let pSum = 0;
-        for (const det of pr.details) {
-          if (det.enabled) {
-            const detCost = det.qty * det.unitPrice;
-            pSum += detCost;
-            if (det.type === "material") materialSumRaw += detCost;
-            else if (det.type === "hardware") hardwareSumRaw += detCost;
-          }
-        }
-        productsSumNoReserve += pSum;
-        pSum = Math.round(pSum * (1 + reservePct / 100));
-        productsSum += pSum;
-        totalSheets += pr.totalSheets;
-        totalEdgeLm += pr.edgeLm;
-        totalProductCount++;
-        roomSum += pSum;
-      }
-      roomSums.push(roomSum);
-    }
-
-    const sawCost = totalSheets * sawPrice;
-    const drillCost = totalSheets * drillPrice;
-    const edgeCost = totalEdgeLm * edgePrice;
-    const workshopTotal = sawCost + drillCost + edgeCost;
-
-    const marketPrice = (productsSumNoReserve + workshopTotal) * 2;
-    const techCost = (marketPrice * techPct) / 100;
-    const designCost = (marketPrice * designPct) / 100;
-    const assemblyCost = (marketPrice * assemblyPct) / 100;
-
-    let deliveryCost = 0;
-    if (totalProductCount > 0) {
-      deliveryCost =
-        delivPrice + Math.max(0, totalProductCount - 1) * (delivPrice / 3);
-    }
-
-    let totalForClient: number;
-    let cleanProfit: number;
-
-    const reserveAmount = productsSum - productsSumNoReserve;
-
-    if (profitType === "COEF") {
-      const base =
-        (productsSumNoReserve + workshopTotal) * profitValue + reserveAmount;
-      const disc = (base * discountPct) / 100;
-      totalForClient = base - disc;
-      cleanProfit =
-        base -
-        disc -
-        techCost -
-        designCost -
-        deliveryCost -
-        assemblyCost -
-        (productsSum + workshopTotal);
-    } else {
-      const base = productsSum + workshopTotal;
-      const disc = (base * discountPct) / 100;
-      totalForClient = base - disc + profitValue;
-      cleanProfit = profitValue;
-    }
-
-    const materialSum = Math.round(materialSumRaw * (1 + reservePct / 100));
-    const hardwareSum = Math.round(hardwareSumRaw * (1 + reservePct / 100));
-
-    return {
-      productsSum: Math.round(productsSum),
-      materialSum,
-      hardwareSum,
-      workshopTotal: Math.round(workshopTotal),
-      sawCost: Math.round(sawCost),
-      drillCost: Math.round(drillCost),
-      edgeCost: Math.round(edgeCost),
-      totalSheets,
-      totalEdgeLm: Math.round(totalEdgeLm * 100) / 100,
-      marketPrice: Math.round(marketPrice),
-      techCost: Math.round(techCost),
-      designCost: Math.round(designCost),
-      assemblyCost: Math.round(assemblyCost),
-      deliveryCost: Math.round(deliveryCost),
-      totalProductCount,
-      cleanProfit: Math.round(cleanProfit),
-      totalForClient: Math.round(totalForClient),
-      roomSums,
-    };
-  }, [
-    rooms,
-    techPct,
-    designPct,
-    assemblyPct,
-    sawPrice,
-    drillPrice,
-    edgePrice,
-    delivPrice,
-    discountPct,
-    profitType,
-    profitValue,
-    reservePct,
-  ]);
+  const computed = useMemo(
+    () => computeRoomTotals(rooms, computeOpts),
+    [rooms, computeOpts],
+  );
 
   /* ═══ Handlers ═══ */
   const toggleDetail = (ri: number, pi: number, di: number) => {
@@ -497,11 +555,77 @@ export default function DetailPage({
     );
   };
 
+  const setProductImageInAllTiers = useCallback(
+    (ri: number, pi: number, image: string | null) => {
+      setTierRooms((prev) => {
+        const next = { ...prev };
+        (["standard", "comfort", "premium"] as Tier[]).forEach((tier) => {
+          next[tier] = prev[tier].map((room, roomIndex) => {
+            if (roomIndex !== ri) return room;
+            return {
+              ...room,
+              products: room.products.map((product, productIndex) =>
+                productIndex === pi ? { ...product, image } : product,
+              ),
+            };
+          });
+        });
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleProductImageUpload = useCallback(
+    async (ri: number, pi: number, file: File | null) => {
+      if (!file) return;
+      const key = `${ri}-${pi}`;
+      setUploadingProductKey(key);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await api.post("/uploads", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setProductImageInAllTiers(ri, pi, res.data.url as string);
+        toast.success(t("detail.productImageUploaded"));
+      } catch {
+        toast.error(t("common.error"));
+      } finally {
+        setUploadingProductKey(null);
+      }
+    },
+    [setProductImageInAllTiers, t],
+  );
+
+  const handleRemoveProductImage = useCallback(
+    (ri: number, pi: number) => {
+      setProductImageInAllTiers(ri, pi, null);
+      toast.success(t("detail.productImageRemoved"));
+    },
+    [setProductImageInAllTiers, t],
+  );
+
   const handleSave = async () => {
     if (!calc) return;
     setSaving(true);
     try {
       const d = calc.data;
+
+      /* Compute tierTotals for all 3 tiers */
+      const tierTotals: Record<
+        string,
+        { totalForClient: number; cleanProfit: number; productsSum: number }
+      > = {};
+      for (const tier of ["standard", "comfort", "premium"] as const) {
+        const tc = computeRoomTotals(tierRooms[tier], computeOpts);
+        tierTotals[tier] = {
+          totalForClient: tc.totalForClient,
+          cleanProfit: tc.cleanProfit,
+          productsSum: tc.productsSum,
+        };
+      }
+
       const updatedData: CalcData = {
         ...d,
         rooms: tierRooms.comfort,
@@ -516,6 +640,7 @@ export default function DetailPage({
         deliveryPrice: delivPrice,
         profitType,
         profitValue,
+        tierTotals,
         totals: {
           ...d.totals,
           productsSum: computed.productsSum,
@@ -712,6 +837,84 @@ export default function DetailPage({
                                     {fmt(pSum)}
                                   </span>
                                 </CardTitle>
+                                <div className="mt-2 rounded-lg border bg-muted/20 p-2.5">
+                                  <div className="mb-2 text-[11px] text-muted-foreground">
+                                    {t("detail.productImageHint")}
+                                  </div>
+                                  <div className="flex flex-col gap-2.5">
+                                    <div className="h-36 w-full overflow-hidden rounded-md border bg-background">
+                                      {pr.image ? (
+                                        <img
+                                          src={pr.image}
+                                          alt={pr.productType}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                                          <ImagePlus className="h-4 w-4" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <input
+                                      id={`product-image-${tier}-${ri}-${pi}`}
+                                      type="file"
+                                      accept="image/png,image/jpeg,image/webp,image/gif"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file =
+                                          e.target.files?.[0] ?? null;
+                                        void handleProductImageUpload(
+                                          ri,
+                                          pi,
+                                          file,
+                                        );
+                                        e.currentTarget.value = "";
+                                      }}
+                                    />
+                                    <div className="flex w-full items-center gap-2">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1"
+                                        asChild
+                                        disabled={
+                                          uploadingProductKey === `${ri}-${pi}`
+                                        }
+                                      >
+                                        <label
+                                          htmlFor={`product-image-${tier}-${ri}-${pi}`}
+                                          className="inline-flex w-full cursor-pointer items-center justify-center"
+                                        >
+                                          {uploadingProductKey ===
+                                          `${ri}-${pi}` ? (
+                                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <ImagePlus className="mr-1 h-3.5 w-3.5" />
+                                          )}
+                                          {pr.image
+                                            ? t("detail.changeProductImage")
+                                            : t("detail.uploadProductImage")}
+                                        </label>
+                                      </Button>
+
+                                      {pr.image ? (
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="ghost"
+                                          className="shrink-0 text-destructive hover:text-destructive"
+                                          onClick={() =>
+                                            handleRemoveProductImage(ri, pi)
+                                          }
+                                          aria-label={t("common.delete")}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
                               </CardHeader>
                               <CardContent className="space-y-1 px-3 pb-3">
                                 {pr.details.map((det, di) => {

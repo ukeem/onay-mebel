@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import sharp from 'sharp';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
 const ALLOWED_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_WIDTH = 500;
 
 /**
  * Magic bytes (file signatures) для проверки реального типа файла.
@@ -42,7 +44,7 @@ export class UploadsService {
   async saveFile(file: Express.Multer.File): Promise<string> {
     if (!file) throw new BadRequestException('Файл не передан');
     if (file.size > MAX_SIZE)
-      throw new BadRequestException('Файл слишком большой (макс. 5 МБ)');
+      throw new BadRequestException('Файл слишком большой (макс. 50 МБ)');
 
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_EXT.includes(ext)) {
@@ -63,9 +65,15 @@ export class UploadsService {
       );
     }
 
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    // Ресайз и оптимизация: max-width 500px, конвертация в webp
+    const processed = await sharp(file.buffer)
+      .resize({ width: MAX_WIDTH, withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
     const filePath = path.join(UPLOAD_DIR, filename);
-    await fs.promises.writeFile(filePath, file.buffer);
+    await fs.promises.writeFile(filePath, processed);
 
     return `/uploads/${filename}`;
   }

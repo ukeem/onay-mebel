@@ -26,15 +26,21 @@ export class SettingsService {
   async updateUserMaterialPrice(
     userId: string,
     materialId: string,
-    price: number,
+    dto: { price?: number; enabled?: boolean },
   ) {
+    if (dto.price === undefined && dto.enabled === undefined) {
+      throw new BadRequestException('Нет данных для обновления');
+    }
     const record = await this.prisma.userMaterial.findUnique({
       where: { userId_materialId: { userId, materialId } },
     });
     if (!record) throw new NotFoundException('Материал не найден в настройках');
     return this.prisma.userMaterial.update({
       where: { id: record.id },
-      data: { price },
+      data: {
+        ...(dto.price !== undefined ? { price: dto.price } : {}),
+        ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+      },
       include: { material: { include: { materialType: true } } },
     });
   }
@@ -54,8 +60,11 @@ export class SettingsService {
   async updateUserHardwarePrice(
     userId: string,
     hardwareId: string,
-    price: number,
+    dto: { price?: number; enabled?: boolean },
   ) {
+    if (dto.price === undefined && dto.enabled === undefined) {
+      throw new BadRequestException('Нет данных для обновления');
+    }
     const record = await this.prisma.userHardware.findUnique({
       where: { userId_hardwareId: { userId, hardwareId } },
     });
@@ -63,7 +72,10 @@ export class SettingsService {
       throw new NotFoundException('Фурнитура не найдена в настройках');
     return this.prisma.userHardware.update({
       where: { id: record.id },
-      data: { price },
+      data: {
+        ...(dto.price !== undefined ? { price: dto.price } : {}),
+        ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+      },
       include: { hardware: { include: { hardwareType: true } } },
     });
   }
@@ -184,7 +196,7 @@ export class SettingsService {
 
   async savePaymentStages(
     userId: string,
-    stages: { stageNumber: number; percentage: number }[],
+    stages: { stageNumber: number; percentage: number; note?: string }[],
   ) {
     const total = stages.reduce((s, st) => s + st.percentage, 0);
     if (total !== 100) {
@@ -204,6 +216,7 @@ export class SettingsService {
           userId,
           stageNumber: s.stageNumber,
           percentage: s.percentage,
+          note: s.note?.trim() ? s.note.trim() : null,
         })),
       });
     });

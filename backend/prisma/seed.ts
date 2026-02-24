@@ -173,9 +173,9 @@ async function main() {
     {
       materialTypeId: materialTypes['ХДФ'],
       brand: 'Kronospan',
-      calcType: CalcType.SHEET,
-      length: 2800,
-      width: 2070,
+      calcType: CalcType.SQM,
+      length: 1,
+      width: 1,
       price: 4000,
     },
     {

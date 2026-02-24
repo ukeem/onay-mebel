@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -70,6 +71,18 @@ export function UserHardwareTab() {
     }
   };
 
+  const toggleEnabled = async (uh: UserHardware, enabled: boolean) => {
+    try {
+      await api.patch(`/settings/hardware/${uh.hardware.id}`, { enabled });
+      setItems((prev) =>
+        prev.map((item) => (item.id === uh.id ? { ...item, enabled } : item)),
+      );
+      toast.success(t("common.updated"));
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    }
+  };
+
   const sync = async () => {
     setSyncing(true);
     try {
@@ -103,7 +116,7 @@ export function UserHardwareTab() {
           {t("common.sync")}
         </Button>
       </div>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -112,6 +125,9 @@ export function UserHardwareTab() {
               <TableHead>{t("common.brand")}</TableHead>
               <TableHead className="w-28 md:w-36">
                 {t("settings.myPrice")}
+              </TableHead>
+              <TableHead className="w-20 text-center hidden md:table-cell">
+                {t("settings.visible")}
               </TableHead>
               <TableHead className="w-10 hidden md:table-cell" />
             </TableRow>
@@ -133,11 +149,24 @@ export function UserHardwareTab() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">
-                    {uh.hardware.hardwareType.name}
-                  </Badge>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex md:hidden">
+                      <Switch
+                        checked={uh.enabled}
+                        onCheckedChange={(checked) =>
+                          toggleEnabled(uh, checked === true)
+                        }
+                        aria-label={t("settings.visible")}
+                      />
+                    </div>
+                    <Badge variant="outline" className="w-fit">
+                      {uh.hardware.hardwareType.name}
+                    </Badge>
+                  </div>
                 </TableCell>
-                <TableCell>{uh.hardware.brand || "—"}</TableCell>
+                <TableCell className="max-w-[110px] truncate">
+                  {uh.hardware.brand || "—"}
+                </TableCell>
                 <TableCell>
                   <Input
                     type="text"
@@ -154,6 +183,14 @@ export function UserHardwareTab() {
                     onBlur={() => savePrice(uh)}
                   />
                 </TableCell>
+                <TableCell className="text-center hidden md:table-cell">
+                  <Switch
+                    checked={uh.enabled}
+                    onCheckedChange={(checked) =>
+                      toggleEnabled(uh, checked === true)
+                    }
+                  />
+                </TableCell>
                 <TableCell className="hidden md:table-cell">
                   <Button
                     variant="ghost"
@@ -168,7 +205,7 @@ export function UserHardwareTab() {
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="h-16 text-center text-muted-foreground"
                 >
                   {t("settings.noHardware")}

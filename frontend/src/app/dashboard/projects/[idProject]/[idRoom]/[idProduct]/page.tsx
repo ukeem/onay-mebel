@@ -1,784 +1,325 @@
 "use client";
 
-import { EmptyState } from "@/components/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { selectOnFocus } from "@/lib/utils";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Archive,
   ArrowLeft,
+  Box,
+  Columns3,
   DoorOpen,
-  Layers,
-  LayoutGrid,
-  Package,
-  PanelBottom,
-  Ruler,
+  Loader2,
+  PackagePlus,
+  PanelTop,
+  Rows3,
   Save,
-  Settings2,
-  SquareStack,
+  UtensilsCrossed,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { use } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 
 import {
-  DimensionEditor,
+  ComponentEditor,
+  CountertopsEditor,
   DrawersEditor,
   ExtrasEditor,
   FacadesEditor,
-  MatSelect,
-  QtySelect,
-  SwitchRow,
+  FalseFacadesEditor,
+  SectionsEditor,
   ToggleSection,
 } from "./editors";
-import { num } from "./types";
 import { useProductForm } from "./use-product-form";
 
-export default function ProductPage({
-  params,
-}: {
-  params: Promise<{ idProject: string; idRoom: string; idProduct: string }>;
-}) {
-  const { idProject, idRoom, idProduct } = use(params);
+export default function ProductPage() {
+  const { idProject, idRoom, idProduct } = useParams<{
+    idProject: string;
+    idRoom: string;
+    idProduct: string;
+  }>();
   const router = useRouter();
 
   const f = useProductForm(idProject, idRoom, idProduct);
-  const {
-    product,
-    loading,
-    saving,
-    t,
-    width,
-    setWidth,
-    height,
-    setHeight,
-    depth,
-    setDepth,
-    W,
-    H,
-    D,
-    dimensionsReady,
-    mainH,
-    mezH,
-    sectionsEnabled,
-    setSectionsEnabled,
-    sectionsQty,
-    setSectionsQty,
-    backWallEnabled,
-    backWallMaterialId,
-    partitionsEnabled,
-    partitions,
-    setPartitions,
-    shelvesEnabled,
-    shelves,
-    setShelves,
-    facadesEnabled,
-    facades,
-    falseFacadesEnabled,
-    falseFacadeQty,
-    falseFacadeMaterialId,
-    drawersEnabled,
-    drawers,
-    setDrawers,
-    mezzanineEnabled,
-    setMezzanineEnabled,
-    countertopEnabled,
-    setCountertopEnabled,
-    extrasEnabled,
-    extras,
-    setExtras,
-    mezHeight,
-    setMezHeight,
-    mezSectionsEnabled,
-    setMezSectionsEnabled,
-    mezSectionsQty,
-    setMezSectionsQty,
-    mezPartitionsEnabled,
-    mezPartitions,
-    setMezPartitions,
-    mezShelvesEnabled,
-    mezShelves,
-    setMezShelves,
-    mezFacadesEnabled,
-    mezFacades,
-    mezDrawersEnabled,
-    mezDrawers,
-    setMezDrawers,
-    mezBackWallEnabled,
-    mezBackWallMaterialId,
-    mezSameAsBody,
-    setMezSameAsBody,
-    mezBodyMaterialId,
-    mezFalseFacadesEnabled,
-    mezFalseFacadeQty,
-    mezFalseFacadeMaterialId,
-    ctMatId,
-    ctWidth,
-    setCtWidth,
-    ctDepth,
-    setCtDepth,
-    ctApron,
-    setCtApron,
-    ctApronMatId,
-    ctApronW,
-    setCtApronW,
-    ctApronH,
-    setCtApronH,
-    togglePartitions,
-    toggleShelves,
-    toggleDrawers,
-    toggleBackWall,
-    toggleFacades,
-    toggleFalseFacades,
-    toggleExtras,
-    toggleMezPartitions,
-    toggleMezShelves,
-    toggleMezDrawers,
-    toggleMezBackWall,
-    toggleMezFacades,
-    toggleMezFalseFacades,
-    onBackWallMaterialChange,
-    onFalseFacadeMaterialChange,
-    onMezBackWallMaterialChange,
-    onMezBodyMaterialChange,
-    onMezFalseFacadeMaterialChange,
-    onCtMaterialChange,
-    onApronMaterialChange,
-    setFacadesWithClear,
-    setMezFacadesWithClear,
-    onFalseFacadeQtyChange,
-    onMezFalseFacadeQtyChange,
-    hasError,
-    clearError,
-    handleSave,
-    limits,
-    hdfMaterials,
-    bodyMaterials,
-    facadeMaterials,
-    facadeErrorKeys,
-    mezFacadeErrorKeys,
-    materials,
-  } = f;
+  const [backOpen, setBackOpen] = useState(false);
 
-  const {
-    maxSections,
-    maxPartitions,
-    totalSectionsCount,
-    totalPartitionsCount,
-    maxShelves,
-    maxFacades,
-    mezTotalSections,
-    mezTotalPartitions,
-    mezMaxShelves,
-  } = limits;
+  const backUrl = `/dashboard/projects/${idProject}/${idRoom}`;
 
-  /* ── loading skeleton ── */
-  if (loading) {
+  const handleBack = useCallback(() => {
+    setBackOpen(true);
+  }, []);
+
+  const handleLeave = useCallback(() => {
+    setBackOpen(false);
+    router.push(backUrl);
+  }, [router, backUrl]);
+
+  const handleSaveAndLeave = useCallback(async () => {
+    setBackOpen(false);
+    await f.handleSave();
+  }, [f]);
+
+  if (f.loading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-3 px-1 pb-24">
-        <div className="flex items-center gap-3 py-3">
-          <div className="h-9 w-9 rounded-lg bg-muted animate-pulse" />
-          <div className="flex-1 space-y-2">
-            <div className="h-5 w-40 rounded bg-muted animate-pulse" />
-            <div className="h-3.5 w-28 rounded bg-muted animate-pulse" />
-          </div>
-          <div className="h-9 w-28 rounded-lg bg-muted animate-pulse" />
-        </div>
-        <Card className="gap-0 py-0">
-          <div className="p-4 space-y-3">
-            <div className="h-4 w-24 rounded bg-muted animate-pulse" />
-            <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-1.5">
-                  <div className="h-3.5 w-14 rounded bg-muted animate-pulse" />
-                  <div className="h-10 rounded-md bg-muted animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="gap-0 py-0">
-            <div className="flex items-center gap-3 px-4 py-3.5">
-              <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
-              <div className="h-4 w-24 flex-1 rounded bg-muted animate-pulse" />
-              <div className="h-5 w-9 rounded-full bg-muted animate-pulse" />
-            </div>
-          </Card>
-        ))}
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (!product) {
-    return <EmptyState icon={Package} title={t("product.notFound")} />;
+  if (!f.product) {
+    return (
+      <div className="mx-auto max-w-lg py-20 text-center text-muted-foreground">
+        {f.t("product.notFound")}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-3 pb-16">
+    <div className="space-y-4 pb-24 md:pb-20">
       {/* ── Sticky header ── */}
       <div className="sticky top-12 md:top-0 z-20 border-b bg-background/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="max-w-6xl mx-auto flex items-center gap-2 py-2 sm:gap-3">
+        <div className="flex items-center gap-2 py-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0"
-            aria-label={t("common.back")}
-            onClick={() =>
-              router.push(`/dashboard/projects/${idProject}/${idRoom}`)
-            }
+            aria-label="Back"
+            onClick={handleBack}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">
-              {product.productType.name}
+              {f.product.productType.name}
             </h1>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="truncate">{product.room.project.name}</span>
-              {product.room.roomType && (
-                <>
-                  <span>·</span>
-                  <span className="truncate">{product.room.roomType.name}</span>
-                </>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground truncate">
+              {f.t("product.editDescription")}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-3">
-        {/* ── Dimensions card ── */}
-        <Card className="gap-0 py-0">
-          <CardHeader className="px-4 pb-0 pt-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Ruler className="h-3.5 w-3.5" />
-              </div>
-              <CardTitle className="text-sm">
-                {t("product.dimensions")}
-              </CardTitle>
-              {dimensionsReady && (
-                <Badge variant="secondary" className="text-xs ml-auto">
-                  {W} × {H} × {D} {t("common.mm")}
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-3">
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.width")} W ({t("common.mm")})
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className={`h-9 ${hasError("dimensions") && num(width) <= 0 ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
-                  value={width}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    setWidth(e.target.value);
-                    clearError("dimensions");
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.height")} H ({t("common.mm")})
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className={`h-9 ${hasError("dimensions") && num(height) <= 0 ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
-                  value={height}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    setHeight(e.target.value);
-                    clearError("dimensions");
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.depth")} D ({t("common.mm")})
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className={`h-9 ${hasError("dimensions") && num(depth) <= 0 ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
-                  value={depth}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => {
-                    setDepth(e.target.value);
-                    clearError("dimensions");
-                  }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ── toggle sections ── */}
+      <div className="columns-1 gap-3 lg:columns-2 [&>*]:mb-3">
+        {/* Sections */}
+        <ToggleSection
+          icon={Box}
+          label={f.t("product.sections")}
+          checked={f.sectionsEnabled}
+          onChange={f.toggleSections}
+        >
+          <SectionsEditor
+            items={f.sections}
+            setItems={f.setSections}
+            materials={f.bodyMaterials}
+            backWallMaterials={f.backWallMaterials}
+            legsHardware={f.legsHardware}
+            t={f.t}
+            defaultItem={{
+              width: f.defaultWidth,
+              height: f.defaultHeight,
+              depth: f.defaultDepth,
+              materialId: f.defaultMaterialId,
+            }}
+            errors={f.sectionErrors}
+          />
+        </ToggleSection>
 
-        {/* ── Toggle sections ── */}
-        <div className="space-y-2 lg:columns-2 lg:gap-2 lg:space-y-0">
-          <ToggleSection
-            icon={LayoutGrid}
-            label={t("product.sections")}
-            checked={sectionsEnabled}
-            onChange={setSectionsEnabled}
-            disabled={!dimensionsReady}
-          >
-            <QtySelect
-              label={t("product.sectionCount")}
-              value={sectionsQty}
-              onChange={setSectionsQty}
-              min={1}
-              max={maxSections}
-            />
-          </ToggleSection>
+        {/* Partitions */}
+        <ToggleSection
+          icon={Columns3}
+          label={f.t("product.partitions")}
+          checked={f.partitionsEnabled}
+          onChange={f.togglePartitions}
+        >
+          <ComponentEditor
+            items={f.partitions}
+            setItems={f.setPartitions}
+            dim1Key="height"
+            dim1Label={f.t("product.height")}
+            dim2Key="depth"
+            dim2Label={f.t("product.depth")}
+            materials={f.bodyMaterials}
+            t={f.t}
+            defaultItem={{
+              dim1: f.defaultHeight,
+              dim2: f.defaultDepth,
+              materialId: f.defaultMaterialId,
+            }}
+            errors={f.partitionErrors}
+          />
+        </ToggleSection>
 
-          <ToggleSection
-            icon={Layers}
-            label={t("product.partitions")}
-            checked={partitionsEnabled}
-            onChange={togglePartitions}
-            disabled={!dimensionsReady}
-          >
-            <DimensionEditor
-              items={partitions}
-              setItems={setPartitions}
-              dimLabel={t("product.height")}
-              dimKey="height"
-              maxQty={maxPartitions}
-              dimMin={150}
-              dimMax={H}
-              defaultDim={H}
-              qtyLabel={t("product.partitionQty")}
-              t={t}
-            />
-          </ToggleSection>
+        {/* Shelves */}
+        <ToggleSection
+          icon={Rows3}
+          label={f.t("product.shelves")}
+          checked={f.shelvesEnabled}
+          onChange={f.toggleShelves}
+        >
+          <ComponentEditor
+            items={f.shelves}
+            setItems={f.setShelves}
+            dim1Key="width"
+            dim1Label={f.t("product.width")}
+            dim2Key="depth"
+            dim2Label={f.t("product.depth")}
+            materials={f.bodyMaterials}
+            t={f.t}
+            hardwareLabel={f.t("product.shelfHolders")}
+            hardwareItems={f.holderHardware}
+            hardwareField="holderHardwareId"
+            defaultItem={{
+              dim1: f.defaultWidth,
+              dim2: f.defaultDepth,
+              materialId: f.defaultMaterialId,
+            }}
+            errors={f.shelfErrors}
+          />
+        </ToggleSection>
 
-          <ToggleSection
-            icon={SquareStack}
-            label={t("product.shelves")}
-            checked={shelvesEnabled}
-            onChange={toggleShelves}
-            disabled={!dimensionsReady}
-          >
-            <DimensionEditor
-              items={shelves}
-              setItems={setShelves}
-              dimLabel={t("product.width")}
-              dimKey="width"
-              maxQty={maxShelves}
-              dimMin={150}
-              dimMax={W}
-              defaultDim={Math.floor(
-                W / (totalSectionsCount + totalPartitionsCount),
-              )}
-              qtyLabel={t("product.shelfQty")}
-              t={t}
-            />
-          </ToggleSection>
+        {/* Facades */}
+        <ToggleSection
+          icon={DoorOpen}
+          label={f.t("product.facades")}
+          checked={f.facadesEnabled}
+          onChange={f.toggleFacades}
+        >
+          <FacadesEditor
+            items={f.facades}
+            setItems={f.setFacadesWithClear}
+            materials={f.facadeMaterials}
+            t={f.t}
+            errorKeys={f.facadeErrorKeys}
+            hingeHardware={f.hingeHardware}
+            handleHardware={f.handleHardware}
+            tipOnHardware={f.tipOnHardware}
+            defaultWidth={f.defaultWidth}
+            defaultHeight={f.defaultHeight}
+          />
+        </ToggleSection>
 
-          <ToggleSection
-            icon={Package}
-            label={t("product.drawers")}
-            checked={drawersEnabled}
-            onChange={toggleDrawers}
-            disabled={!dimensionsReady}
-          >
-            <DrawersEditor
-              items={drawers}
-              setItems={setDrawers}
-              prodH={mainH}
-              prodW={W}
-              totalSections={totalSectionsCount}
-              totalPartitions={totalPartitionsCount}
-              t={t}
-            />
-          </ToggleSection>
+        {/* False Facades */}
+        <ToggleSection
+          icon={PanelTop}
+          label={f.t("product.falseFacade")}
+          checked={f.falseFacadesEnabled}
+          onChange={f.toggleFalseFacades}
+        >
+          <FalseFacadesEditor
+            items={f.falseFacades}
+            setItems={f.setFalseFacades}
+            materials={f.bodyMaterials}
+            t={f.t}
+            defaultItem={{
+              height: f.defaultHeight,
+              depth: f.defaultDepth,
+              materialId: f.defaultMaterialId,
+            }}
+            errors={f.falseFacadeErrors}
+          />
+        </ToggleSection>
 
-          <ToggleSection
-            icon={PanelBottom}
-            label={t("product.backWall")}
-            checked={backWallEnabled}
-            onChange={toggleBackWall}
-            disabled={!dimensionsReady}
-          >
-            <MatSelect
-              label={t("product.backWallMaterial")}
-              value={backWallMaterialId}
-              onChange={onBackWallMaterialChange}
-              materials={hdfMaterials}
-              t={t}
-              error={hasError("backWallMaterial")}
-            />
-          </ToggleSection>
+        {/* Drawers */}
+        <ToggleSection
+          icon={Archive}
+          label={f.t("product.drawers")}
+          checked={f.drawersEnabled}
+          onChange={f.toggleDrawers}
+        >
+          <DrawersEditor
+            items={f.drawers}
+            setItems={f.setDrawers}
+            materials={f.bodyMaterials}
+            t={f.t}
+            slideHardware={f.slideHardware}
+            tandemHardware={f.tandemHardware}
+            defaultMaterialId={f.defaultMaterialId}
+            errors={f.drawerErrors}
+          />
+        </ToggleSection>
 
-          <ToggleSection
-            icon={DoorOpen}
-            label={t("product.facades")}
-            checked={facadesEnabled}
-            onChange={toggleFacades}
-            disabled={!dimensionsReady}
-          >
-            <FacadesEditor
-              items={facades}
-              setItems={setFacadesWithClear}
-              materials={facadeMaterials}
-              maxQty={maxFacades}
-              maxW={W}
-              maxH={H}
-              defaultW={Math.floor(
-                W / (totalSectionsCount + totalPartitionsCount),
-              )}
-              defaultH={H}
-              t={t}
-              errorKeys={facadeErrorKeys}
-            />
-          </ToggleSection>
+        {/* Countertops */}
+        <ToggleSection
+          icon={UtensilsCrossed}
+          label={f.t("product.countertop")}
+          checked={f.countertopEnabled}
+          onChange={(v) => {
+            f.setCountertopEnabled(v);
+            if (!v) f.setCountertops([]);
+          }}
+        >
+          <CountertopsEditor
+            items={f.countertops}
+            setItems={f.setCountertops}
+            materials={f.countertopMaterials}
+            t={f.t}
+            hasError={f.hasError}
+            defaultWidth={f.defaultWidth}
+            defaultDepth={f.defaultDepth}
+          />
+        </ToggleSection>
 
-          <ToggleSection
-            icon={DoorOpen}
-            label={t("product.falseFacades")}
-            checked={falseFacadesEnabled}
-            onChange={toggleFalseFacades}
-            disabled={!dimensionsReady}
-          >
-            <div className="space-y-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.falseFacadeQty")}
-                </Label>
-                <QtySelect
-                  value={num(falseFacadeQty)}
-                  onChange={onFalseFacadeQtyChange}
-                  min={1}
-                  max={10}
-                />
-              </div>
-              <MatSelect
-                label={t("product.falseFacadeMaterial")}
-                value={falseFacadeMaterialId}
-                onChange={onFalseFacadeMaterialChange}
-                materials={facadeMaterials}
-                t={t}
-                error={hasError("falseFacadeMaterial")}
-              />
-            </div>
-          </ToggleSection>
-
-          {/* Антресоль */}
-          <ToggleSection
-            icon={Layers}
-            label={t("product.antresol")}
-            checked={mezzanineEnabled}
-            onChange={setMezzanineEnabled}
-            disabled={!dimensionsReady}
-          >
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("product.antresolHeight")}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="h-9"
-                  min={400}
-                  max={H}
-                  value={mezHeight}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => setMezHeight(e.target.value)}
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-sm">
-                    {t("product.mezSameAsBody")}
-                  </Label>
-                  <Switch
-                    checked={mezSameAsBody}
-                    onCheckedChange={(v) => {
-                      setMezSameAsBody(v);
-                      if (v) clearError("mezBodyMaterial");
-                    }}
-                  />
-                </div>
-                {!mezSameAsBody && (
-                  <MatSelect
-                    label={t("product.mezBodyMaterial")}
-                    value={mezBodyMaterialId}
-                    onChange={onMezBodyMaterialChange}
-                    materials={bodyMaterials}
-                    t={t}
-                    error={hasError("mezBodyMaterial")}
-                  />
-                )}
-              </div>
-              <Separator />
-              <SwitchRow
-                label={t("product.sections")}
-                checked={mezSectionsEnabled}
-                onChange={setMezSectionsEnabled}
-              >
-                <QtySelect
-                  label={t("product.sectionCount")}
-                  value={mezSectionsQty}
-                  onChange={setMezSectionsQty}
-                  min={1}
-                  max={maxSections}
-                />
-              </SwitchRow>
-              <SwitchRow
-                label={t("product.partitions")}
-                checked={mezPartitionsEnabled}
-                onChange={toggleMezPartitions}
-              >
-                <DimensionEditor
-                  items={mezPartitions}
-                  setItems={setMezPartitions}
-                  dimLabel={t("product.height")}
-                  dimKey="height"
-                  maxQty={maxPartitions}
-                  dimMin={150}
-                  dimMax={mezH}
-                  defaultDim={mezH}
-                  qtyLabel={t("product.partitionQty")}
-                  t={t}
-                />
-              </SwitchRow>
-              <SwitchRow
-                label={t("product.shelves")}
-                checked={mezShelvesEnabled}
-                onChange={toggleMezShelves}
-              >
-                <DimensionEditor
-                  items={mezShelves}
-                  setItems={setMezShelves}
-                  dimLabel={t("product.width")}
-                  dimKey="width"
-                  maxQty={mezMaxShelves}
-                  dimMin={150}
-                  dimMax={W}
-                  defaultDim={Math.floor(
-                    W / (mezTotalSections + mezTotalPartitions),
-                  )}
-                  qtyLabel={t("product.shelfQty")}
-                  t={t}
-                />
-              </SwitchRow>
-              <SwitchRow
-                label={t("product.drawers")}
-                checked={mezDrawersEnabled}
-                onChange={toggleMezDrawers}
-              >
-                <DrawersEditor
-                  items={mezDrawers}
-                  setItems={setMezDrawers}
-                  prodH={mezH}
-                  prodW={W}
-                  totalSections={mezTotalSections}
-                  totalPartitions={mezTotalPartitions}
-                  t={t}
-                />
-              </SwitchRow>
-              <SwitchRow
-                label={t("product.backWall")}
-                checked={mezBackWallEnabled}
-                onChange={toggleMezBackWall}
-              >
-                <MatSelect
-                  label={t("product.backWallMaterial")}
-                  value={mezBackWallMaterialId}
-                  onChange={onMezBackWallMaterialChange}
-                  materials={hdfMaterials}
-                  t={t}
-                  error={hasError("mezBackWallMaterial")}
-                />
-              </SwitchRow>
-              <SwitchRow
-                label={t("product.facades")}
-                checked={mezFacadesEnabled}
-                onChange={toggleMezFacades}
-              >
-                <FacadesEditor
-                  items={mezFacades}
-                  setItems={setMezFacadesWithClear}
-                  materials={facadeMaterials}
-                  maxQty={maxFacades}
-                  maxW={W}
-                  maxH={mezH}
-                  defaultW={Math.floor(
-                    W / (mezTotalSections + mezTotalPartitions),
-                  )}
-                  defaultH={mezH}
-                  t={t}
-                  errorKeys={mezFacadeErrorKeys}
-                />
-              </SwitchRow>
-              <SwitchRow
-                label={t("product.falseFacadesSwitch")}
-                checked={mezFalseFacadesEnabled}
-                onChange={toggleMezFalseFacades}
-              >
-                <div className="space-y-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      {t("product.falseFacadeQty")}
-                    </Label>
-                    <QtySelect
-                      value={num(mezFalseFacadeQty)}
-                      onChange={onMezFalseFacadeQtyChange}
-                      min={1}
-                      max={10}
-                    />
-                  </div>
-                  <MatSelect
-                    label={t("product.falseFacadeMaterial")}
-                    value={mezFalseFacadeMaterialId}
-                    onChange={onMezFalseFacadeMaterialChange}
-                    materials={facadeMaterials}
-                    t={t}
-                    error={hasError("mezFalseFacadeMaterial")}
-                  />
-                </div>
-              </SwitchRow>
-            </div>
-          </ToggleSection>
-
-          {/* Столешница */}
-          <ToggleSection
-            icon={PanelBottom}
-            label={t("product.countertop")}
-            checked={countertopEnabled}
-            onChange={setCountertopEnabled}
-            disabled={!dimensionsReady}
-          >
-            <div className="space-y-3">
-              <MatSelect
-                label={t("product.material")}
-                value={ctMatId}
-                onChange={onCtMaterialChange}
-                materials={materials}
-                t={t}
-                error={hasError("countertopMaterial")}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("product.width")} ({t("common.mm")})
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    className="h-9"
-                    min={300}
-                    max={W}
-                    value={ctWidth}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => setCtWidth(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("product.depthLabel")}
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    className="h-9"
-                    min={300}
-                    max={900}
-                    value={ctDepth}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => setCtDepth(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Separator />
-              <SwitchRow
-                label={t("product.apron")}
-                checked={ctApron}
-                onChange={setCtApron}
-              >
-                <div className="space-y-2">
-                  <MatSelect
-                    label={t("product.apronMaterial")}
-                    value={ctApronMatId}
-                    onChange={onApronMaterialChange}
-                    materials={materials}
-                    t={t}
-                    error={hasError("apronMaterial")}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("product.width")} ({t("common.mm")})
-                      </Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        className="h-9"
-                        min={300}
-                        max={num(ctWidth)}
-                        value={ctApronW}
-                        onFocus={selectOnFocus}
-                        onChange={(e) => setCtApronW(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("product.height")} ({t("common.mm")})
-                      </Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        className="h-9"
-                        min={300}
-                        max={900}
-                        value={ctApronH}
-                        onFocus={selectOnFocus}
-                        onChange={(e) => setCtApronH(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </SwitchRow>
-            </div>
-          </ToggleSection>
-
-          {/* Дополнительно */}
-          <ToggleSection
-            icon={Settings2}
-            label={t("product.extra")}
-            checked={extrasEnabled}
-            onChange={toggleExtras}
-            disabled={!dimensionsReady}
-          >
-            <ExtrasEditor items={extras} setItems={setExtras} t={t} />
-          </ToggleSection>
-        </div>
+        {/* Extras */}
+        <ToggleSection
+          icon={PackagePlus}
+          label={f.t("product.extras")}
+          checked={f.extrasEnabled}
+          onChange={f.toggleExtras}
+        >
+          <ExtrasEditor items={f.extras} setItems={f.setExtras} t={f.t} />
+        </ToggleSection>
       </div>
 
-      {/* ── Fixed bottom bar ── */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 border-t bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:bottom-0 md:left-64">
-        <div className="max-w-6xl mx-auto">
-          <Button
-            className="w-full lg:w-auto lg:float-right lg:px-12"
-            onClick={handleSave}
-            disabled={saving || !dimensionsReady}
-          >
-            <Save className="mr-1.5 h-4 w-4" />
-            {t("common.save")}
-          </Button>
-        </div>
+      {/* ── save ── */}
+      <div className="fixed inset-x-0 bottom-16 z-40 px-4 pb-3 pt-2 md:sticky md:bottom-4 md:px-0 md:pb-0 md:pt-0">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent md:hidden" />
+        <Button
+          size="lg"
+          onClick={f.handleSave}
+          disabled={f.saving}
+          className="relative w-full shadow-xl"
+        >
+          {f.saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          {f.t("common.save")}
+        </Button>
       </div>
+
+      {/* ── unsaved changes dialog ── */}
+      <AlertDialog open={backOpen} onOpenChange={setBackOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{f.t("product.unsavedTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {f.t("product.unsavedDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>{f.t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeave}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {f.t("product.leaveWithout")}
+            </AlertDialogAction>
+            <AlertDialogAction onClick={handleSaveAndLeave}>
+              {f.t("product.saveAndLeave")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

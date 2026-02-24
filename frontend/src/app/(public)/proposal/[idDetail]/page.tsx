@@ -21,9 +21,14 @@ export default function PublicProposalPage({
     fetch(`${API_URL}/api/public/proposal/${idDetail}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
-        return r.blob();
+        return r.text();
       })
-      .then((blob) => {
+      .then((html) => {
+        const withAbsoluteUploads = html.replace(
+          /src="\/uploads\//g,
+          `src="${window.location.origin}/uploads/`,
+        );
+        const blob = new Blob([withAbsoluteUploads], { type: "text/html" });
         const url = URL.createObjectURL(blob);
         setHtmlUrl(url);
       })

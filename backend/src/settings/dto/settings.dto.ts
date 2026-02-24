@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNumber,
@@ -15,15 +16,25 @@ import {
 } from 'class-validator';
 
 export class UpdateUserMaterialPriceDto {
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  price!: number;
+  price?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }
 
 export class UpdateUserHardwarePriceDto {
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  price!: number;
+  price?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }
 
 export class UpdateUserServiceDto {
@@ -103,6 +114,10 @@ export class PaymentStageItemDto {
   @Min(1)
   @Max(100)
   percentage!: number;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
 
 export class SavePaymentStagesDto {

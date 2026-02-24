@@ -159,16 +159,16 @@ model Material {
   price          Decimal      @default(0)
   image          String?
 
-  userMaterials           UserMaterial[]
-  productBodies           Product[]           @relation("BodyMaterial")
-  productBackWalls        Product[]           @relation("BackWallMaterial")
-  mezzanineBackWalls      ProductMezzanine[]  @relation("MezzanineBackWall")
-  mezzanineBodyMat        ProductMezzanine[]  @relation("MezzanineBodyMaterial")
-  productFacades          ProductFacade[]
-  falseFacadeMat          Product[]           @relation("FalseFacadeMaterial")
-  mezzanineFalseFacadeMat ProductMezzanine[]  @relation("MezzanineFalseFacadeMat")
-  countertopMat           ProductCountertop[] @relation("CountertopMaterial")
-  apronMat                ProductCountertop[] @relation("ApronMaterial")
+  userMaterials    UserMaterial[]
+  sectionBodies    ProductSection[]     @relation("SectionMaterial")
+  sectionBackWalls ProductSection[]     @relation("SectionBackWallMaterial")
+  partitionMat     ProductPartition[]   @relation("PartitionMaterial")
+  shelfMat         ProductShelf[]       @relation("ShelfMaterial")
+  drawerMat        ProductDrawer[]      @relation("DrawerMaterial")
+  productFacades   ProductFacade[]
+  falseFacadeMat   ProductFalseFacade[] @relation("FalseFacadeMaterial")
+  countertopMat    ProductCountertop[]  @relation("CountertopMaterial")
+  apronMat         ProductCountertop[]  @relation("ApronMaterial")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -185,6 +185,14 @@ model Hardware {
   image          String?
 
   userHardware UserHardware[]
+
+  // Back-references for sub-component hardware
+  sectionLegs   ProductSection[] @relation("SectionLegsHardware")
+  facadeHinges  ProductFacade[]  @relation("FacadeHingeHardware")
+  facadeHandles ProductFacade[]  @relation("FacadeHandleHardware")
+  facadeTipOns  ProductFacade[]  @relation("FacadeTipOnHardware")
+  shelfHolders  ProductShelf[]   @relation("ShelfHolderHardware")
+  drawerSlides  ProductDrawer[]  @relation("DrawerSlideHardware")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -219,6 +227,7 @@ model UserMaterial {
   materialId String
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
   price      Decimal  @default(0)
+  enabled    Boolean  @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -233,6 +242,7 @@ model UserHardware {
   hardwareId String
   hardware   Hardware @relation(fields: [hardwareId], references: [id], onDelete: Cascade)
   price      Decimal  @default(0)
+  enabled    Boolean  @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -277,11 +287,12 @@ model CompanyInfo {
 }
 
 model PaymentStage {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   userId      String
-  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   stageNumber Int // 1–5
   percentage  Int // %
+  note        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -345,61 +356,25 @@ model Product {
   productTypeId String
   productType   ProductType @relation(fields: [productTypeId], references: [id])
 
-  // Габариты
-  width  Int @default(0) // W mm
-  height Int @default(0) // H mm
-  depth  Int @default(600) // D mm
-
-  // Материал корпуса — всегда ЛДСП
-  bodyMaterialId String?
-  bodyMaterial   Material? @relation("BodyMaterial", fields: [bodyMaterialId], references: [id])
-
-  // ---- Свитчеры + встроенные простые поля ----
-
-  // Секции
-  sectionsEnabled Boolean @default(false)
-
-  // Задняя стенка
-  backWallEnabled    Boolean   @default(false)
-  backWallMaterialId String?
-  backWallMaterial   Material? @relation("BackWallMaterial", fields: [backWallMaterialId], references: [id])
-
-  // Перегородки
-  partitionsEnabled Boolean @default(false)
-
-  // Полки
-  shelvesEnabled Boolean @default(false)
-
-  // Фасады
-  facadesEnabled Boolean @default(false)
-
-  // Фальш-фасады (боковые панели)
-  falseFacadesEnabled   Boolean   @default(false)
-  falseFacadeQty        Int       @default(0)
-  falseFacadeMaterialId String?
-  falseFacadeMaterial   Material? @relation("FalseFacadeMaterial", fields: [falseFacadeMaterialId], references: [id])
-
-  // Ящики
-  drawersEnabled Boolean @default(false)
-
-  // Антресоль
-  mezzanineEnabled Boolean @default(false)
-
-  // Столешница
-  countertopEnabled Boolean @default(false)
-
-  // Дополнительно
-  extrasEnabled Boolean @default(false)
+  // ---- Свитчеры ----
+  sectionsEnabled     Boolean @default(false)
+  partitionsEnabled   Boolean @default(false)
+  shelvesEnabled      Boolean @default(false)
+  facadesEnabled      Boolean @default(false)
+  falseFacadesEnabled Boolean @default(false)
+  drawersEnabled      Boolean @default(false)
+  countertopEnabled   Boolean @default(false)
+  extrasEnabled       Boolean @default(false)
 
   // ---- Реляции на конфигурацию ----
-  sections   ProductSection[]
-  partitions ProductPartition[]
-  shelves    ProductShelf[]
-  facades    ProductFacade[]
-  drawers    ProductDrawer[]
-  mezzanine  ProductMezzanine?
-  countertop ProductCountertop?
-  extras     ProductExtra[]
+  sections     ProductSection[]
+  partitions   ProductPartition[]
+  shelves      ProductShelf[]
+  facades      ProductFacade[]
+  falseFacades ProductFalseFacade[]
+  drawers      ProductDrawer[]
+  countertops  ProductCountertop[]
+  extras       ProductExtra[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -411,156 +386,165 @@ model Product {
 // PRODUCT CONFIGURATION
 // ============================================
 
-// Группа секций (Модуль: 2 боковины, крыша, дно)
+// Группа секций (Модуль: 2 боковины + крыша/дно + задняя стенка)
 model ProductSection {
-  id          String            @id @default(cuid())
-  productId   String
-  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  mezzanineId String?
-  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
-  qty         Int               @default(2) // кол-во секций в группе
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qty        Int       @default(1)
+  width      Int       @default(0) // Ш mm
+  height     Int       @default(0) // В mm
+  depth      Int       @default(0) // Г mm
+  materialId String?
+  material   Material? @relation("SectionMaterial", fields: [materialId], references: [id])
+
+  // Задняя стенка
+  backWallEnabled    Boolean   @default(false)
+  backWallMaterialId String?
+  backWallMaterial   Material? @relation("SectionBackWallMaterial", fields: [backWallMaterialId], references: [id])
+
+  // Ножки
+  legsEnabled    Boolean   @default(false)
+  legsHardwareId String?
+  legsHardware   Hardware? @relation("SectionLegsHardware", fields: [legsHardwareId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([productId])
-  @@index([mezzanineId])
 }
 
 // Группа перегородок
 model ProductPartition {
-  id          String            @id @default(cuid())
-  productId   String
-  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  mezzanineId String?
-  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
-  qty         Int               @default(1)
-  height      Int // mm
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qty        Int       @default(1)
+  height     Int       @default(0) // В mm
+  depth      Int       @default(0) // Г mm
+  materialId String?
+  material   Material? @relation("PartitionMaterial", fields: [materialId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([productId])
-  @@index([mezzanineId])
 }
 
 // Группа полок
 model ProductShelf {
-  id          String            @id @default(cuid())
-  productId   String
-  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  mezzanineId String?
-  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
-  qty         Int               @default(1)
-  width       Int // mm
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qty        Int       @default(1)
+  width      Int       @default(0) // Ш mm
+  depth      Int       @default(0) // Г mm
+  materialId String?
+  material   Material? @relation("ShelfMaterial", fields: [materialId], references: [id])
+
+  // Полкодержатели
+  holderHardwareId String?
+  holderHardware   Hardware? @relation("ShelfHolderHardware", fields: [holderHardwareId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([productId])
-  @@index([mezzanineId])
 }
 
 // Группа фасадов
 model ProductFacade {
-  id          String            @id @default(cuid())
-  productId   String
-  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  mezzanineId String?
-  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
-  materialId  String?
-  material    Material?         @relation(fields: [materialId], references: [id])
-  isLdsp      Boolean           @default(false)
-  width       Int // mm
-  height      Int // mm
-  qty         Int               @default(1)
-  handleQty   Int               @default(0)
-  openType    FacadeOpenType    @default(HANDLE)
+  id         String         @id @default(cuid())
+  productId  String
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialId String?
+  material   Material?      @relation(fields: [materialId], references: [id])
+  width      Int            @default(0) // Ш mm
+  height     Int            @default(0) // В mm
+  qty        Int            @default(1)
+  handleQty  Int            @default(0)
+  openType   FacadeOpenType @default(HANDLE)
+
+  // Петли
+  hingeHardwareId String?
+  hingeHardware   Hardware? @relation("FacadeHingeHardware", fields: [hingeHardwareId], references: [id])
+
+  // Ручки
+  handleHardwareId String?
+  handleHardware   Hardware? @relation("FacadeHandleHardware", fields: [handleHardwareId], references: [id])
+
+  // Tip-On
+  tipOnHardwareId String?
+  tipOnHardware   Hardware? @relation("FacadeTipOnHardware", fields: [tipOnHardwareId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([productId])
-  @@index([mezzanineId])
 }
 
 // Группа ящиков
 model ProductDrawer {
-  id          String            @id @default(cuid())
-  productId   String
-  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  mezzanineId String?
-  mezzanine   ProductMezzanine? @relation(fields: [mezzanineId], references: [id], onDelete: Cascade)
-  width       Int // mm
-  height      Int // mm
-  qty         Int               @default(1)
-  handleQty   Int               @default(0)
-  slideType   DrawerSlideType   @default(GUIDE)
+  id         String          @id @default(cuid())
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  width      Int             @default(0) // Ш mm
+  height     Int             @default(0) // В mm
+  depth      Int             @default(0) // Г mm
+  qty        Int             @default(1)
+  handleQty  Int             @default(0)
+  slideType  DrawerSlideType @default(GUIDE)
+  materialId String?
+  material   Material?       @relation("DrawerMaterial", fields: [materialId], references: [id])
+
+  // Направляющие/Тандем (фурнитура)
+  slideHardwareId String?
+  slideHardware   Hardware? @relation("DrawerSlideHardware", fields: [slideHardwareId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([productId])
-  @@index([mezzanineId])
 }
 
-// Антресоль — отдельный модуль с теми же опциями (кроме ножек)
-model ProductMezzanine {
-  id        String  @id @default(cuid())
-  productId String  @unique
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  height    Int // H_антресоли mm
-
-  // Материал корпуса антресоли (null = как корпус основного изделия)
-  bodyMaterialId String?
-  bodyMaterial   Material? @relation("MezzanineBodyMaterial", fields: [bodyMaterialId], references: [id])
-
-  // Свитчеры антресоли
-  sectionsEnabled       Boolean   @default(false)
-  backWallEnabled       Boolean   @default(false)
-  backWallMaterialId    String?
-  backWallMaterial      Material? @relation("MezzanineBackWall", fields: [backWallMaterialId], references: [id])
-  partitionsEnabled     Boolean   @default(false)
-  shelvesEnabled        Boolean   @default(false)
-  facadesEnabled        Boolean   @default(false)
-  falseFacadesEnabled   Boolean   @default(false)
-  falseFacadeQty        Int       @default(0)
-  falseFacadeMaterialId String?
-  falseFacadeMaterial   Material? @relation("MezzanineFalseFacadeMat", fields: [falseFacadeMaterialId], references: [id])
-  drawersEnabled        Boolean   @default(false)
-
-  // Компоненты антресоли (через mezzanineId)
-  sections   ProductSection[]
-  partitions ProductPartition[]
-  shelves    ProductShelf[]
-  facades    ProductFacade[]
-  drawers    ProductDrawer[]
+// Группа фальш-фасадов
+model ProductFalseFacade {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qty        Int       @default(1)
+  height     Int       @default(0) // В mm
+  depth      Int       @default(0) // Г mm
+  materialId String?
+  material   Material? @relation("FalseFacadeMaterial", fields: [materialId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([productId])
 }
 
-// Столешница
+// Группа столешниц + фартук
 model ProductCountertop {
-  id         String   @id @default(cuid())
-  productId  String   @unique
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  materialId String
-  material   Material @relation("CountertopMaterial", fields: [materialId], references: [id])
-  isLdsp     Boolean  @default(false)
-  width      Int // mm
-  depth      Int      @default(600) // mm
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialId String?
+  material   Material? @relation("CountertopMaterial", fields: [materialId], references: [id])
+  width      Int       @default(0) // Ш mm
+  depth      Int       @default(600) // Г mm
 
   // Фартук
   apronEnabled    Boolean   @default(false)
   apronMaterialId String?
   apronMaterial   Material? @relation("ApronMaterial", fields: [apronMaterialId], references: [id])
-  apronIsLdsp     Boolean   @default(false)
-  apronWidth      Int? // mm
-  apronHeight     Int? // mm
+  apronWidth      Int? // Ш mm
+  apronHeight     Int? // В mm
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([productId])
 }
 
 // Дополнительные позиции (произвольные)
