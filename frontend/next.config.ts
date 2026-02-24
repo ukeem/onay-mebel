@@ -9,6 +9,11 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  images: {
+    // Upload images are served via nginx→backend; the Next.js container
+    // cannot reach /uploads/ internally, so skip optimization for them.
+    unoptimized: true,
+  },
   turbopack: {
     root: rootDir,
   },
