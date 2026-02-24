@@ -1868,6 +1868,9 @@ export class CalculationsService {
             );
           } else {
             sectionArea += bwArea;
+            // Mark that back wall uses the same material as section
+            // so it appears in the component list (e.g. "ЛДСП (Секции, Зад.стенка)")
+            addArea(sec.materialId, sec.material, 0, '', 0, 'Зад.стенка');
           }
         }
 
