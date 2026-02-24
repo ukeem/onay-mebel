@@ -71,12 +71,7 @@ services:
     depends_on:
       - backend
       - frontend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.onay-mebel.rule=Host(`${APP_DOMAIN:-localhost}`)"
-      - "traefik.http.routers.onay-mebel.entrypoints=websecure"
-      - "traefik.http.routers.onay-mebel.tls.certresolver=letsencrypt"
-      - "traefik.http.services.onay-mebel.loadbalancer.server.port=80"
+    # Labels управляются Dokploy через UI (Domains) — не дублировать здесь
 
 volumes:
   pgdata:
