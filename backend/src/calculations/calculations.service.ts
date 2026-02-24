@@ -846,7 +846,7 @@ export class CalculationsService {
             productsHtml += `
             <div class="product-block">
               <div class="product-header">
-                <span class="product-name">${pr.productType} — ${pr.dimensions}</span>
+                <span class="product-name">${pr.productType}</span>
                 <span class="product-price">${productPriceHtml}</span>
               </div>
               <div class="${productContentClass}">

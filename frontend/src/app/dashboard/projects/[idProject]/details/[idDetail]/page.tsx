@@ -831,7 +831,7 @@ export default function DetailPage({
                               <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center justify-between gap-3 text-sm">
                                   <span className="min-w-0 break-words">
-                                    {pr.productType} {pr.dimensions}
+                                    {pr.productType}
                                   </span>
                                   <span className="shrink-0 font-semibold whitespace-nowrap">
                                     {fmt(pSum)}
