@@ -53,6 +53,9 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
+  // Graceful shutdown — triggers onModuleDestroy (Prisma disconnect, etc.)
+  app.enableShutdownHooks();
+
   const port = process.env.PORT ?? 4000;
   await app.listen(port);
 

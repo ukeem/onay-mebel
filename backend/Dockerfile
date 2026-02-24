@@ -39,5 +39,5 @@ USER node
 
 EXPOSE 4000
 
-# Run migrations, seed, then start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main.js"]
+# Run migrations, seed, then start (dumb-init forwards SIGTERM for graceful shutdown)
+CMD ["dumb-init", "sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main.js"]
