@@ -1829,8 +1829,8 @@ export class CalculationsService {
       }
     };
 
-    let totalSectionQty = 0;
-    let totalShelfQty = 0;
+    let _totalSectionQty = 0;
+    let _totalShelfQty = 0;
     let dimW = 0;
     let dimH = 0;
     let dimD = 0;
@@ -1842,7 +1842,7 @@ export class CalculationsService {
         const H = sec.height;
         const D = sec.depth;
         const qty = sec.qty;
-        totalSectionQty += qty;
+        _totalSectionQty += qty;
 
         dimW += W * qty;
         dimH = Math.max(dimH, H);
@@ -1909,7 +1909,7 @@ export class CalculationsService {
           0,
           'Полки',
         );
-        totalShelfQty += sh.qty;
+        _totalShelfQty += sh.qty;
       }
     }
 
@@ -2500,7 +2500,7 @@ function stripQtyFromLabel(label: string): string {
     .trim();
 }
 
-function findMat(product: any, materialId: string): any {
+function _findMat(product: any, materialId: string): any {
   for (const s of product.sections ?? []) {
     if (s.material?.id === materialId) return s.material;
     if (s.backWallMaterial?.id === materialId) return s.backWallMaterial;
