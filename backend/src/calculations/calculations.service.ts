@@ -312,9 +312,9 @@ export class CalculationsService {
         designCost -
         deliveryCost -
         assemblyCost -
-        (productsSum + workshopTotal);
+        (productsSumNoReserve + workshopTotal);
     } else {
-      const base = productsSum + workshopTotal + reserveAmount;
+      const base = productsSum + workshopTotal;
       const allCosts =
         base +
         profitValue +
@@ -323,17 +323,11 @@ export class CalculationsService {
         assemblyCost +
         deliveryCost;
       const discountAmount = (allCosts * discount) / 100;
-      totalForClient =
-        base +
-        profitValue +
-        techCost +
-        designCost +
-        assemblyCost +
-        deliveryCost -
-        discountAmount;
+      totalForClient = allCosts - discountAmount;
       cleanProfit =
         totalForClient -
-        base -
+        productsSumNoReserve -
+        workshopTotal -
         techCost -
         designCost -
         assemblyCost -
@@ -452,17 +446,18 @@ export class CalculationsService {
         const base =
           (tierProductsSumNoReserve + tWorkshopTotal) * profitValue +
           tierReserve;
-        tTotalForClient = Math.round(base + tDeliveryCost);
+        const disc = (base * discount) / 100;
+        tTotalForClient = Math.round(base - disc + tDeliveryCost);
         tCleanProfit = Math.round(
           base -
             tTechCost -
             tDesignCost -
             tDeliveryCost -
             tAssemblyCost -
-            (tierProductsSum + tWorkshopTotal),
+            (tierProductsSumNoReserve + tWorkshopTotal),
         );
       } else {
-        const base = tierProductsSum + tWorkshopTotal + tierReserve;
+        const base = tierProductsSum + tWorkshopTotal;
         const allCosts =
           base +
           profitValue +
@@ -474,7 +469,8 @@ export class CalculationsService {
         tTotalForClient = Math.round(allCosts - disc);
         tCleanProfit = Math.round(
           tTotalForClient -
-            base -
+            tierProductsSumNoReserve -
+            tWorkshopTotal -
             tTechCost -
             tDesignCost -
             tAssemblyCost -
