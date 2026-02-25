@@ -152,6 +152,30 @@ export class CatalogService {
     return { message: 'Тип фурнитуры удалён' };
   }
 
+  /* ═══════════ EXTRA TYPES ═══════════ */
+
+  findAllExtraTypes() {
+    return this.prisma.extraType.findMany({ orderBy: { name: 'asc' } });
+  }
+
+  async createExtraType(dto: CreateTypeDto) {
+    return this.prisma.extraType.create({ data: { name: dto.name } });
+  }
+
+  async updateExtraType(id: string, dto: CreateTypeDto) {
+    await this.ensureExists('extraType', id);
+    return this.prisma.extraType.update({
+      where: { id },
+      data: { name: dto.name },
+    });
+  }
+
+  async deleteExtraType(id: string) {
+    await this.ensureExists('extraType', id);
+    await this.prisma.extraType.delete({ where: { id } });
+    return { message: 'Тип дополнения удалён' };
+  }
+
   /* ═══════════ MATERIALS ═══════════ */
 
   findAllMaterials() {

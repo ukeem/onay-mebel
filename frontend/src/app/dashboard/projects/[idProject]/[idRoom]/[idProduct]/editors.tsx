@@ -14,11 +14,16 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { selectOnFocus } from "@/lib/utils";
-import type { CountertopData, FalseFacadeItem } from "@/types";
+import type {
+  CountertopData,
+  ExtraItem,
+  ExtraType,
+  FalseFacadeItem,
+} from "@/types";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { memo } from "react";
 
-import type { ExtraItem, HwOption, MatOption, SubItem, TFunc } from "./types";
+import type { HwOption, MatOption, SubItem, TFunc } from "./types";
 import { dec, num } from "./types";
 
 /* ── Section wrapper with icon + toggle ── */
@@ -1363,14 +1368,22 @@ export const CountertopsEditor = memo(function CountertopsEditor({
 export const ExtrasEditor = memo(function ExtrasEditor({
   items,
   setItems,
+  extraTypes,
   t,
 }: {
   items: ExtraItem[];
   setItems: (v: ExtraItem[]) => void;
+  extraTypes: ExtraType[];
   t: TFunc;
 }) {
+  const datalistId = "extra-type-suggestions";
   return (
     <div className="space-y-2">
+      <datalist id={datalistId}>
+        {extraTypes.map((et) => (
+          <option key={et.id} value={et.name} />
+        ))}
+      </datalist>
       {items.map((e, i) => (
         <div
           key={i}
@@ -1392,7 +1405,9 @@ export const ExtrasEditor = memo(function ExtrasEditor({
               </Label>
               <Input
                 className="h-9"
+                list={datalistId}
                 value={e.name}
+                placeholder={t("product.extraNameHint")}
                 onChange={(ev) => {
                   const copy = [...items];
                   copy[i] = { ...e, name: ev.target.value };

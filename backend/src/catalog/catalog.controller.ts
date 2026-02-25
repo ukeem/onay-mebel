@@ -126,6 +126,31 @@ export class CatalogController {
     return this.catalog.deleteHardwareType(id);
   }
 
+  /* ═══ EXTRA TYPES ═══ */
+
+  @Get('extra-types')
+  getExtraTypes() {
+    return this.catalog.findAllExtraTypes();
+  }
+
+  @Post('extra-types')
+  @Roles(Role.SUPER, Role.ADMIN)
+  createExtraType(@Body() dto: CreateTypeDto) {
+    return this.catalog.createExtraType(dto);
+  }
+
+  @Patch('extra-types/:id')
+  @Roles(Role.SUPER, Role.ADMIN)
+  updateExtraType(@Param('id') id: string, @Body() dto: CreateTypeDto) {
+    return this.catalog.updateExtraType(id, dto);
+  }
+
+  @Delete('extra-types/:id')
+  @Roles(Role.SUPER, Role.ADMIN)
+  deleteExtraType(@Param('id') id: string) {
+    return this.catalog.deleteExtraType(id);
+  }
+
   /* ═══ MATERIALS ═══ */
 
   @Get('materials')

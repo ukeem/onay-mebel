@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import type {
   ExtraItem,
+  ExtraType,
   HwOption,
   MatOption,
   ProductData,
@@ -27,6 +28,7 @@ export function useProductForm(
   const [product, setProduct] = useState<ProductData | null>(null);
   const [materials, setMaterials] = useState<MatOption[]>([]);
   const [hardwareList, setHardwareList] = useState<HwOption[]>([]);
+  const [extraTypes, setExtraTypes] = useState<ExtraType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Set<string>>(new Set());
@@ -64,13 +66,15 @@ export function useProductForm(
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const fetchData = useCallback(async () => {
     try {
-      const [pRes, mRes, hwRes] = await Promise.all([
+      const [pRes, mRes, hwRes, etRes] = await Promise.all([
         api.get(`/products/${idProduct}`),
         api.get("/settings/materials"),
         api.get("/settings/hardware"),
+        api.get("/catalog/extra-types"),
       ]);
       const p: ProductData = pRes.data;
       setProduct(p);
+      setExtraTypes(etRes.data);
       const enabledMaterials =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (mRes.data as any[])
@@ -664,6 +668,7 @@ export function useProductForm(
     setCountertops,
     extras,
     setExtras,
+    extraTypes,
 
     /* defaults from last section */
     defaultWidth,

@@ -70,6 +70,10 @@ export default function CatalogPage() {
             endpoint="/catalog/hardware-types"
             title={t("catalog.hardwareTypes")}
           />
+          <TypeCrud
+            endpoint="/catalog/extra-types"
+            title={t("catalog.extraTypes")}
+          />
         </TabsContent>
 
         <TabsContent value="materials" className="pt-4">

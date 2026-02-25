@@ -53,6 +53,11 @@ export interface HardwareType {
   name: string;
 }
 
+export interface ExtraType {
+  id: string;
+  name: string;
+}
+
 export interface Hardware {
   id: string;
   brand: string | null;

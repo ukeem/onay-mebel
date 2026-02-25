@@ -6,6 +6,7 @@
 export type {
   CountertopData,
   ExtraItem,
+  ExtraType,
   FalseFacadeItem,
   HwOption,
   MatOption,

@@ -148,6 +148,14 @@ model HardwareType {
   updatedAt DateTime @updatedAt
 }
 
+model ExtraType {
+  id   String @id @default(cuid())
+  name String // подсветка, доводчики, ножки...
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Material {
   id             String       @id @default(cuid())
   materialTypeId String
