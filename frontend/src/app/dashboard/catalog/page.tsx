@@ -3,6 +3,7 @@
 import { TypeCrud } from "@/components/catalog/type-crud";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuthStore } from "@/stores/auth.store";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 
@@ -32,6 +33,7 @@ const ServiceTemplateCrud = dynamic(
 
 export default function CatalogPage() {
   const t = useTranslations();
+  const isSuper = useAuthStore((s) => s.user?.role === "SUPER");
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold tracking-tight">
@@ -62,14 +64,18 @@ export default function CatalogPage() {
             endpoint="/catalog/product-types"
             title={t("catalog.productTypes")}
           />
-          <TypeCrud
-            endpoint="/catalog/material-types"
-            title={t("catalog.materialTypes")}
-          />
-          <TypeCrud
-            endpoint="/catalog/hardware-types"
-            title={t("catalog.hardwareTypes")}
-          />
+          {isSuper && (
+            <>
+              <TypeCrud
+                endpoint="/catalog/material-types"
+                title={t("catalog.materialTypes")}
+              />
+              <TypeCrud
+                endpoint="/catalog/hardware-types"
+                title={t("catalog.hardwareTypes")}
+              />
+            </>
+          )}
           <TypeCrud
             endpoint="/catalog/extra-types"
             title={t("catalog.extraTypes")}

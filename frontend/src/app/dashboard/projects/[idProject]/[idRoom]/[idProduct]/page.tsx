@@ -275,7 +275,12 @@ export default function ProductPage() {
           checked={f.extrasEnabled}
           onChange={f.toggleExtras}
         >
-          <ExtrasEditor items={f.extras} setItems={f.setExtras} extraTypes={f.extraTypes} t={f.t} />
+          <ExtrasEditor
+            items={f.extras}
+            setItems={f.setExtras}
+            extraTypes={f.extraTypes}
+            t={f.t}
+          />
         </ToggleSection>
       </div>
 
