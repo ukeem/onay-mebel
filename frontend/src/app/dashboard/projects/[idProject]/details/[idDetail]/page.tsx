@@ -302,12 +302,26 @@ function computeRoomTotals(
       designCost -
       deliveryCost -
       assemblyCost -
-      (productsSum + workshopTotal);
+      (productsSumNoReserve + workshopTotal);
   } else {
     const base = productsSum + workshopTotal;
-    const disc = (base * opts.discountPct) / 100;
-    totalForClient = base - disc + opts.profitValue + deliveryCost;
-    cleanProfit = opts.profitValue;
+    const allCosts =
+      base +
+      opts.profitValue +
+      techCost +
+      designCost +
+      assemblyCost +
+      deliveryCost;
+    const disc = (allCosts * opts.discountPct) / 100;
+    totalForClient = allCosts - disc;
+    cleanProfit =
+      totalForClient -
+      productsSumNoReserve -
+      workshopTotal -
+      techCost -
+      designCost -
+      assemblyCost -
+      deliveryCost;
   }
 
   const materialSum = Math.round(materialSumRaw * (1 + opts.reservePct / 100));
