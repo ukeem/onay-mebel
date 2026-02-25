@@ -1,3 +1,4 @@
+import { ChunkErrorReloader } from "@/components/chunk-error-reloader";
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
@@ -46,6 +47,7 @@ export default async function RootLayout({
           >
             {children}
             <Toaster richColors position="top-right" />
+            <ChunkErrorReloader />
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

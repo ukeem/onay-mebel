@@ -1,26 +1,33 @@
 "use client";
 
 import { TypeCrud } from "@/components/catalog/type-crud";
+import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 
+const DynamicLoading = () => (
+  <div className="flex justify-center py-12">
+    <Spinner className="h-8 w-8" />
+  </div>
+);
+
 const MaterialsCrud = dynamic(
   () =>
     import("@/components/catalog/materials-crud").then((m) => m.MaterialsCrud),
-  { ssr: false },
+  { ssr: false, loading: DynamicLoading },
 );
 const HardwareCrud = dynamic(
   () =>
     import("@/components/catalog/hardware-crud").then((m) => m.HardwareCrud),
-  { ssr: false },
+  { ssr: false, loading: DynamicLoading },
 );
 const ServiceTemplateCrud = dynamic(
   () =>
     import("@/components/catalog/service-template-crud").then(
       (m) => m.ServiceTemplateCrud,
     ),
-  { ssr: false },
+  { ssr: false, loading: DynamicLoading },
 );
 
 export default function CatalogPage() {
