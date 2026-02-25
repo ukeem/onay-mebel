@@ -316,7 +316,7 @@ function computeRoomTotals(
     totalForClient = allCosts - disc;
     cleanProfit =
       totalForClient -
-      productsSumNoReserve -
+      productsSum -
       workshopTotal -
       techCost -
       designCost -

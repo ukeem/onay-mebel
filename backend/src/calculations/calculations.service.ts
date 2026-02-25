@@ -326,7 +326,7 @@ export class CalculationsService {
       totalForClient = allCosts - discountAmount;
       cleanProfit =
         totalForClient -
-        productsSumNoReserve -
+        productsSum -
         workshopTotal -
         techCost -
         designCost -
@@ -469,7 +469,7 @@ export class CalculationsService {
         tTotalForClient = Math.round(allCosts - disc);
         tCleanProfit = Math.round(
           tTotalForClient -
-            tierProductsSumNoReserve -
+            tierProductsSum -
             tWorkshopTotal -
             tTechCost -
             tDesignCost -
