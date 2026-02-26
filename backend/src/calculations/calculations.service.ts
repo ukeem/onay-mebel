@@ -869,8 +869,8 @@ export class CalculationsService {
 
               const detImgSrc = det.image ? logoToDataUri(det.image) : '';
               const detThumbHtml = detImgSrc
-                ? `<span class="detail-thumb" onclick="openLightbox(this)"><img src="${detImgSrc}" alt=""/><span class="detail-thumb-plus">+</span></span>`
-                : `<span class="detail-dot"></span>`;
+                ? `<span class="detail-chip has-img" onclick="openLightbox(this)"><img src="${detImgSrc}" alt=""/><span class="detail-chip-plus">+</span></span>`
+                : `<span class="detail-chip placeholder ${det.type === 'material' ? 'mat' : 'hw'}">${det.type === 'material' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'}</span>`;
 
               detailsHtml += `
               <div class="detail-item">
@@ -1370,37 +1370,51 @@ export class CalculationsService {
       padding: 3px 0;
       break-inside: avoid;
     }
-    .detail-dot {
-      width: 4px; height: 4px;
-      border-radius: 50%;
-      background: var(--dot);
-      flex-shrink: 0;
-    }
-    .detail-thumb {
+    .detail-chip {
       position: relative;
-      width: 28px; height: 28px;
-      border-radius: 4px;
+      width: 24px; height: 24px;
+      border-radius: 6px;
       overflow: hidden;
       flex-shrink: 0;
-      cursor: pointer;
       border: 1px solid var(--border);
       transition: opacity .15s;
     }
-    .detail-thumb:hover { opacity: .8; }
-    .detail-thumb img {
+    .detail-chip.has-img {
+      cursor: pointer;
+    }
+    .detail-chip.has-img:hover { opacity: .8; }
+    .detail-chip img {
       width: 100%; height: 100%;
       object-fit: cover;
       display: block;
     }
-    .detail-thumb-plus {
+    .detail-chip.placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-soft);
+      border-color: transparent;
+    }
+    .detail-chip.placeholder svg {
+      width: 13px; height: 13px;
+      color: var(--accent);
+      opacity: .7;
+    }
+    .detail-chip.placeholder.hw {
+      background: var(--green-bg);
+    }
+    .detail-chip.placeholder.hw svg {
+      color: var(--green);
+    }
+    .detail-chip-plus {
       position: absolute;
       bottom: 0; right: 0;
-      width: 14px; height: 14px;
+      width: 12px; height: 12px;
       background: var(--accent);
       color: #fff;
-      font-size: 11px;
+      font-size: 9px;
       font-weight: 700;
-      line-height: 14px;
+      line-height: 12px;
       text-align: center;
       border-radius: 4px 0 0 0;
     }
@@ -1725,6 +1739,8 @@ export class CalculationsService {
       .tier-total .total-label { font-size: 16px; font-weight: 700; }
       .tier-total .grand-new { font-size: 20px; }
       .product-block { break-inside: avoid; box-shadow: none; border: 1px solid #e2e8f0; }
+      .detail-chip.placeholder { border: 1px solid #e2e8f0; }
+      .detail-chip-plus { display: none; }
       .product-content.with-image { grid-template-columns: 250px 1fr; }
       .kp-header { box-shadow: none; }
       .print-btn { display: none !important; }
