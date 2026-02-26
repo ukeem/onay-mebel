@@ -38,6 +38,7 @@ import {
   ToggleSection,
 } from "./editors";
 import { useProductForm } from "./use-product-form";
+import { useCollapseState } from "./use-collapse-state";
 
 export default function ProductPage() {
   const { idProject, idRoom, idProduct } = useParams<{
@@ -48,6 +49,7 @@ export default function ProductPage() {
   const router = useRouter();
 
   const f = useProductForm(idProject, idRoom, idProduct);
+  const cs = useCollapseState(idProduct);
   const [backOpen, setBackOpen] = useState(false);
 
   const backUrl = `/dashboard/projects/${idProject}/${idRoom}`;
@@ -130,6 +132,7 @@ export default function ProductPage() {
               materialId: f.defaultMaterialId,
             }}
             errors={f.sectionErrors}
+            cs={cs}
           />
         </ToggleSection>
 
@@ -156,6 +159,8 @@ export default function ProductPage() {
             }}
             errors={f.partitionErrors}
             defaultLabel={f.t("product.partitions")}
+            cs={cs}
+            collapsePrefix="par"
           />
         </ToggleSection>
 
@@ -185,6 +190,8 @@ export default function ProductPage() {
             }}
             errors={f.shelfErrors}
             defaultLabel={f.t("product.shelves")}
+            cs={cs}
+            collapsePrefix="shf"
           />
         </ToggleSection>
 
@@ -206,6 +213,7 @@ export default function ProductPage() {
             tipOnHardware={f.tipOnHardware}
             defaultWidth={f.defaultWidth}
             defaultHeight={f.defaultHeight}
+            cs={cs}
           />
         </ToggleSection>
 
@@ -227,6 +235,7 @@ export default function ProductPage() {
               materialId: f.defaultMaterialId,
             }}
             errors={f.falseFacadeErrors}
+            cs={cs}
           />
         </ToggleSection>
 
@@ -246,6 +255,7 @@ export default function ProductPage() {
             tandemHardware={f.tandemHardware}
             defaultMaterialId={f.defaultMaterialId}
             errors={f.drawerErrors}
+            cs={cs}
           />
         </ToggleSection>
 
@@ -267,6 +277,7 @@ export default function ProductPage() {
             hasError={f.hasError}
             defaultWidth={f.defaultWidth}
             defaultDepth={f.defaultDepth}
+            cs={cs}
           />
         </ToggleSection>
 
@@ -282,6 +293,7 @@ export default function ProductPage() {
             setItems={f.setExtras}
             extraTypes={f.extraTypes}
             t={f.t}
+            cs={cs}
           />
         </ToggleSection>
       </div>

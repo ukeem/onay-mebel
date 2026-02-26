@@ -22,8 +22,9 @@ import type {
   FalseFacadeItem,
 } from "@/types";
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { memo, useState } from "react";
 
+import type { CollapseState } from "./use-collapse-state";
 import type { HwOption, MatOption, SubItem, TFunc } from "./types";
 import { dec, num } from "./types";
 
@@ -144,6 +145,8 @@ export const CollapsibleItem = memo(function CollapsibleItem({
   onLabelChange,
   onDelete,
   defaultLabel,
+  collapsed,
+  onToggle,
   t,
   children,
 }: {
@@ -152,15 +155,12 @@ export const CollapsibleItem = memo(function CollapsibleItem({
   onLabelChange: (v: string) => void;
   onDelete: () => void;
   defaultLabel: string;
+  collapsed: boolean;
+  onToggle: () => void;
   t: TFunc;
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(!!label);
   const [editing, setEditing] = useState(false);
-
-  const handleToggle = useCallback(() => {
-    setCollapsed((p) => !p);
-  }, []);
 
   const displayLabel = label || `${defaultLabel} ${index + 1}`;
 
@@ -169,7 +169,7 @@ export const CollapsibleItem = memo(function CollapsibleItem({
       {/* header */}
       <div
         className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-accent/30 transition-colors"
-        onClick={handleToggle}
+        onClick={onToggle}
       >
         {collapsed ? (
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -371,6 +371,7 @@ export const SectionsEditor = memo(function SectionsEditor({
   t,
   defaultItem,
   errors,
+  cs,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
@@ -385,12 +386,15 @@ export const SectionsEditor = memo(function SectionsEditor({
     materialId: string;
   };
   errors?: Set<string>;
+  cs: CollapseState;
 }) {
   return (
     <div className="space-y-2">
-      {items.map((s, i) => (
+      {items.map((s, i) => {
+        const ck = `sec_${s.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={s.id || i}
           index={i}
           label={s.label}
           onLabelChange={(v) => {
@@ -400,6 +404,8 @@ export const SectionsEditor = memo(function SectionsEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={t("product.sectionGroup")}
+          collapsed={cs.isCollapsed(ck, !!s.id)}
+          onToggle={() => cs.toggle(ck)}
           t={t}
         >
           <div className="grid grid-cols-3 gap-2">
@@ -535,7 +541,8 @@ export const SectionsEditor = memo(function SectionsEditor({
             )}
           </SwitchRow>
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
@@ -581,6 +588,8 @@ export const ComponentEditor = memo(function ComponentEditor({
   defaultItem,
   errors,
   defaultLabel,
+  cs,
+  collapsePrefix,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
@@ -596,12 +605,16 @@ export const ComponentEditor = memo(function ComponentEditor({
   defaultItem?: { dim1: number; dim2: number; materialId: string };
   errors?: Set<string>;
   defaultLabel?: string;
+  cs?: CollapseState;
+  collapsePrefix?: string;
 }) {
   return (
     <div className="space-y-2">
-      {items.map((s, i) => (
+      {items.map((s, i) => {
+        const ck = `${collapsePrefix || "comp"}_${s.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={s.id || i}
           index={i}
           label={s.label}
           onLabelChange={(v) => {
@@ -611,6 +624,8 @@ export const ComponentEditor = memo(function ComponentEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={defaultLabel || t("product.position")}
+          collapsed={cs ? cs.isCollapsed(ck, !!s.id) : false}
+          onToggle={() => cs?.toggle(ck)}
           t={t}
         >
           <div className="grid grid-cols-3 gap-2">
@@ -687,7 +702,8 @@ export const ComponentEditor = memo(function ComponentEditor({
             />
           )}
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
@@ -722,6 +738,7 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
   t,
   defaultItem,
   errors,
+  cs,
 }: {
   items: FalseFacadeItem[];
   setItems: (v: FalseFacadeItem[]) => void;
@@ -729,12 +746,15 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
   t: TFunc;
   defaultItem?: { height: number; depth: number; materialId: string };
   errors?: Set<string>;
+  cs?: CollapseState;
 }) {
   return (
     <div className="space-y-2">
-      {items.map((ff, i) => (
+      {items.map((ff, i) => {
+        const ck = `ff_${ff.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={ff.id || i}
           index={i}
           label={ff.label}
           onLabelChange={(v) => {
@@ -744,6 +764,8 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={t("product.falseFacade")}
+          collapsed={cs ? cs.isCollapsed(ck, !!ff.id) : false}
+          onToggle={() => cs?.toggle(ck)}
           t={t}
         >
           <div className="grid grid-cols-3 gap-2">
@@ -806,7 +828,8 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
             error={errors?.has(`mat_${i}`)}
           />
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
@@ -845,6 +868,7 @@ export const FacadesEditor = memo(function FacadesEditor({
   tipOnHardware,
   defaultWidth,
   defaultHeight,
+  cs,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
@@ -856,12 +880,15 @@ export const FacadesEditor = memo(function FacadesEditor({
   tipOnHardware?: HwOption[];
   defaultWidth?: number;
   defaultHeight?: number;
+  cs?: CollapseState;
 }) {
   return (
     <div className="space-y-2">
-      {items.map((f, i) => (
+      {items.map((f, i) => {
+        const ck = `fac_${f.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={f.id || i}
           index={i}
           label={f.label}
           onLabelChange={(v) => {
@@ -871,6 +898,8 @@ export const FacadesEditor = memo(function FacadesEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={t("product.facade")}
+          collapsed={cs ? cs.isCollapsed(ck, !!f.id) : false}
+          onToggle={() => cs?.toggle(ck)}
           t={t}
         >
           {/* Row 1: габариты */}
@@ -1044,7 +1073,8 @@ export const FacadesEditor = memo(function FacadesEditor({
             )
           )}
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
@@ -1083,6 +1113,7 @@ export const DrawersEditor = memo(function DrawersEditor({
   tandemHardware,
   defaultMaterialId,
   errors,
+  cs,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
@@ -1092,12 +1123,15 @@ export const DrawersEditor = memo(function DrawersEditor({
   tandemHardware?: HwOption[];
   defaultMaterialId?: string;
   errors?: Set<string>;
+  cs?: CollapseState;
 }) {
   return (
     <div className="space-y-2">
-      {items.map((d, i) => (
+      {items.map((d, i) => {
+        const ck = `drw_${d.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={d.id || i}
           index={i}
           label={d.label}
           onLabelChange={(v) => {
@@ -1107,6 +1141,8 @@ export const DrawersEditor = memo(function DrawersEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={t("product.drawer")}
+          collapsed={cs ? cs.isCollapsed(ck, !!d.id) : false}
+          onToggle={() => cs?.toggle(ck)}
           t={t}
         >
           {/* Row 1: габариты */}
@@ -1264,7 +1300,8 @@ export const DrawersEditor = memo(function DrawersEditor({
             ) : null;
           })()}
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
@@ -1304,6 +1341,7 @@ export const CountertopsEditor = memo(function CountertopsEditor({
   hasError,
   defaultWidth,
   defaultDepth,
+  cs,
 }: {
   items: CountertopData[];
   setItems: (v: CountertopData[]) => void;
@@ -1312,12 +1350,15 @@ export const CountertopsEditor = memo(function CountertopsEditor({
   hasError: (key: string) => boolean;
   defaultWidth?: number;
   defaultDepth?: number;
+  cs?: CollapseState;
 }) {
   return (
     <div className="space-y-2">
-      {items.map((ct, i) => (
+      {items.map((ct, i) => {
+        const ck = `ct_${ct.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={ct.id || i}
           index={i}
           label={ct.label}
           onLabelChange={(v) => {
@@ -1327,6 +1368,8 @@ export const CountertopsEditor = memo(function CountertopsEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={t("product.countertop")}
+          collapsed={cs ? cs.isCollapsed(ck, !!ct.id) : false}
+          onToggle={() => cs?.toggle(ck)}
           t={t}
         >
           <MatSelect
@@ -1439,7 +1482,8 @@ export const CountertopsEditor = memo(function CountertopsEditor({
             </div>
           </SwitchRow>
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
@@ -1471,11 +1515,13 @@ export const ExtrasEditor = memo(function ExtrasEditor({
   setItems,
   extraTypes,
   t,
+  cs,
 }: {
   items: ExtraItem[];
   setItems: (v: ExtraItem[]) => void;
   extraTypes: ExtraType[];
   t: TFunc;
+  cs?: CollapseState;
 }) {
   const datalistId = "extra-type-suggestions";
   return (
@@ -1485,9 +1531,11 @@ export const ExtrasEditor = memo(function ExtrasEditor({
           <option key={et.id} value={et.name} />
         ))}
       </datalist>
-      {items.map((e, i) => (
+      {items.map((e, i) => {
+        const ck = `ext_${e.id || i}`;
+        return (
         <CollapsibleItem
-          key={i}
+          key={e.id || i}
           index={i}
           label={e.label}
           onLabelChange={(v) => {
@@ -1497,6 +1545,8 @@ export const ExtrasEditor = memo(function ExtrasEditor({
           }}
           onDelete={() => setItems(items.filter((_, j) => j !== i))}
           defaultLabel={t("product.extra")}
+          collapsed={cs ? cs.isCollapsed(ck, !!e.id) : false}
+          onToggle={() => cs?.toggle(ck)}
           t={t}
         >
           <div className="grid grid-cols-2 gap-2">
@@ -1541,7 +1591,8 @@ export const ExtrasEditor = memo(function ExtrasEditor({
             </div>
           </div>
         </CollapsibleItem>
-      ))}
+        );
+      })}
       <Button
         variant="outline"
         size="sm"
