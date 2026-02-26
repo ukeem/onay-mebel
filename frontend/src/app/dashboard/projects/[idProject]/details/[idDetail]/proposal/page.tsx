@@ -110,7 +110,6 @@ export default function ProposalPage({
     } catch {
       /* cross-origin fallback */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const switchTier = useCallback((tier: Tier) => {

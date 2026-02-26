@@ -75,17 +75,14 @@ export function useProductForm(
       const p: ProductData = pRes.data;
       setProduct(p);
       setExtraTypes(etRes.data);
-      const enabledMaterials =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mRes.data as any[])
-          .filter((um) => um.enabled !== false)
-          .map((um) => um.material as MatOption);
+      const enabledMaterials = (mRes.data as any[])
+        .filter((um) => um.enabled !== false)
+        .map((um) => um.material as MatOption);
       setMaterials(
         enabledMaterials.filter((m) => m.materialType.name !== "Кромка"),
       );
       // Transform UserHardware[] → HwOption[]
       setHardwareList(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (hwRes.data as any[])
           .filter((uh) => uh.enabled !== false)
           .map((uh) => ({

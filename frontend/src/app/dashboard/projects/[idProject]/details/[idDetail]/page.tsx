@@ -861,6 +861,7 @@ export default function DetailPage({
                                   <div className="flex flex-col gap-2.5">
                                     <div className="h-36 w-full overflow-hidden rounded-md border bg-background">
                                       {pr.image ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img
                                           src={pr.image}
                                           alt={pr.productType}

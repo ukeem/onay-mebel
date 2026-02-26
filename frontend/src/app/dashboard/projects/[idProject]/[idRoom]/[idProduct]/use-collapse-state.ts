@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const STORAGE_PREFIX = "collapse:";
 
@@ -24,7 +24,11 @@ export function useCollapseState(productId: string) {
 
   const [expanded, setExpanded] = useState<Set<string>>(readStorage);
   const expandedRef = useRef(expanded);
-  expandedRef.current = expanded;
+
+  // Sync ref in effect to avoid "Cannot access refs during render"
+  useEffect(() => {
+    expandedRef.current = expanded;
+  }, [expanded]);
 
   const persist = useCallback(
     (next: Set<string>) => {
