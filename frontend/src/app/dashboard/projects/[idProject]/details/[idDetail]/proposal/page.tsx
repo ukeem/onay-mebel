@@ -136,27 +136,53 @@ export default function ProposalPage({
       <style>
         .tabs-wrap { display: none !important; }
         .total-bar { display: none !important; }
-        .tab-content { display: block !important; }
-        .tier-title {
-          display: block;
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--text);
-          text-align: center;
-          padding: 16px 0 12px;
-          margin-bottom: 8px;
-          border-bottom: 2px solid var(--border);
+        .tab-content { display: block !important; margin-bottom: 0; }
+        /* Separator between tiers */
+        .tab-content + .total-bar + .tab-content {
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 3px solid var(--accent);
+          position: relative;
         }
+        .tab-content + .total-bar + .tab-content::before {
+          content: '';
+          position: absolute;
+          top: -3px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60px;
+          height: 3px;
+          background: var(--green);
+          border-radius: 2px;
+        }
+        .tier-title {
+          display: inline-block;
+          font-size: 15px;
+          font-weight: 700;
+          color: #fff;
+          text-align: center;
+          padding: 8px 28px;
+          margin: 0 auto 16px;
+          background: var(--accent);
+          border-radius: 10px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        /* center the tier-title */
+        .tab-content { text-align: center; }
+        .tab-content > *:not(.tier-title) { text-align: left; }
         .tier-total {
           display: flex;
           justify-content: center;
-          padding: 16px 0;
-          margin-top: 12px;
-          border-top: 2px solid var(--border);
+          padding: 18px 20px;
+          margin-top: 16px;
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 14px;
         }
         .tier-total .total-inner-bar { gap: 12px; }
         .tier-total .total-label { font-size: 16px; font-weight: 700; }
-        .tier-total .grand-new { font-size: 20px; }
+        .tier-total .grand-new { font-size: 22px; }
         .payment-section { display: block !important; }
       </style>`;
     const downloadHtml = rawHtml.replace("</head>", `${downloadCss}</head>`);
