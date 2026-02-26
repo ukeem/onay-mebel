@@ -282,22 +282,20 @@ export default function ProposalPage({
         )}
         <div className="flex items-center gap-2">
           <Button
-            size="sm"
-            className="gap-1.5 rounded-full bg-green-600 px-4 text-white shadow-md hover:bg-green-700 hover:shadow-lg transition-all"
+            size="icon"
+            className="h-8 w-8 rounded-full bg-green-600 text-white shadow-md hover:bg-green-700 hover:shadow-lg transition-all"
             aria-label={t("proposal.downloadHtml")}
             onClick={handleDownload}
           >
             <Download className="h-4 w-4" />
-            <span>{t("proposal.downloadHtml")}</span>
           </Button>
           <Button
-            size="sm"
-            className="gap-1.5 rounded-full bg-neutral-900 px-4 text-white shadow-md hover:bg-neutral-800 hover:shadow-lg transition-all dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+            size="icon"
+            className="h-8 w-8 rounded-full bg-neutral-900 text-white shadow-md hover:bg-neutral-800 hover:shadow-lg transition-all dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
             aria-label={t("proposal.share")}
             onClick={handleShare}
           >
             <Share2 className="h-4 w-4" />
-            <span>{t("proposal.share")}</span>
           </Button>
         </div>
       </div>
