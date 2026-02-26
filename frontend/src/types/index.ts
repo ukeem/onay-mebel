@@ -56,6 +56,7 @@ export interface HardwareType {
 export interface ExtraType {
   id: string;
   name: string;
+  price: number;
 }
 
 export interface Hardware {

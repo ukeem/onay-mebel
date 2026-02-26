@@ -31,20 +31,23 @@ import { toast } from "sonner";
 interface TypeItem {
   id: string;
   name: string;
+  price?: number;
 }
 
 interface TypeCrudProps {
   endpoint: string; // e.g. "/catalog/room-types"
   title: string;
+  showPrice?: boolean;
 }
 
-export function TypeCrud({ endpoint, title }: TypeCrudProps) {
+export function TypeCrud({ endpoint, title, showPrice }: TypeCrudProps) {
   const t = useTranslations();
   const [items, setItems] = useState<TypeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -66,15 +69,18 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = { name };
+      if (showPrice) payload.price = Number(price) || 0;
       if (editId) {
-        await api.patch(`${endpoint}/${editId}`, { name });
+        await api.patch(`${endpoint}/${editId}`, payload);
         toast.success(t("common.updated"));
       } else {
-        await api.post(endpoint, { name });
+        await api.post(endpoint, payload);
         toast.success(t("common.added"));
       }
       setOpen(false);
       setName("");
+      setPrice("");
       setEditId(null);
       fetch();
     } catch (err: unknown) {
@@ -87,6 +93,7 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
   const handleEdit = (item: TypeItem) => {
     setEditId(item.id);
     setName(item.name);
+    setPrice(item.price != null ? String(item.price) : "");
     setOpen(true);
   };
 
@@ -121,6 +128,7 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
             if (!v) {
               setEditId(null);
               setName("");
+              setPrice("");
             }
           }}
         >
@@ -142,14 +150,29 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
                 handleSave();
               }}
             >
-              <div className="space-y-2">
-                <Label>{t("common.name")}</Label>
-                <Input
-                  autoFocus
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("common.name")}
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t("common.name")}</Label>
+                  <Input
+                    autoFocus
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("common.name")}
+                  />
+                </div>
+                {showPrice && (
+                  <div className="space-y-2">
+                    <Label>{t("common.price")}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={!name.trim() || saving}>
@@ -166,6 +189,9 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
           <TableHeader>
             <TableRow>
               <TableHead>{t("common.name")}</TableHead>
+              {showPrice && (
+                <TableHead className="w-32">{t("common.price")}</TableHead>
+              )}
               <TableHead className="w-24 text-right">
                 {t("common.actions")}
               </TableHead>
@@ -175,6 +201,9 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
             {items.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.name}</TableCell>
+                {showPrice && (
+                  <TableCell>{item.price ?? 0}</TableCell>
+                )}
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button
@@ -202,7 +231,7 @@ export function TypeCrud({ endpoint, title }: TypeCrudProps) {
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={2}
+                  colSpan={showPrice ? 3 : 2}
                   className="h-16 text-center text-muted-foreground"
                 >
                   {t("common.noRecords")}

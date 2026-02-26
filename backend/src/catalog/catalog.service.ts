@@ -8,6 +8,11 @@ interface CreateTypeDto {
   name: string;
 }
 
+interface CreateExtraTypeDto {
+  name: string;
+  price?: number;
+}
+
 interface CreateMaterialDto {
   materialTypeId: string;
   brand?: string;
@@ -158,15 +163,17 @@ export class CatalogService {
     return this.prisma.extraType.findMany({ orderBy: { name: 'asc' } });
   }
 
-  async createExtraType(dto: CreateTypeDto) {
-    return this.prisma.extraType.create({ data: { name: dto.name } });
+  async createExtraType(dto: CreateExtraTypeDto) {
+    return this.prisma.extraType.create({
+      data: { name: dto.name, price: dto.price ?? 0 },
+    });
   }
 
-  async updateExtraType(id: string, dto: CreateTypeDto) {
+  async updateExtraType(id: string, dto: CreateExtraTypeDto) {
     await this.ensureExists('extraType', id);
     return this.prisma.extraType.update({
       where: { id },
-      data: { name: dto.name },
+      data: { name: dto.name, price: dto.price ?? 0 },
     });
   }
 

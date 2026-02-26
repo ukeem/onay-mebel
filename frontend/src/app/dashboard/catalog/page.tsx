@@ -79,6 +79,7 @@ export default function CatalogPage() {
           <TypeCrud
             endpoint="/catalog/extra-types"
             title={t("catalog.extraTypes")}
+            showPrice
           />
         </TabsContent>
 

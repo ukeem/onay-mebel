@@ -1409,8 +1409,14 @@ export const ExtrasEditor = memo(function ExtrasEditor({
                 value={e.name}
                 placeholder={t("product.extraNameHint")}
                 onChange={(ev) => {
+                  const val = ev.target.value;
                   const copy = [...items];
-                  copy[i] = { ...e, name: ev.target.value };
+                  const match = extraTypes.find((et) => et.name === val);
+                  copy[i] = {
+                    ...e,
+                    name: val,
+                    ...(match && match.price ? { price: match.price } : {}),
+                  };
                   setItems(copy);
                 }}
               />

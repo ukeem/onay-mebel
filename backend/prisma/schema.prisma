@@ -149,8 +149,9 @@ model HardwareType {
 }
 
 model ExtraType {
-  id   String @id @default(cuid())
-  name String // подсветка, доводчики, ножки...
+  id    String @id @default(cuid())
+  name  String // подсветка, доводчики, ножки...
+  price Float  @default(0) // цена по умолчанию
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

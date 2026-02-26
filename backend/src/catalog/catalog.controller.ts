@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, RolesGuard } from '../auth/roles.guard';
 import { CatalogService } from './catalog.service';
 import {
+  CreateExtraTypeDto,
   CreateHardwareDto,
   CreateMaterialDto,
   CreateTypeDto,
@@ -135,13 +136,13 @@ export class CatalogController {
 
   @Post('extra-types')
   @Roles(Role.SUPER, Role.ADMIN)
-  createExtraType(@Body() dto: CreateTypeDto) {
+  createExtraType(@Body() dto: CreateExtraTypeDto) {
     return this.catalog.createExtraType(dto);
   }
 
   @Patch('extra-types/:id')
   @Roles(Role.SUPER, Role.ADMIN)
-  updateExtraType(@Param('id') id: string, @Body() dto: CreateTypeDto) {
+  updateExtraType(@Param('id') id: string, @Body() dto: CreateExtraTypeDto) {
     return this.catalog.updateExtraType(id, dto);
   }
 

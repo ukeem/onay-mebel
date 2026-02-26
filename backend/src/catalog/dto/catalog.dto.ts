@@ -17,6 +17,19 @@ export class CreateTypeDto {
   name!: string;
 }
 
+/* ─── Extra Types (with optional price) ─── */
+
+export class CreateExtraTypeDto {
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number;
+}
+
 /* ─── Materials ─── */
 
 export class CreateMaterialDto {
