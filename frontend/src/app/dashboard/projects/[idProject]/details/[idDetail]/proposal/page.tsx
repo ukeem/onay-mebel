@@ -113,11 +113,17 @@ export default function ProposalPage({
       /<title>[^\u2014]*\u2014\s*(.+?)<\/title>/,
     );
     const projectName = titleMatch?.[1]?.trim() || t("proposal.title");
-    const shareText = `${projectName}\n${shortUrl}`;
+    // Extract company name from HTML
+    const companyMatch = rawHtml?.match(/class="company-name">([^<]+)<\/div>/);
+    const companyName = companyMatch?.[1]?.trim() || "";
+    const header = companyName
+      ? `${companyName} — ${projectName}`
+      : projectName;
+    const shareText = `${header}\n${shortUrl}`;
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: projectName, url: shortUrl });
+        await navigator.share({ title: header, url: shortUrl });
       } catch {
         /* user cancelled */
       }
