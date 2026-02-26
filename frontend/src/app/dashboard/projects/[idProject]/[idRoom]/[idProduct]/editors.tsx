@@ -24,9 +24,9 @@ import type {
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useState } from "react";
 
-import type { CollapseState } from "./use-collapse-state";
 import type { HwOption, MatOption, SubItem, TFunc } from "./types";
 import { dec, num } from "./types";
+import type { CollapseState } from "./use-collapse-state";
 
 /* ── Section wrapper with icon + toggle ── */
 export const ToggleSection = memo(function ToggleSection({
@@ -393,154 +393,156 @@ export const SectionsEditor = memo(function SectionsEditor({
       {items.map((s, i) => {
         const ck = `sec_${s.id || i}`;
         return (
-        <CollapsibleItem
-          key={s.id || i}
-          index={i}
-          label={s.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...s, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={t("product.sectionGroup")}
-          collapsed={cs.isCollapsed(ck, !!s.id)}
-          onToggle={() => cs.toggle(ck)}
-          t={t}
-        >
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.width")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={s.width ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...s, width: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.height")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={s.height ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...s, height: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.depth")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={s.depth ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...s, depth: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-          </div>
-          <QtySelect
-            label={t("product.qty")}
-            value={s.qty}
-            onChange={(v) => {
+          <CollapsibleItem
+            key={s.id || i}
+            index={i}
+            label={s.label}
+            onLabelChange={(v) => {
               const copy = [...items];
-              copy[i] = { ...s, qty: v };
+              copy[i] = { ...s, label: v };
               setItems(copy);
             }}
-            min={1}
-            max={20}
-          />
-          <MatSelect
-            label={t("product.material")}
-            value={s.materialId || ""}
-            onChange={(v) => {
-              const copy = [...items];
-              copy[i] = { ...s, materialId: v };
-              setItems(copy);
-            }}
-            materials={materials}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={t("product.sectionGroup")}
+            collapsed={cs.isCollapsed(ck, !!s.id)}
+            onToggle={() => cs.toggle(ck)}
             t={t}
-            error={errors?.has(`sectionMaterial_${i}`)}
-          />
-          <SwitchRow
-            label={t("product.backWall")}
-            checked={s.backWallEnabled ?? false}
-            onChange={(v) => {
-              const copy = [...items];
-              copy[i] = {
-                ...s,
-                backWallEnabled: v,
-                backWallMaterialId: v
-                  ? s.backWallMaterialId || defaultItem.materialId || undefined
-                  : undefined,
-              };
-              setItems(copy);
-            }}
           >
-            <MatSelect
-              label={t("product.backWallMaterial")}
-              value={s.backWallMaterialId || ""}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.width")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={s.width ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...s, width: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.height")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={s.height ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...s, height: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.depth")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={s.depth ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...s, depth: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+            </div>
+            <QtySelect
+              label={t("product.qty")}
+              value={s.qty}
               onChange={(v) => {
                 const copy = [...items];
-                copy[i] = { ...s, backWallMaterialId: v };
+                copy[i] = { ...s, qty: v };
                 setItems(copy);
               }}
-              materials={backWallMaterials}
-              t={t}
-              error={errors?.has(`backWallMaterial_${i}`)}
+              min={1}
+              max={20}
             />
-          </SwitchRow>
-          <SwitchRow
-            label={t("product.legs")}
-            checked={s.legsEnabled ?? false}
-            onChange={(v) => {
-              const copy = [...items];
-              copy[i] = {
-                ...s,
-                legsEnabled: v,
-                legsHardwareId: v ? s.legsHardwareId : undefined,
-              };
-              setItems(copy);
-            }}
-          >
-            {legsHardware.length > 0 && (
-              <HwSelect
-                label={t("product.legsBrand")}
-                value={s.legsHardwareId || ""}
+            <MatSelect
+              label={t("product.material")}
+              value={s.materialId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...s, materialId: v };
+                setItems(copy);
+              }}
+              materials={materials}
+              t={t}
+              error={errors?.has(`sectionMaterial_${i}`)}
+            />
+            <SwitchRow
+              label={t("product.backWall")}
+              checked={s.backWallEnabled ?? false}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = {
+                  ...s,
+                  backWallEnabled: v,
+                  backWallMaterialId: v
+                    ? s.backWallMaterialId ||
+                      defaultItem.materialId ||
+                      undefined
+                    : undefined,
+                };
+                setItems(copy);
+              }}
+            >
+              <MatSelect
+                label={t("product.backWallMaterial")}
+                value={s.backWallMaterialId || ""}
                 onChange={(v) => {
                   const copy = [...items];
-                  copy[i] = { ...s, legsHardwareId: v };
+                  copy[i] = { ...s, backWallMaterialId: v };
                   setItems(copy);
                 }}
-                items={legsHardware}
+                materials={backWallMaterials}
                 t={t}
-                error={errors?.has(`legsHardware_${i}`)}
+                error={errors?.has(`backWallMaterial_${i}`)}
               />
-            )}
-          </SwitchRow>
-        </CollapsibleItem>
+            </SwitchRow>
+            <SwitchRow
+              label={t("product.legs")}
+              checked={s.legsEnabled ?? false}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = {
+                  ...s,
+                  legsEnabled: v,
+                  legsHardwareId: v ? s.legsHardwareId : undefined,
+                };
+                setItems(copy);
+              }}
+            >
+              {legsHardware.length > 0 && (
+                <HwSelect
+                  label={t("product.legsBrand")}
+                  value={s.legsHardwareId || ""}
+                  onChange={(v) => {
+                    const copy = [...items];
+                    copy[i] = { ...s, legsHardwareId: v };
+                    setItems(copy);
+                  }}
+                  items={legsHardware}
+                  t={t}
+                  error={errors?.has(`legsHardware_${i}`)}
+                />
+              )}
+            </SwitchRow>
+          </CollapsibleItem>
         );
       })}
       <Button
@@ -613,95 +615,95 @@ export const ComponentEditor = memo(function ComponentEditor({
       {items.map((s, i) => {
         const ck = `${collapsePrefix || "comp"}_${s.id || i}`;
         return (
-        <CollapsibleItem
-          key={s.id || i}
-          index={i}
-          label={s.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...s, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={defaultLabel || t("product.position")}
-          collapsed={cs ? cs.isCollapsed(ck, !!s.id) : false}
-          onToggle={() => cs?.toggle(ck)}
-          t={t}
-        >
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {dim1Label} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={s[dim1Key] ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...s, [dim1Key]: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {dim2Label} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={s[dim2Key] ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...s, [dim2Key]: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <QtySelect
-              label={t("product.qty")}
-              value={s.qty}
-              onChange={(v) => {
-                const copy = [...items];
-                copy[i] = { ...s, qty: v };
-                setItems(copy);
-              }}
-              min={1}
-              max={20}
-            />
-          </div>
-          <MatSelect
-            label={t("product.material")}
-            value={s.materialId || ""}
-            onChange={(v) => {
+          <CollapsibleItem
+            key={s.id || i}
+            index={i}
+            label={s.label}
+            onLabelChange={(v) => {
               const copy = [...items];
-              copy[i] = { ...s, materialId: v };
+              copy[i] = { ...s, label: v };
               setItems(copy);
             }}
-            materials={materials}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={defaultLabel || t("product.position")}
+            collapsed={cs ? cs.isCollapsed(ck, !!s.id) : false}
+            onToggle={() => cs?.toggle(ck)}
             t={t}
-            error={errors?.has(`mat_${i}`)}
-          />
-          {hardwareField && hardwareItems && hardwareItems.length > 0 && (
-            <HwSelect
-              label={hardwareLabel || ""}
-              value={(s[hardwareField] as string) || ""}
+          >
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {dim1Label} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={s[dim1Key] ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...s, [dim1Key]: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {dim2Label} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={s[dim2Key] ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...s, [dim2Key]: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <QtySelect
+                label={t("product.qty")}
+                value={s.qty}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...s, qty: v };
+                  setItems(copy);
+                }}
+                min={1}
+                max={20}
+              />
+            </div>
+            <MatSelect
+              label={t("product.material")}
+              value={s.materialId || ""}
               onChange={(v) => {
                 const copy = [...items];
-                copy[i] = { ...s, [hardwareField]: v };
+                copy[i] = { ...s, materialId: v };
                 setItems(copy);
               }}
-              items={hardwareItems}
+              materials={materials}
               t={t}
-              error={errors?.has(`hw_${i}`)}
+              error={errors?.has(`mat_${i}`)}
             />
-          )}
-        </CollapsibleItem>
+            {hardwareField && hardwareItems && hardwareItems.length > 0 && (
+              <HwSelect
+                label={hardwareLabel || ""}
+                value={(s[hardwareField] as string) || ""}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...s, [hardwareField]: v };
+                  setItems(copy);
+                }}
+                items={hardwareItems}
+                t={t}
+                error={errors?.has(`hw_${i}`)}
+              />
+            )}
+          </CollapsibleItem>
         );
       })}
       <Button
@@ -753,81 +755,81 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
       {items.map((ff, i) => {
         const ck = `ff_${ff.id || i}`;
         return (
-        <CollapsibleItem
-          key={ff.id || i}
-          index={i}
-          label={ff.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...ff, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={t("product.falseFacade")}
-          collapsed={cs ? cs.isCollapsed(ck, !!ff.id) : false}
-          onToggle={() => cs?.toggle(ck)}
-          t={t}
-        >
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.height")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={ff.height}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...ff, height: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.depth")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={ff.depth}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...ff, depth: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <QtySelect
-              label={t("product.qty")}
-              value={ff.qty}
-              onChange={(v) => {
-                const copy = [...items];
-                copy[i] = { ...ff, qty: v };
-                setItems(copy);
-              }}
-              min={1}
-              max={20}
-            />
-          </div>
-          <MatSelect
-            label={t("product.material")}
-            value={ff.materialId || ""}
-            onChange={(v) => {
+          <CollapsibleItem
+            key={ff.id || i}
+            index={i}
+            label={ff.label}
+            onLabelChange={(v) => {
               const copy = [...items];
-              copy[i] = { ...ff, materialId: v };
+              copy[i] = { ...ff, label: v };
               setItems(copy);
             }}
-            materials={materials}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={t("product.falseFacade")}
+            collapsed={cs ? cs.isCollapsed(ck, !!ff.id) : false}
+            onToggle={() => cs?.toggle(ck)}
             t={t}
-            error={errors?.has(`mat_${i}`)}
-          />
-        </CollapsibleItem>
+          >
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.height")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={ff.height}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...ff, height: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.depth")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={ff.depth}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...ff, depth: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <QtySelect
+                label={t("product.qty")}
+                value={ff.qty}
+                onChange={(v) => {
+                  const copy = [...items];
+                  copy[i] = { ...ff, qty: v };
+                  setItems(copy);
+                }}
+                min={1}
+                max={20}
+              />
+            </div>
+            <MatSelect
+              label={t("product.material")}
+              value={ff.materialId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...ff, materialId: v };
+                setItems(copy);
+              }}
+              materials={materials}
+              t={t}
+              error={errors?.has(`mat_${i}`)}
+            />
+          </CollapsibleItem>
         );
       })}
       <Button
@@ -887,192 +889,192 @@ export const FacadesEditor = memo(function FacadesEditor({
       {items.map((f, i) => {
         const ck = `fac_${f.id || i}`;
         return (
-        <CollapsibleItem
-          key={f.id || i}
-          index={i}
-          label={f.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...f, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={t("product.facade")}
-          collapsed={cs ? cs.isCollapsed(ck, !!f.id) : false}
-          onToggle={() => cs?.toggle(ck)}
-          t={t}
-        >
-          {/* Row 1: габариты */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.width")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={f.width ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...f, width: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.height")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={f.height ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...f, height: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-          </div>
-          {/* Row 2: кол-во 100% */}
-          <QtySelect
-            label={t("product.qty")}
-            value={f.qty}
-            onChange={(v) => {
+          <CollapsibleItem
+            key={f.id || i}
+            index={i}
+            label={f.label}
+            onLabelChange={(v) => {
               const copy = [...items];
-              copy[i] = { ...f, qty: v };
+              copy[i] = { ...f, label: v };
               setItems(copy);
             }}
-            min={1}
-            max={20}
-          />
-          {/* Row 3: материал */}
-          <MatSelect
-            label={t("product.material")}
-            value={f.materialId || ""}
-            onChange={(v) => {
-              const copy = [...items];
-              copy[i] = { ...f, materialId: v };
-              setItems(copy);
-            }}
-            materials={materials}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={t("product.facade")}
+            collapsed={cs ? cs.isCollapsed(ck, !!f.id) : false}
+            onToggle={() => cs?.toggle(ck)}
             t={t}
-            error={errorKeys?.has(`mat_${i}`)}
-          />
-          {/* Row 4: петли */}
-          {hingeHardware && hingeHardware.length > 0 && (
-            <HwSelect
-              label={t("product.hinges")}
-              value={f.hingeHardwareId || ""}
-              onChange={(v) => {
-                const copy = [...items];
-                copy[i] = { ...f, hingeHardwareId: v };
-                setItems(copy);
-              }}
-              items={hingeHardware}
-              t={t}
-              error={errorKeys?.has(`hinge_${i}`)}
-            />
-          )}
-          {/* Row 5: тип открывания */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              {t("product.facadeOpenType")}
-            </Label>
-            <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5">
-              {(["HANDLE", "TIP_ON"] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
-                    (f.openType ?? "HANDLE") === opt
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-foreground"
-                  }`}
-                  onClick={() => {
-                    const copy = [...items];
-                    copy[i] = {
-                      ...f,
-                      openType: opt,
-                      handleQty: opt === "TIP_ON" ? 0 : f.handleQty,
-                      handleHardwareId:
-                        opt === "TIP_ON" ? undefined : f.handleHardwareId,
-                      tipOnHardwareId:
-                        opt === "HANDLE" ? undefined : f.tipOnHardwareId,
-                    };
-                    setItems(copy);
-                  }}
-                >
-                  {opt === "HANDLE" ? t("product.handleOpenType") : "Tip-On"}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Row 6: зависимые поля */}
-          {(f.openType ?? "HANDLE") === "HANDLE" ? (
-            <div className="space-y-2.5">
+          >
+            {/* Row 1: габариты */}
+            <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
-                  {t("product.handles")}
+                  {t("product.width")} ({t("common.mm")})
                 </Label>
                 <Input
                   type="text"
                   inputMode="decimal"
                   className="h-9"
-                  value={f.handleQty ?? 0}
+                  value={f.width ?? 0}
                   onFocus={selectOnFocus}
                   onChange={(e) => {
-                    const val = num(e.target.value);
                     const copy = [...items];
-                    copy[i] = {
-                      ...f,
-                      handleQty: val,
-                      handleHardwareId:
-                        val === 0 ? undefined : f.handleHardwareId,
-                    };
+                    copy[i] = { ...f, width: num(e.target.value) };
                     setItems(copy);
                   }}
                 />
               </div>
-              {handleHardware && handleHardware.length > 0 && (
-                <HwSelect
-                  label={t("product.handleBrand")}
-                  value={f.handleHardwareId || ""}
-                  onChange={(v) => {
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.height")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={f.height ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
                     const copy = [...items];
-                    copy[i] = { ...f, handleHardwareId: v };
+                    copy[i] = { ...f, height: num(e.target.value) };
                     setItems(copy);
                   }}
-                  items={handleHardware}
-                  t={t}
-                  error={errorKeys?.has(`handle_${i}`)}
-                  disabled={(f.handleQty ?? 0) === 0}
                 />
-              )}
+              </div>
             </div>
-          ) : (
-            tipOnHardware &&
-            tipOnHardware.length > 0 && (
+            {/* Row 2: кол-во 100% */}
+            <QtySelect
+              label={t("product.qty")}
+              value={f.qty}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...f, qty: v };
+                setItems(copy);
+              }}
+              min={1}
+              max={20}
+            />
+            {/* Row 3: материал */}
+            <MatSelect
+              label={t("product.material")}
+              value={f.materialId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...f, materialId: v };
+                setItems(copy);
+              }}
+              materials={materials}
+              t={t}
+              error={errorKeys?.has(`mat_${i}`)}
+            />
+            {/* Row 4: петли */}
+            {hingeHardware && hingeHardware.length > 0 && (
               <HwSelect
-                label={t("product.tipOnBrand")}
-                value={f.tipOnHardwareId || ""}
+                label={t("product.hinges")}
+                value={f.hingeHardwareId || ""}
                 onChange={(v) => {
                   const copy = [...items];
-                  copy[i] = { ...f, tipOnHardwareId: v };
+                  copy[i] = { ...f, hingeHardwareId: v };
                   setItems(copy);
                 }}
-                items={tipOnHardware}
+                items={hingeHardware}
                 t={t}
-                error={errorKeys?.has(`tipOn_${i}`)}
+                error={errorKeys?.has(`hinge_${i}`)}
               />
-            )
-          )}
-        </CollapsibleItem>
+            )}
+            {/* Row 5: тип открывания */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.facadeOpenType")}
+              </Label>
+              <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5">
+                {(["HANDLE", "TIP_ON"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                      (f.openType ?? "HANDLE") === opt
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-foreground"
+                    }`}
+                    onClick={() => {
+                      const copy = [...items];
+                      copy[i] = {
+                        ...f,
+                        openType: opt,
+                        handleQty: opt === "TIP_ON" ? 0 : f.handleQty,
+                        handleHardwareId:
+                          opt === "TIP_ON" ? undefined : f.handleHardwareId,
+                        tipOnHardwareId:
+                          opt === "HANDLE" ? undefined : f.tipOnHardwareId,
+                      };
+                      setItems(copy);
+                    }}
+                  >
+                    {opt === "HANDLE" ? t("product.handleOpenType") : "Tip-On"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Row 6: зависимые поля */}
+            {(f.openType ?? "HANDLE") === "HANDLE" ? (
+              <div className="space-y-2.5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("product.handles")}
+                  </Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    className="h-9"
+                    value={f.handleQty ?? 0}
+                    onFocus={selectOnFocus}
+                    onChange={(e) => {
+                      const val = num(e.target.value);
+                      const copy = [...items];
+                      copy[i] = {
+                        ...f,
+                        handleQty: val,
+                        handleHardwareId:
+                          val === 0 ? undefined : f.handleHardwareId,
+                      };
+                      setItems(copy);
+                    }}
+                  />
+                </div>
+                {handleHardware && handleHardware.length > 0 && (
+                  <HwSelect
+                    label={t("product.handleBrand")}
+                    value={f.handleHardwareId || ""}
+                    onChange={(v) => {
+                      const copy = [...items];
+                      copy[i] = { ...f, handleHardwareId: v };
+                      setItems(copy);
+                    }}
+                    items={handleHardware}
+                    t={t}
+                    error={errorKeys?.has(`handle_${i}`)}
+                    disabled={(f.handleQty ?? 0) === 0}
+                  />
+                )}
+              </div>
+            ) : (
+              tipOnHardware &&
+              tipOnHardware.length > 0 && (
+                <HwSelect
+                  label={t("product.tipOnBrand")}
+                  value={f.tipOnHardwareId || ""}
+                  onChange={(v) => {
+                    const copy = [...items];
+                    copy[i] = { ...f, tipOnHardwareId: v };
+                    setItems(copy);
+                  }}
+                  items={tipOnHardware}
+                  t={t}
+                  error={errorKeys?.has(`tipOn_${i}`)}
+                />
+              )
+            )}
+          </CollapsibleItem>
         );
       })}
       <Button
@@ -1130,176 +1132,176 @@ export const DrawersEditor = memo(function DrawersEditor({
       {items.map((d, i) => {
         const ck = `drw_${d.id || i}`;
         return (
-        <CollapsibleItem
-          key={d.id || i}
-          index={i}
-          label={d.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...d, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={t("product.drawer")}
-          collapsed={cs ? cs.isCollapsed(ck, !!d.id) : false}
-          onToggle={() => cs?.toggle(ck)}
-          t={t}
-        >
-          {/* Row 1: габариты */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.width")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={d.width ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...d, width: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.height")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={d.height ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...d, height: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.depth")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={d.depth ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...d, depth: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-          </div>
-          {/* Row 2: кол-во ручек + кол-во ящиков 50/50 */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.handles")}
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={d.handleQty ?? 0}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...d, handleQty: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <QtySelect
-              label={t("product.drawerQty")}
-              value={d.qty}
-              onChange={(v) => {
-                const copy = [...items];
-                copy[i] = { ...d, qty: v };
-                setItems(copy);
-              }}
-              min={1}
-              max={20}
-            />
-          </div>
-          {/* Row 3: материал */}
-          <MatSelect
-            label={t("product.material")}
-            value={d.materialId || ""}
-            onChange={(v) => {
+          <CollapsibleItem
+            key={d.id || i}
+            index={i}
+            label={d.label}
+            onLabelChange={(v) => {
               const copy = [...items];
-              copy[i] = { ...d, materialId: v };
+              copy[i] = { ...d, label: v };
               setItems(copy);
             }}
-            materials={materials}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={t("product.drawer")}
+            collapsed={cs ? cs.isCollapsed(ck, !!d.id) : false}
+            onToggle={() => cs?.toggle(ck)}
             t={t}
-            error={errors?.has(`mat_${i}`)}
-          />
-          {/* Row 4: тип направляющих */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              {t("product.slideType")}
-            </Label>
-            <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5">
-              {(["GUIDE", "TANDEM"] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
-                    (d.slideType ?? "GUIDE") === opt
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-foreground"
-                  }`}
-                  onClick={() => {
+          >
+            {/* Row 1: габариты */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.width")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={d.width ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
                     const copy = [...items];
-                    copy[i] = {
-                      ...d,
-                      slideType: opt,
-                      slideHardwareId: undefined,
-                    };
+                    copy[i] = { ...d, width: num(e.target.value) };
                     setItems(copy);
                   }}
-                >
-                  {opt === "GUIDE"
-                    ? t("product.drawerSlideGuide")
-                    : t("product.drawerSlideTandem")}
-                </button>
-              ))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.height")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={d.height ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...d, height: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.depth")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={d.depth ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...d, depth: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-          {(() => {
-            const hwList =
-              (d.slideType ?? "GUIDE") === "TANDEM"
-                ? tandemHardware
-                : slideHardware;
-            return hwList && hwList.length > 0 ? (
-              <HwSelect
-                label={
-                  (d.slideType ?? "GUIDE") === "TANDEM"
-                    ? t("product.tandemHardware")
-                    : t("product.slideHardware")
-                }
-                value={d.slideHardwareId || ""}
+            {/* Row 2: кол-во ручек + кол-во ящиков 50/50 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.handles")}
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={d.handleQty ?? 0}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...d, handleQty: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <QtySelect
+                label={t("product.drawerQty")}
+                value={d.qty}
                 onChange={(v) => {
                   const copy = [...items];
-                  copy[i] = { ...d, slideHardwareId: v };
+                  copy[i] = { ...d, qty: v };
                   setItems(copy);
                 }}
-                items={hwList}
-                t={t}
-                error={errors?.has(`hw_${i}`)}
+                min={1}
+                max={20}
               />
-            ) : null;
-          })()}
-        </CollapsibleItem>
+            </div>
+            {/* Row 3: материал */}
+            <MatSelect
+              label={t("product.material")}
+              value={d.materialId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...d, materialId: v };
+                setItems(copy);
+              }}
+              materials={materials}
+              t={t}
+              error={errors?.has(`mat_${i}`)}
+            />
+            {/* Row 4: тип направляющих */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("product.slideType")}
+              </Label>
+              <div className="inline-flex w-full rounded-md border bg-primary/10 p-0.5">
+                {(["GUIDE", "TANDEM"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`flex-1 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
+                      (d.slideType ?? "GUIDE") === opt
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-foreground"
+                    }`}
+                    onClick={() => {
+                      const copy = [...items];
+                      copy[i] = {
+                        ...d,
+                        slideType: opt,
+                        slideHardwareId: undefined,
+                      };
+                      setItems(copy);
+                    }}
+                  >
+                    {opt === "GUIDE"
+                      ? t("product.drawerSlideGuide")
+                      : t("product.drawerSlideTandem")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(() => {
+              const hwList =
+                (d.slideType ?? "GUIDE") === "TANDEM"
+                  ? tandemHardware
+                  : slideHardware;
+              return hwList && hwList.length > 0 ? (
+                <HwSelect
+                  label={
+                    (d.slideType ?? "GUIDE") === "TANDEM"
+                      ? t("product.tandemHardware")
+                      : t("product.slideHardware")
+                  }
+                  value={d.slideHardwareId || ""}
+                  onChange={(v) => {
+                    const copy = [...items];
+                    copy[i] = { ...d, slideHardwareId: v };
+                    setItems(copy);
+                  }}
+                  items={hwList}
+                  t={t}
+                  error={errors?.has(`hw_${i}`)}
+                />
+              ) : null;
+            })()}
+          </CollapsibleItem>
         );
       })}
       <Button
@@ -1357,131 +1359,131 @@ export const CountertopsEditor = memo(function CountertopsEditor({
       {items.map((ct, i) => {
         const ck = `ct_${ct.id || i}`;
         return (
-        <CollapsibleItem
-          key={ct.id || i}
-          index={i}
-          label={ct.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...ct, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={t("product.countertop")}
-          collapsed={cs ? cs.isCollapsed(ck, !!ct.id) : false}
-          onToggle={() => cs?.toggle(ck)}
-          t={t}
-        >
-          <MatSelect
-            label={t("product.material")}
-            value={ct.materialId || ""}
-            onChange={(v) => {
+          <CollapsibleItem
+            key={ct.id || i}
+            index={i}
+            label={ct.label}
+            onLabelChange={(v) => {
               const copy = [...items];
-              copy[i] = { ...ct, materialId: v };
+              copy[i] = { ...ct, label: v };
               setItems(copy);
             }}
-            materials={materials}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={t("product.countertop")}
+            collapsed={cs ? cs.isCollapsed(ck, !!ct.id) : false}
+            onToggle={() => cs?.toggle(ck)}
             t={t}
-            error={hasError(`countertopMaterial_${i}`)}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.width")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={ct.width}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...ct, width: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("product.depth")} ({t("common.mm")})
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={ct.depth}
-                onFocus={selectOnFocus}
-                onChange={(e) => {
-                  const copy = [...items];
-                  copy[i] = { ...ct, depth: num(e.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-          </div>
-          <Separator />
-          <SwitchRow
-            label={t("product.apron")}
-            checked={ct.apronEnabled}
-            onChange={(v) => {
-              const copy = [...items];
-              copy[i] = { ...ct, apronEnabled: v };
-              setItems(copy);
-            }}
           >
-            <div className="space-y-2">
-              <MatSelect
-                label={t("product.apronMaterial")}
-                value={ct.apronMaterialId || ""}
-                onChange={(v) => {
-                  const copy = [...items];
-                  copy[i] = { ...ct, apronMaterialId: v };
-                  setItems(copy);
-                }}
-                materials={materials}
-                t={t}
-                error={hasError(`apronMaterial_${i}`)}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("product.width")} ({t("common.mm")})
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    className="h-9"
-                    value={ct.apronWidth ?? 0}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => {
-                      const copy = [...items];
-                      copy[i] = { ...ct, apronWidth: num(e.target.value) };
-                      setItems(copy);
-                    }}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("product.height")} ({t("common.mm")})
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    className="h-9"
-                    value={ct.apronHeight ?? 0}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => {
-                      const copy = [...items];
-                      copy[i] = { ...ct, apronHeight: num(e.target.value) };
-                      setItems(copy);
-                    }}
-                  />
-                </div>
+            <MatSelect
+              label={t("product.material")}
+              value={ct.materialId || ""}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...ct, materialId: v };
+                setItems(copy);
+              }}
+              materials={materials}
+              t={t}
+              error={hasError(`countertopMaterial_${i}`)}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.width")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={ct.width}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...ct, width: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("product.depth")} ({t("common.mm")})
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={ct.depth}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => {
+                    const copy = [...items];
+                    copy[i] = { ...ct, depth: num(e.target.value) };
+                    setItems(copy);
+                  }}
+                />
               </div>
             </div>
-          </SwitchRow>
-        </CollapsibleItem>
+            <Separator />
+            <SwitchRow
+              label={t("product.apron")}
+              checked={ct.apronEnabled}
+              onChange={(v) => {
+                const copy = [...items];
+                copy[i] = { ...ct, apronEnabled: v };
+                setItems(copy);
+              }}
+            >
+              <div className="space-y-2">
+                <MatSelect
+                  label={t("product.apronMaterial")}
+                  value={ct.apronMaterialId || ""}
+                  onChange={(v) => {
+                    const copy = [...items];
+                    copy[i] = { ...ct, apronMaterialId: v };
+                    setItems(copy);
+                  }}
+                  materials={materials}
+                  t={t}
+                  error={hasError(`apronMaterial_${i}`)}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      {t("product.width")} ({t("common.mm")})
+                    </Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      className="h-9"
+                      value={ct.apronWidth ?? 0}
+                      onFocus={selectOnFocus}
+                      onChange={(e) => {
+                        const copy = [...items];
+                        copy[i] = { ...ct, apronWidth: num(e.target.value) };
+                        setItems(copy);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      {t("product.height")} ({t("common.mm")})
+                    </Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      className="h-9"
+                      value={ct.apronHeight ?? 0}
+                      onFocus={selectOnFocus}
+                      onChange={(e) => {
+                        const copy = [...items];
+                        copy[i] = { ...ct, apronHeight: num(e.target.value) };
+                        setItems(copy);
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </SwitchRow>
+          </CollapsibleItem>
         );
       })}
       <Button
@@ -1534,63 +1536,63 @@ export const ExtrasEditor = memo(function ExtrasEditor({
       {items.map((e, i) => {
         const ck = `ext_${e.id || i}`;
         return (
-        <CollapsibleItem
-          key={e.id || i}
-          index={i}
-          label={e.label}
-          onLabelChange={(v) => {
-            const copy = [...items];
-            copy[i] = { ...e, label: v };
-            setItems(copy);
-          }}
-          onDelete={() => setItems(items.filter((_, j) => j !== i))}
-          defaultLabel={t("product.extra")}
-          collapsed={cs ? cs.isCollapsed(ck, !!e.id) : false}
-          onToggle={() => cs?.toggle(ck)}
-          t={t}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("common.name")}
-              </Label>
-              <Input
-                className="h-9"
-                list={datalistId}
-                value={e.name}
-                placeholder={t("product.extraNameHint")}
-                onChange={(ev) => {
-                  const val = ev.target.value;
-                  const copy = [...items];
-                  const match = extraTypes.find((et) => et.name === val);
-                  copy[i] = {
-                    ...e,
-                    name: val,
-                    ...(match && match.price ? { price: match.price } : {}),
-                  };
-                  setItems(copy);
-                }}
-              />
+          <CollapsibleItem
+            key={e.id || i}
+            index={i}
+            label={e.label}
+            onLabelChange={(v) => {
+              const copy = [...items];
+              copy[i] = { ...e, label: v };
+              setItems(copy);
+            }}
+            onDelete={() => setItems(items.filter((_, j) => j !== i))}
+            defaultLabel={t("product.extra")}
+            collapsed={cs ? cs.isCollapsed(ck, !!e.id) : false}
+            onToggle={() => cs?.toggle(ck)}
+            t={t}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("common.name")}
+                </Label>
+                <Input
+                  className="h-9"
+                  list={datalistId}
+                  value={e.name}
+                  placeholder={t("product.extraNameHint")}
+                  onChange={(ev) => {
+                    const val = ev.target.value;
+                    const copy = [...items];
+                    const match = extraTypes.find((et) => et.name === val);
+                    copy[i] = {
+                      ...e,
+                      name: val,
+                      ...(match && match.price ? { price: match.price } : {}),
+                    };
+                    setItems(copy);
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  {t("common.price")} ₸
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className="h-9"
+                  value={e.price}
+                  onFocus={selectOnFocus}
+                  onChange={(ev) => {
+                    const copy = [...items];
+                    copy[i] = { ...e, price: dec(ev.target.value) };
+                    setItems(copy);
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("common.price")} ₸
-              </Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                className="h-9"
-                value={e.price}
-                onFocus={selectOnFocus}
-                onChange={(ev) => {
-                  const copy = [...items];
-                  copy[i] = { ...e, price: dec(ev.target.value) };
-                  setItems(copy);
-                }}
-              />
-            </div>
-          </div>
-        </CollapsibleItem>
+          </CollapsibleItem>
         );
       })}
       <Button

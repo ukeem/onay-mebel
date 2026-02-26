@@ -37,8 +37,8 @@ import {
   SectionsEditor,
   ToggleSection,
 } from "./editors";
-import { useProductForm } from "./use-product-form";
 import { useCollapseState } from "./use-collapse-state";
+import { useProductForm } from "./use-product-form";
 
 export default function ProductPage() {
   const { idProject, idRoom, idProduct } = useParams<{
