@@ -113,13 +113,14 @@ export class CalculationsService {
     /* Hardware price map by ID: hardwareId -> { price, brand, typeName } */
     const hwIdMap = new Map<
       string,
-      { price: number; brand: string; typeName: string }
+      { price: number; brand: string; typeName: string; image: string | null }
     >();
     for (const uh of userHardware) {
       hwIdMap.set(uh.hardwareId, {
         price: toNum(uh.price),
         brand: uh.hardware.brand ?? '',
         typeName: uh.hardware.hardwareType.name,
+        image: uh.hardware.image ?? null,
       });
     }
 
@@ -866,9 +867,14 @@ export class CalculationsService {
                   ? `<span class="price-old">${fmt(detBd)}</span> <span class="price-new">${fmt(detAd)}</span>`
                   : `<span class="price-current">${fmt(detAd)}</span>`;
 
+              const detImgSrc = det.image ? logoToDataUri(det.image) : '';
+              const detThumbHtml = detImgSrc
+                ? `<span class="detail-thumb" onclick="openLightbox(this)"><img src="${detImgSrc}" alt=""/><span class="detail-thumb-plus">+</span></span>`
+                : `<span class="detail-dot"></span>`;
+
               detailsHtml += `
               <div class="detail-item">
-                <span class="detail-dot"></span>
+                ${detThumbHtml}
                 <span class="detail-name">${stripQtyFromLabel(det.label)}${det.brand ? ' <span class="brand">(' + det.brand + ')</span>' : ''}</span>
               </div>`;
             });
@@ -1359,7 +1365,7 @@ export class CalculationsService {
     }
     .detail-item {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 6px;
       padding: 3px 0;
       break-inside: avoid;
@@ -1369,8 +1375,74 @@ export class CalculationsService {
       border-radius: 50%;
       background: var(--dot);
       flex-shrink: 0;
-      margin-top: 6px;
     }
+    .detail-thumb {
+      position: relative;
+      width: 28px; height: 28px;
+      border-radius: 4px;
+      overflow: hidden;
+      flex-shrink: 0;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: opacity .15s;
+    }
+    .detail-thumb:hover { opacity: .8; }
+    .detail-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .detail-thumb-plus {
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 14px;
+      text-align: center;
+      border-radius: 4px 0 0 0;
+    }
+    /* ─── Lightbox ─── */
+    .kp-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .kp-lightbox.open { display: flex; }
+    .kp-lightbox img {
+      max-width: 900px;
+      width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.4);
+    }
+    .kp-lightbox-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,.15);
+      color: #fff;
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s;
+    }
+    .kp-lightbox-close:hover { background: rgba(255,255,255,.3); }
+    @media print { .kp-lightbox { display: none !important; } }
     .detail-name {
       font-size: 12px;
       color: var(--text-secondary);
@@ -1724,7 +1796,27 @@ export class CalculationsService {
   <button onclick="window.print()" class="print-btn no-print" data-i18n="print">Печать / PDF</button>
 </div>
 
+<div class="kp-lightbox" id="kp-lightbox" onclick="closeLightbox()">
+  <button class="kp-lightbox-close" onclick="closeLightbox()">&times;</button>
+  <img id="kp-lightbox-img" src="" alt="" onclick="event.stopPropagation()"/>
+</div>
+
   <script>
+    /* ── Lightbox ── */
+    function openLightbox(el) {
+      var img = el.querySelector('img');
+      if (!img) return;
+      var lb = document.getElementById('kp-lightbox');
+      document.getElementById('kp-lightbox-img').src = img.src;
+      lb.classList.add('open');
+    }
+    function closeLightbox() {
+      document.getElementById('kp-lightbox').classList.remove('open');
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
     /* ── Tab switching ── */
     function showTab(tier) {
       document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
@@ -1824,7 +1916,10 @@ export class CalculationsService {
     matPrice: Map<string, number>,
     hwPrice: Map<string, number>,
     userMaterials?: any[],
-    hwIdMap?: Map<string, { price: number; brand: string; typeName: string }>,
+    hwIdMap?: Map<
+      string,
+      { price: number; brand: string; typeName: string; image: string | null }
+    >,
   ) {
     let materialCost = 0;
     let hardwareCost = 0;
@@ -2101,6 +2196,7 @@ export class CalculationsService {
         materialId: matId,
         materialType: typeName,
         brand,
+        image: mat?.image ?? null,
         qty,
         unit,
         unitPrice: price,
@@ -2148,12 +2244,13 @@ export class CalculationsService {
     const resolveHw = (
       hwId: string | null | undefined,
       typeName: string,
-    ): { price: number; brand: string } => {
+    ): { price: number; brand: string; image: string | null } => {
       if (hwId && hwIdMap) {
         const entry = hwIdMap.get(hwId);
-        if (entry) return { price: entry.price, brand: entry.brand };
+        if (entry)
+          return { price: entry.price, brand: entry.brand, image: entry.image };
       }
-      return { price: hwPrice.get(typeName) ?? 0, brand: '' };
+      return { price: hwPrice.get(typeName) ?? 0, brand: '', image: null };
     };
 
     /* Hinges: ≤699→2, 700-1199→3, ... — per facade, using facade’s hingeHardwareId */
@@ -2162,6 +2259,7 @@ export class CalculationsService {
       let hingeCost = 0;
       let hingeBrand = '';
       let hingeUnitPrice = 0;
+      let hingeImage: string | null = null;
       if (product.facadesEnabled && product.facades) {
         for (const f of product.facades) {
           const perFacade = 2 + Math.max(0, Math.floor((f.height - 200) / 500));
@@ -2171,6 +2269,7 @@ export class CalculationsService {
           hingeCost += qty * hw.price;
           if (hw.brand) hingeBrand = hw.brand;
           hingeUnitPrice = hw.price;
+          if (hw.image) hingeImage = hw.image;
         }
       }
       if (totalHinges > 0) {
@@ -2186,6 +2285,7 @@ export class CalculationsService {
           unitPrice: hingeUnitPrice,
           cost: Math.round(hingeCost),
           enabled: true,
+          image: hingeImage,
         });
       }
     }
@@ -2196,6 +2296,7 @@ export class CalculationsService {
       let handleCost = 0;
       let handleBrand = '';
       let handleUnitPrice = 0;
+      let handleImage: string | null = null;
       if (product.facadesEnabled) {
         for (const f of product.facades ?? []) {
           if (f.openType !== 'TIP_ON' && f.handleQty > 0) {
@@ -2217,6 +2318,7 @@ export class CalculationsService {
             handleCost += qty * hw.price;
             if (!handleBrand && hw.brand) handleBrand = hw.brand;
             if (!handleUnitPrice) handleUnitPrice = hw.price;
+            if (hw.image) handleImage = hw.image;
           }
         }
       }
@@ -2233,6 +2335,7 @@ export class CalculationsService {
           unitPrice: handleUnitPrice,
           cost: Math.round(handleCost),
           enabled: true,
+          image: handleImage,
         });
       }
     }
@@ -2243,6 +2346,7 @@ export class CalculationsService {
       let tipOnCost = 0;
       let tipOnBrand = '';
       let tipOnUnitPrice = 0;
+      let tipOnImage: string | null = null;
       if (product.facadesEnabled) {
         for (const f of product.facades ?? []) {
           if (f.openType === 'TIP_ON') {
@@ -2252,6 +2356,7 @@ export class CalculationsService {
             tipOnCost += qty * hw.price;
             if (hw.brand) tipOnBrand = hw.brand;
             tipOnUnitPrice = hw.price;
+            if (hw.image) tipOnImage = hw.image;
           }
         }
       }
@@ -2268,6 +2373,7 @@ export class CalculationsService {
           unitPrice: tipOnUnitPrice,
           cost: Math.round(tipOnCost),
           enabled: true,
+          image: tipOnImage,
         });
       }
     }
@@ -2278,6 +2384,7 @@ export class CalculationsService {
       let legCost = 0;
       let legBrand = '';
       let legUnitPrice = 0;
+      let legImage: string | null = null;
       for (const sec of product.sections) {
         if (!sec.legsEnabled) continue;
         const legsPerSection =
@@ -2288,6 +2395,7 @@ export class CalculationsService {
         legCost += qty * hw.price;
         if (hw.brand) legBrand = hw.brand;
         legUnitPrice = hw.price;
+        if (hw.image) legImage = hw.image;
       }
       if (totalLegs > 0) {
         hardwareCost += legCost;
@@ -2302,6 +2410,7 @@ export class CalculationsService {
           unitPrice: legUnitPrice,
           cost: Math.round(legCost),
           enabled: true,
+          image: legImage,
         });
       }
     }
@@ -2312,6 +2421,7 @@ export class CalculationsService {
       let shCost = 0;
       let shBrand = '';
       let shUnitPrice = 0;
+      let shImage: string | null = null;
       if (product.shelvesEnabled && product.shelves) {
         for (const sh of product.shelves) {
           const qty = 4 * sh.qty;
@@ -2320,6 +2430,7 @@ export class CalculationsService {
           shCost += qty * hw.price;
           if (hw.brand) shBrand = hw.brand;
           shUnitPrice = hw.price;
+          if (hw.image) shImage = hw.image;
         }
       }
       if (totalShelfHolders > 0) {
@@ -2335,6 +2446,7 @@ export class CalculationsService {
           unitPrice: shUnitPrice,
           cost: Math.round(shCost),
           enabled: true,
+          image: shImage,
         });
       }
     }
@@ -2345,10 +2457,12 @@ export class CalculationsService {
       let guideCost = 0;
       let guideBrand = '';
       let guideUnitPrice = 0;
+      let guideImage: string | null = null;
       let totalTandems = 0;
       let tandemCost = 0;
       let tandemBrand = '';
       let tandemUnitPrice = 0;
+      let tandemImage: string | null = null;
       if (product.drawersEnabled && product.drawers) {
         for (const dr of product.drawers) {
           const qty = dr.qty;
@@ -2358,12 +2472,14 @@ export class CalculationsService {
             tandemCost += qty * hw.price;
             if (hw.brand) tandemBrand = hw.brand;
             tandemUnitPrice = hw.price;
+            if (hw.image) tandemImage = hw.image;
           } else {
             const hw = resolveHw(dr.slideHardwareId, 'Направляющие');
             totalGuides += qty;
             guideCost += qty * hw.price;
             if (hw.brand) guideBrand = hw.brand;
             guideUnitPrice = hw.price;
+            if (hw.image) guideImage = hw.image;
           }
         }
       }
@@ -2380,6 +2496,7 @@ export class CalculationsService {
           unitPrice: guideUnitPrice,
           cost: Math.round(guideCost),
           enabled: true,
+          image: guideImage,
         });
       }
       if (totalTandems > 0) {
@@ -2395,6 +2512,7 @@ export class CalculationsService {
           unitPrice: tandemUnitPrice,
           cost: Math.round(tandemCost),
           enabled: true,
+          image: tandemImage,
         });
       }
     }
@@ -2402,11 +2520,13 @@ export class CalculationsService {
     /* Konfirmats (approximate) */
     let konfPrice = hwPrice.get('Конфирмат') ?? 0;
     let konfBrand = '';
+    let konfImage: string | null = null;
     if (hwIdMap) {
       for (const [, entry] of hwIdMap) {
         if (entry.typeName === 'Конфирмат') {
           konfPrice = entry.price;
           konfBrand = entry.brand;
+          konfImage = entry.image;
           break;
         }
       }
@@ -2426,6 +2546,7 @@ export class CalculationsService {
         unitPrice: konfPrice,
         cost: Math.round(konfCost),
         enabled: true,
+        image: konfImage,
       });
     }
 
