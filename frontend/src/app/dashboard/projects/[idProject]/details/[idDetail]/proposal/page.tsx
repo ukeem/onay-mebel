@@ -161,53 +161,77 @@ export default function ProposalPage({
         .tabs-wrap { display: none !important; }
         .total-bar { display: none !important; }
         .tab-content { display: block !important; margin-bottom: 0; }
-        /* Separator between tiers */
-        .tab-content + .total-bar + .tab-content {
-          margin-top: 20px;
-          padding-top: 20px;
-          border-top: 3px solid var(--accent);
-          position: relative;
-        }
-        .tab-content + .total-bar + .tab-content::before {
-          content: '';
-          position: absolute;
-          top: -3px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 60px;
-          height: 3px;
-          background: var(--green);
-          border-radius: 2px;
-        }
-        .tier-title {
-          display: inline-block;
-          font-size: 15px;
-          font-weight: 700;
-          color: #fff;
+
+        /* ── Each tier wrapped in a visual card ── */
+        .tab-content {
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 28px 24px 24px;
+          margin-top: 28px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.12);
           text-align: center;
-          padding: 8px 28px;
-          margin: 0 auto 16px;
-          background: var(--accent);
-          border-radius: 10px;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
+          position: relative;
+          overflow: visible;
         }
-        /* center the tier-title */
-        .tab-content { text-align: center; }
-        .tab-content > *:not(.tier-title) { text-align: left; }
+        .tab-content > *:not(.tier-title):not(.tier-total) { text-align: left; }
+
+        /* ── Tier badge ── */
+        .tier-title {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          font-weight: 800;
+          color: #fff;
+          padding: 10px 32px;
+          margin: -44px auto 24px;
+          border-radius: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+          position: relative;
+          z-index: 2;
+        }
+
+        /* ── Unique color per tier ── */
+        #tab-standard .tier-title {
+          background: linear-gradient(135deg, #6366f1, #818cf8);
+        }
+        #tab-comfort .tier-title {
+          background: linear-gradient(135deg, #f59e0b, #fbbf24);
+          color: #1a1a2e;
+        }
+        #tab-premium .tier-title {
+          background: linear-gradient(135deg, #ec4899, #f472b6);
+        }
+
+        /* ── Tier total ── */
         .tier-total {
           display: flex;
           justify-content: center;
-          padding: 18px 20px;
-          margin-top: 16px;
-          background: var(--bg-card);
+          padding: 20px 24px;
+          margin-top: 20px;
+          background: var(--bg-elevated);
           border: 1px solid var(--border);
           border-radius: 14px;
         }
-        .tier-total .total-inner-bar { gap: 12px; }
-        .tier-total .total-label { font-size: 16px; font-weight: 700; }
-        .tier-total .grand-new { font-size: 22px; }
-        .payment-section { display: block !important; }
+        .tier-total .total-inner-bar { gap: 14px; justify-content: center; }
+        .tier-total .total-label { font-size: 15px; font-weight: 700; color: var(--text-secondary); }
+        .tier-total .grand-new { font-size: 24px; font-weight: 800; }
+
+        /* ── Payment sections all visible ── */
+        .payment-section { display: block !important; margin-top: 28px; }
+
+        /* ── Room blocks inside card ── */
+        .tab-content .room-block { margin-bottom: 16px; }
+        .tab-content .product-block {
+          border-color: var(--border);
+          background: var(--bg);
+        }
+
+        /* ── Remove page bottom padding (no fixed bar) ── */
+        .page-wrapper { padding-bottom: 32px; }
       </style>`;
     const downloadHtml = rawHtml.replace("</head>", `${downloadCss}</head>`);
     const blob = new Blob([downloadHtml], { type: "text/html;charset=utf-8" });
