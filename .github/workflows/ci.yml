@@ -96,4 +96,5 @@ jobs:
         run: |
           curl -fsSL -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            --max-time 10
+            -d '{"ref":"refs/heads/main"}' \
+            --max-time 30
