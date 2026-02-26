@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -251,6 +252,10 @@ export const MatSelect = memo(function MatSelect({
   t: TFunc;
   error?: boolean;
 }) {
+  const options = materials.map((m) => ({
+    value: m.id,
+    label: `${m.materialType.name}${m.brand ? ` (${m.brand})` : ""}`,
+  }));
   return (
     <div className="space-y-1.5">
       <Label
@@ -258,20 +263,15 @@ export const MatSelect = memo(function MatSelect({
       >
         {label}
       </Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger
-          className={`h-9 w-full ${error ? "ring-2 ring-destructive/50 border-destructive" : ""}`}
-        >
-          <SelectValue placeholder={t("common.select")} />
-        </SelectTrigger>
-        <SelectContent>
-          {materials.map((m) => (
-            <SelectItem key={m.id} value={m.id}>
-              {m.materialType.name} {m.brand ? `(${m.brand})` : ""}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={t("common.select")}
+        searchPlaceholder={t("common.search") + "…"}
+        emptyText={t("common.noResults")}
+        error={error}
+      />
     </div>
   );
 });
@@ -294,6 +294,10 @@ export const HwSelect = memo(function HwSelect({
   error?: boolean;
   disabled?: boolean;
 }) {
+  const options = items.map((h) => ({
+    value: h.id,
+    label: `${h.hardwareType.name}${h.brand ? ` (${h.brand})` : ""}`,
+  }));
   return (
     <div className="space-y-1.5">
       <Label
@@ -301,20 +305,16 @@ export const HwSelect = memo(function HwSelect({
       >
         {label}
       </Label>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger
-          className={`h-9 w-full ${error ? "ring-2 ring-destructive/50 border-destructive" : ""} ${disabled ? "opacity-50" : ""}`}
-        >
-          <SelectValue placeholder={t("common.select")} />
-        </SelectTrigger>
-        <SelectContent>
-          {items.map((h) => (
-            <SelectItem key={h.id} value={h.id}>
-              {h.hardwareType.name} {h.brand ? `(${h.brand})` : ""}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={t("common.select")}
+        searchPlaceholder={t("common.search") + "…"}
+        emptyText={t("common.noResults")}
+        disabled={disabled}
+        error={error}
+      />
     </div>
   );
 });

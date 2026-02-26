@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NumInput } from "@/components/ui/num-input";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -983,13 +984,13 @@ export default function DetailPage({
                                         </div>
                                         <div className="flex items-center gap-2">
                                           {brandOpts.length > 1 ? (
-                                            <Select
+                                            <SearchableSelect
                                               value={
                                                 det.type === "material"
                                                   ? (det.materialId ?? "")
                                                   : (det.brand ?? "")
                                               }
-                                              onValueChange={(v) => {
+                                              onChange={(v) => {
                                                 if (det.type === "material") {
                                                   const opt =
                                                     materialOptions.find(
@@ -1017,39 +1018,23 @@ export default function DetailPage({
                                                 }
                                               }}
                                               disabled={!det.enabled}
-                                            >
-                                              <SelectTrigger
-                                                className="w-[140px] text-[11px] px-2"
-                                                style={{
-                                                  height: 32,
-                                                  minHeight: 32,
-                                                }}
-                                              >
-                                                <SelectValue
-                                                  placeholder={t(
-                                                    "common.brand",
-                                                  )}
-                                                />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                {brandOpts.map((opt, oi) => (
-                                                  <SelectItem
-                                                    key={oi}
-                                                    value={
-                                                      "materialId" in opt
-                                                        ? (
-                                                            opt as MaterialOption
-                                                          ).materialId
-                                                        : opt.brand ||
-                                                          String(oi)
-                                                    }
-                                                  >
-                                                    {opt.brand || "—"} ·{" "}
-                                                    {fmt(opt.price)}
-                                                  </SelectItem>
-                                                ))}
-                                              </SelectContent>
-                                            </Select>
+                                              options={brandOpts.map(
+                                                (opt, oi) => ({
+                                                  value:
+                                                    "materialId" in opt
+                                                      ? (opt as MaterialOption)
+                                                          .materialId
+                                                      : opt.brand || String(oi),
+                                                  label: `${opt.brand || "—"} · ${fmt(opt.price)}`,
+                                                }),
+                                              )}
+                                              placeholder={t("common.brand")}
+                                              searchPlaceholder={
+                                                t("common.search") + "…"
+                                              }
+                                              emptyText={t("common.noResults")}
+                                              className="w-[140px] text-[11px] px-2 h-8"
+                                            />
                                           ) : (
                                             <span
                                               className="inline-flex w-[140px] items-center text-[11px] text-muted-foreground"
