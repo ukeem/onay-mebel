@@ -241,6 +241,7 @@
     "apron": "Фартук",
     "apronMaterial": "Материал фартука",
     "editDescription": "Настройте компоненты изделия",
+    "editLabel": "Переименовать",
     "falseFacade": "Фальш-фасад",
     "extras": "Дополнительно",
     "extraNameHint": "Выберите или введите",

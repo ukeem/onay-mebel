@@ -199,6 +199,7 @@ export interface HwOption {
 
 export interface SubItem {
   id?: string;
+  label?: string;
   qty: number;
   width?: number;
   height?: number;
@@ -221,6 +222,7 @@ export interface SubItem {
 
 export interface FalseFacadeItem {
   id?: string;
+  label?: string;
   qty: number;
   height: number;
   depth: number;
@@ -229,6 +231,7 @@ export interface FalseFacadeItem {
 
 export interface CountertopData {
   id?: string;
+  label?: string;
   materialId?: string;
   width: number;
   depth: number;
@@ -240,6 +243,7 @@ export interface CountertopData {
 
 export interface ExtraItem {
   id?: string;
+  label?: string;
   name: string;
   price: number;
 }

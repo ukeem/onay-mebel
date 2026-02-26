@@ -23,6 +23,7 @@ export interface ProductWithSubComponents {
   extrasEnabled: boolean;
 
   sections: Array<{
+    label: string | null;
     qty: number;
     width: number;
     height: number;
@@ -34,12 +35,14 @@ export interface ProductWithSubComponents {
     legsHardwareId: string | null;
   }>;
   partitions: Array<{
+    label: string | null;
     height: number;
     depth: number;
     qty: number;
     materialId: string | null;
   }>;
   shelves: Array<{
+    label: string | null;
     width: number;
     depth: number;
     qty: number;
@@ -47,6 +50,7 @@ export interface ProductWithSubComponents {
     holderHardwareId: string | null;
   }>;
   facades: Array<{
+    label: string | null;
     materialId: string | null;
     width: number;
     height: number;
@@ -58,6 +62,7 @@ export interface ProductWithSubComponents {
     tipOnHardwareId: string | null;
   }>;
   drawers: Array<{
+    label: string | null;
     width: number;
     height: number;
     depth: number;
@@ -68,12 +73,14 @@ export interface ProductWithSubComponents {
     slideHardwareId: string | null;
   }>;
   falseFacades: Array<{
+    label: string | null;
     qty: number;
     height: number;
     depth: number;
     materialId: string | null;
   }>;
   countertops: Array<{
+    label: string | null;
     materialId: string | null;
     width: number;
     depth: number;
@@ -82,7 +89,7 @@ export interface ProductWithSubComponents {
     apronWidth: number | null;
     apronHeight: number | null;
   }>;
-  extras: Array<{ name: string; price: any }>;
+  extras: Array<{ label: string | null; name: string; price: any }>;
 }
 
 /** Prisma include for fetching a product with all sub-components needed for copy */
@@ -127,6 +134,7 @@ export async function copyProductData(
     await tx.productSection.create({
       data: {
         productId: newProduct.id,
+        label: s.label,
         qty: s.qty,
         width: s.width,
         height: s.height,
@@ -145,6 +153,7 @@ export async function copyProductData(
     await tx.productPartition.create({
       data: {
         productId: newProduct.id,
+        label: p.label,
         height: p.height,
         depth: p.depth,
         qty: p.qty,
@@ -158,6 +167,7 @@ export async function copyProductData(
     await tx.productShelf.create({
       data: {
         productId: newProduct.id,
+        label: sh.label,
         width: sh.width,
         depth: sh.depth,
         qty: sh.qty,
@@ -172,6 +182,7 @@ export async function copyProductData(
     await tx.productFacade.create({
       data: {
         productId: newProduct.id,
+        label: f.label,
         materialId: f.materialId,
         width: f.width,
         height: f.height,
@@ -190,6 +201,7 @@ export async function copyProductData(
     await tx.productDrawer.create({
       data: {
         productId: newProduct.id,
+        label: d.label,
         width: d.width,
         height: d.height,
         depth: d.depth,
@@ -207,6 +219,7 @@ export async function copyProductData(
     await tx.productFalseFacade.create({
       data: {
         productId: newProduct.id,
+        label: ff.label,
         qty: ff.qty,
         height: ff.height,
         depth: ff.depth,
@@ -220,6 +233,7 @@ export async function copyProductData(
     await tx.productCountertop.create({
       data: {
         productId: newProduct.id,
+        label: ct.label,
         materialId: ct.materialId,
         width: ct.width,
         depth: ct.depth,
@@ -236,6 +250,7 @@ export async function copyProductData(
     await tx.productExtra.create({
       data: {
         productId: newProduct.id,
+        label: e.label,
         name: e.name,
         price: e.price,
       },

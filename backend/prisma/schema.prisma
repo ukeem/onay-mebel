@@ -400,6 +400,7 @@ model ProductSection {
   id         String    @id @default(cuid())
   productId  String
   product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   qty        Int       @default(1)
   width      Int       @default(0) // Ш mm
   height     Int       @default(0) // В mm
@@ -428,6 +429,7 @@ model ProductPartition {
   id         String    @id @default(cuid())
   productId  String
   product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   qty        Int       @default(1)
   height     Int       @default(0) // В mm
   depth      Int       @default(0) // Г mm
@@ -445,6 +447,7 @@ model ProductShelf {
   id         String    @id @default(cuid())
   productId  String
   product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   qty        Int       @default(1)
   width      Int       @default(0) // Ш mm
   depth      Int       @default(0) // Г mm
@@ -466,6 +469,7 @@ model ProductFacade {
   id         String         @id @default(cuid())
   productId  String
   product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   materialId String?
   material   Material?      @relation(fields: [materialId], references: [id])
   width      Int            @default(0) // Ш mm
@@ -497,6 +501,7 @@ model ProductDrawer {
   id         String          @id @default(cuid())
   productId  String
   product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   width      Int             @default(0) // Ш mm
   height     Int             @default(0) // В mm
   depth      Int             @default(0) // Г mm
@@ -521,6 +526,7 @@ model ProductFalseFacade {
   id         String    @id @default(cuid())
   productId  String
   product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   qty        Int       @default(1)
   height     Int       @default(0) // В mm
   depth      Int       @default(0) // Г mm
@@ -538,6 +544,7 @@ model ProductCountertop {
   id         String    @id @default(cuid())
   productId  String
   product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label      String?
   materialId String?
   material   Material? @relation("CountertopMaterial", fields: [materialId], references: [id])
   width      Int       @default(0) // Ш mm
@@ -561,6 +568,7 @@ model ProductExtra {
   id        String  @id @default(cuid())
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label     String?
   name      String
   price     Decimal @default(0)
 

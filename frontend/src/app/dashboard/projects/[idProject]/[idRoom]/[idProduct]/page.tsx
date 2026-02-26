@@ -155,6 +155,7 @@ export default function ProductPage() {
               materialId: f.defaultMaterialId,
             }}
             errors={f.partitionErrors}
+            defaultLabel={f.t("product.partitions")}
           />
         </ToggleSection>
 
@@ -183,6 +184,7 @@ export default function ProductPage() {
               materialId: f.defaultMaterialId,
             }}
             errors={f.shelfErrors}
+            defaultLabel={f.t("product.shelves")}
           />
         </ToggleSection>
 

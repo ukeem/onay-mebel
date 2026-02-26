@@ -68,6 +68,10 @@ export class UpsertSectionDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString()
+  label?: string;
+
   @IsInt()
   @Min(1)
   qty: number;
@@ -112,6 +116,10 @@ export class UpsertPartitionDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString()
+  label?: string;
+
   @IsInt()
   @Min(1)
   qty: number;
@@ -135,6 +143,10 @@ export class UpsertShelfDto {
   @IsOptional()
   @IsString()
   id?: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
 
   @IsInt()
   @Min(1)
@@ -163,6 +175,10 @@ export class UpsertFacadeDto {
   @IsOptional()
   @IsString()
   id?: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
 
   @IsOptional()
   @IsString()
@@ -209,6 +225,10 @@ export class UpsertDrawerDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString()
+  label?: string;
+
   @IsInt()
   @Min(0)
   width: number;
@@ -250,6 +270,10 @@ export class UpsertFalseFacadeDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString()
+  label?: string;
+
   @IsInt()
   @Min(1)
   qty: number;
@@ -273,6 +297,10 @@ export class UpsertCountertopDto {
   @IsOptional()
   @IsString()
   id?: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
 
   @IsOptional()
   @IsString()
@@ -310,6 +338,10 @@ export class UpsertExtraDto {
   @IsOptional()
   @IsString()
   id?: string;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
 
   @IsString()
   @MinLength(1)

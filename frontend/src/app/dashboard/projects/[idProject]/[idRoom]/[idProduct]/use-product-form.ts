@@ -353,6 +353,7 @@ export function useProductForm(
             `/products/${idProduct}/sections`,
             sections.map((s) => ({
               ...(s.id ? { id: s.id } : {}),
+              label: s.label || null,
               qty: s.qty,
               width: s.width || 0,
               height: s.height || 0,
@@ -374,6 +375,7 @@ export function useProductForm(
             `/products/${idProduct}/partitions`,
             partitions.map((p) => ({
               ...(p.id ? { id: p.id } : {}),
+              label: p.label || null,
               qty: p.qty,
               height: p.height || 0,
               depth: p.depth || 0,
@@ -388,6 +390,7 @@ export function useProductForm(
             `/products/${idProduct}/shelves`,
             shelves.map((s) => ({
               ...(s.id ? { id: s.id } : {}),
+              label: s.label || null,
               qty: s.qty,
               width: s.width || 0,
               depth: s.depth || 0,
@@ -403,6 +406,7 @@ export function useProductForm(
             `/products/${idProduct}/facades`,
             facades.map((f) => ({
               ...(f.id ? { id: f.id } : {}),
+              label: f.label || null,
               qty: f.qty,
               width: f.width || 0,
               height: f.height || 0,
@@ -422,6 +426,7 @@ export function useProductForm(
             `/products/${idProduct}/false-facades`,
             falseFacades.map((ff) => ({
               ...(ff.id ? { id: ff.id } : {}),
+              label: ff.label || null,
               qty: ff.qty,
               height: ff.height || 0,
               depth: ff.depth || 0,
@@ -436,6 +441,7 @@ export function useProductForm(
             `/products/${idProduct}/drawers`,
             drawers.map((d) => ({
               ...(d.id ? { id: d.id } : {}),
+              label: d.label || null,
               qty: d.qty,
               width: d.width || 0,
               height: d.height || 0,
@@ -454,6 +460,7 @@ export function useProductForm(
             `/products/${idProduct}/countertops`,
             countertops.map((ct) => ({
               ...(ct.id ? { id: ct.id } : {}),
+              label: ct.label || null,
               materialId: ct.materialId || null,
               width: ct.width || 0,
               depth: ct.depth || 0,

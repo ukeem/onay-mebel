@@ -20,8 +20,8 @@ import type {
   ExtraType,
   FalseFacadeItem,
 } from "@/types";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
-import { memo } from "react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 
 import type { HwOption, MatOption, SubItem, TFunc } from "./types";
 import { dec, num } from "./types";
@@ -132,6 +132,105 @@ export const SwitchRow = memo(function SwitchRow({
         )}
       </div>
       {checked && children && <div className="pl-2">{children}</div>}
+    </div>
+  );
+});
+
+/* ── Collapsible item wrapper ── */
+export const CollapsibleItem = memo(function CollapsibleItem({
+  index,
+  label,
+  onLabelChange,
+  onDelete,
+  defaultLabel,
+  t,
+  children,
+}: {
+  index: number;
+  label?: string;
+  onLabelChange: (v: string) => void;
+  onDelete: () => void;
+  defaultLabel: string;
+  t: TFunc;
+  children: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(!!label);
+  const [editing, setEditing] = useState(false);
+
+  const handleToggle = useCallback(() => {
+    setCollapsed((p) => !p);
+  }, []);
+
+  const displayLabel = label || `${defaultLabel} ${index + 1}`;
+
+  return (
+    <div className="rounded-lg border bg-background overflow-hidden">
+      {/* header */}
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-accent/30 transition-colors"
+        onClick={handleToggle}
+      >
+        {collapsed ? (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        )}
+
+        {editing ? (
+          <Input
+            autoFocus
+            className="h-7 text-sm flex-1"
+            value={label || ""}
+            placeholder={displayLabel}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => onLabelChange(e.target.value)}
+            onBlur={() => setEditing(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                setEditing(false);
+              }
+            }}
+          />
+        ) : (
+          <span
+            className="flex-1 text-sm font-medium truncate"
+            title={displayLabel}
+          >
+            {displayLabel}
+          </span>
+        )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label={t("product.editLabel")}
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditing(true);
+          }}
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
+          aria-label={t("common.deleteItem")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* body */}
+      {!collapsed && (
+        <div className="border-t px-3 pb-3 pt-2.5 space-y-2.5">{children}</div>
+      )}
     </div>
   );
 });
@@ -290,19 +389,19 @@ export const SectionsEditor = memo(function SectionsEditor({
   return (
     <div className="space-y-2">
       {items.map((s, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+          index={i}
+          label={s.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...s, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={t("product.sectionGroup")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">
@@ -435,7 +534,7 @@ export const SectionsEditor = memo(function SectionsEditor({
               />
             )}
           </SwitchRow>
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"
@@ -481,6 +580,7 @@ export const ComponentEditor = memo(function ComponentEditor({
   hardwareField,
   defaultItem,
   errors,
+  defaultLabel,
 }: {
   items: SubItem[];
   setItems: (v: SubItem[]) => void;
@@ -495,23 +595,24 @@ export const ComponentEditor = memo(function ComponentEditor({
   hardwareField?: "holderHardwareId";
   defaultItem?: { dim1: number; dim2: number; materialId: string };
   errors?: Set<string>;
+  defaultLabel?: string;
 }) {
   return (
     <div className="space-y-2">
       {items.map((s, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+          index={i}
+          label={s.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...s, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={defaultLabel || t("product.position")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">
@@ -585,7 +686,7 @@ export const ComponentEditor = memo(function ComponentEditor({
               error={errors?.has(`hw_${i}`)}
             />
           )}
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"
@@ -632,19 +733,19 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
   return (
     <div className="space-y-2">
       {items.map((ff, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+          index={i}
+          label={ff.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...ff, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={t("product.falseFacade")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">
@@ -704,7 +805,7 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
             t={t}
             error={errors?.has(`mat_${i}`)}
           />
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"
@@ -759,19 +860,19 @@ export const FacadesEditor = memo(function FacadesEditor({
   return (
     <div className="space-y-2">
       {items.map((f, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+          index={i}
+          label={f.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...f, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={t("product.facade")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           {/* Row 1: габариты */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
@@ -942,7 +1043,7 @@ export const FacadesEditor = memo(function FacadesEditor({
               />
             )
           )}
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"
@@ -995,19 +1096,19 @@ export const DrawersEditor = memo(function DrawersEditor({
   return (
     <div className="space-y-2">
       {items.map((d, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+          index={i}
+          label={d.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...d, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={t("product.drawer")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           {/* Row 1: габариты */}
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1.5">
@@ -1162,7 +1263,7 @@ export const DrawersEditor = memo(function DrawersEditor({
               />
             ) : null;
           })()}
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"
@@ -1215,19 +1316,19 @@ export const CountertopsEditor = memo(function CountertopsEditor({
   return (
     <div className="space-y-2">
       {items.map((ct, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10 space-y-2.5"
+          index={i}
+          label={ct.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...ct, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={t("product.countertop")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           <MatSelect
             label={t("product.material")}
             value={ct.materialId || ""}
@@ -1337,7 +1438,7 @@ export const CountertopsEditor = memo(function CountertopsEditor({
               </div>
             </div>
           </SwitchRow>
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"
@@ -1385,19 +1486,19 @@ export const ExtrasEditor = memo(function ExtrasEditor({
         ))}
       </datalist>
       {items.map((e, i) => (
-        <div
+        <CollapsibleItem
           key={i}
-          className="relative rounded-lg border bg-background p-3 pr-10"
+          index={i}
+          label={e.label}
+          onLabelChange={(v) => {
+            const copy = [...items];
+            copy[i] = { ...e, label: v };
+            setItems(copy);
+          }}
+          onDelete={() => setItems(items.filter((_, j) => j !== i))}
+          defaultLabel={t("product.extra")}
+          t={t}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1 h-7 w-7 text-destructive/60 hover:bg-destructive/10 hover:text-destructive"
-            aria-label={t("common.deleteItem")}
-            onClick={() => setItems(items.filter((_, j) => j !== i))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">
@@ -1439,7 +1540,7 @@ export const ExtrasEditor = memo(function ExtrasEditor({
               />
             </div>
           </div>
-        </div>
+        </CollapsibleItem>
       ))}
       <Button
         variant="outline"

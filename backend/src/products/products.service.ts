@@ -138,6 +138,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           qty: item.qty,
           width: item.width,
           height: item.height,
@@ -177,6 +178,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           qty: item.qty,
           height: item.height,
           depth: item.depth,
@@ -211,6 +213,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           qty: item.qty,
           width: item.width,
           depth: item.depth,
@@ -246,6 +249,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           materialId: item.materialId || null,
           width: item.width,
           height: item.height,
@@ -285,6 +289,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           width: item.width,
           height: item.height,
           depth: item.depth,
@@ -323,6 +328,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           qty: item.qty,
           height: item.height,
           depth: item.depth,
@@ -362,6 +368,7 @@ export class ProductsService {
       const results = [];
       for (const item of items) {
         const data = {
+          label: item.label || null,
           materialId: item.materialId || null,
           width: item.width,
           depth: item.depth ?? 600,
@@ -402,7 +409,11 @@ export class ProductsService {
           results.push(
             await tx.productExtra.update({
               where: { id: item.id },
-              data: { name: item.name, price: item.price ?? 0 },
+              data: {
+                label: item.label || null,
+                name: item.name,
+                price: item.price ?? 0,
+              },
             }),
           );
         } else {
@@ -410,6 +421,7 @@ export class ProductsService {
             await tx.productExtra.create({
               data: {
                 productId,
+                label: item.label || null,
                 name: item.name,
                 price: item.price ?? 0,
               },
