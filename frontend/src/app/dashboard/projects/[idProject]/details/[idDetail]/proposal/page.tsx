@@ -25,6 +25,11 @@ export default function ProposalPage({
   const [htmlUrl, setHtmlUrl] = useState("");
   const [error, setError] = useState(false);
   const [activeTier, setActiveTier] = useState<Tier>("standard");
+  const [enabledTiers, setEnabledTiers] = useState<Tier[]>([
+    "standard",
+    "comfort",
+    "premium",
+  ]);
   const [totals, setTotals] = useState<Record<Tier, string>>({
     standard: "",
     comfort: "",
@@ -45,6 +50,16 @@ export default function ProposalPage({
           `src="${window.location.origin}/uploads/`,
         );
         setRawHtml(withAbsoluteUploads);
+
+        // Detect which tiers are enabled from the generated HTML
+        const allTiers: Tier[] = ["standard", "comfort", "premium"];
+        const detected = allTiers.filter((tier) =>
+          withAbsoluteUploads.includes(`id="tab-btn-${tier}"`),
+        );
+        if (detected.length > 0) {
+          setEnabledTiers(detected);
+          setActiveTier(detected[0]);
+        }
 
         // Extract totals per tier from HTML
         const tierNames: Tier[] = ["standard", "comfort", "premium"];
@@ -231,19 +246,21 @@ export default function ProposalPage({
       </div>
 
       {/* Tier tabs */}
-      <Tabs
-        value={activeTier}
-        onValueChange={(v) => switchTier(v as Tier)}
-        className="shrink-0"
-      >
-        <TabsList className="flex w-full shadow-sm">
-          <TabsTrigger value="standard">
-            {t("detail.tiers.standard")}
-          </TabsTrigger>
-          <TabsTrigger value="comfort">{t("detail.tiers.comfort")}</TabsTrigger>
-          <TabsTrigger value="premium">{t("detail.tiers.premium")}</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {enabledTiers.length > 1 && (
+        <Tabs
+          value={activeTier}
+          onValueChange={(v) => switchTier(v as Tier)}
+          className="shrink-0"
+        >
+          <TabsList className="flex w-full shadow-sm">
+            {enabledTiers.map((tier) => (
+              <TabsTrigger key={tier} value={tier}>
+                {t(`detail.tiers.${tier}`)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
       {/* iframe */}
       {htmlUrl ? (
