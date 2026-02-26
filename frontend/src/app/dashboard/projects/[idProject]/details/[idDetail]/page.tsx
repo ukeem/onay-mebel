@@ -296,13 +296,13 @@ function computeRoomTotals(
     const disc = (base * opts.discountPct) / 100;
     totalForClient = base - disc + deliveryCost;
     cleanProfit =
-      base -
-      disc -
+      totalForClient -
+      productsSum -
+      workshopTotal -
       techCost -
       designCost -
-      deliveryCost -
       assemblyCost -
-      (productsSumNoReserve + workshopTotal);
+      deliveryCost;
   } else {
     const base = productsSum + workshopTotal;
     const allCosts =

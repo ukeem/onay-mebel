@@ -306,13 +306,13 @@ export class CalculationsService {
       const discountAmount = (base * discount) / 100;
       totalForClient = base - discountAmount + deliveryCost;
       cleanProfit =
-        base -
-        discountAmount -
+        totalForClient -
+        productsSum -
+        workshopTotal -
         techCost -
         designCost -
-        deliveryCost -
         assemblyCost -
-        (productsSumNoReserve + workshopTotal);
+        deliveryCost;
     } else {
       const base = productsSum + workshopTotal;
       const allCosts =
@@ -449,12 +449,13 @@ export class CalculationsService {
         const disc = (base * discount) / 100;
         tTotalForClient = Math.round(base - disc + tDeliveryCost);
         tCleanProfit = Math.round(
-          base -
+          tTotalForClient -
+            tierProductsSum -
+            tWorkshopTotal -
             tTechCost -
             tDesignCost -
-            tDeliveryCost -
             tAssemblyCost -
-            (tierProductsSumNoReserve + tWorkshopTotal),
+            tDeliveryCost,
         );
       } else {
         const base = tierProductsSum + tWorkshopTotal;
