@@ -107,15 +107,18 @@ export default function ProposalPage({
   }, []);
 
   const handleShare = async () => {
-    const publicUrl = `${window.location.origin}/proposal/${idDetail}`;
+    // Extract company name from HTML for branded URL
+    const companyMatch = rawHtml?.match(/class="company-name">([^<]+)<\/div>/);
+    const companyName = companyMatch?.[1]?.trim() || "";
+    const slug = companyName
+      ? encodeURIComponent(companyName.replace(/\s+/g, "_"))
+      : "proposal";
+    const publicUrl = `${window.location.origin}/${slug}/${idDetail}`;
     const shortUrl = await shortenUrl(publicUrl);
     const titleMatch = rawHtml?.match(
       /<title>[^\u2014]*\u2014\s*(.+?)<\/title>/,
     );
     const projectName = titleMatch?.[1]?.trim() || t("proposal.title");
-    // Extract company name from HTML
-    const companyMatch = rawHtml?.match(/class="company-name">([^<]+)<\/div>/);
-    const companyName = companyMatch?.[1]?.trim() || "";
     const header = companyName
       ? `${companyName} — ${projectName}`
       : projectName;
