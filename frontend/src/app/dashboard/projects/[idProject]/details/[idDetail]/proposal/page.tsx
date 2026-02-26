@@ -109,7 +109,9 @@ export default function ProposalPage({
   const handleShare = async () => {
     const publicUrl = `${window.location.origin}/proposal/${idDetail}`;
     const shortUrl = await shortenUrl(publicUrl);
-    const titleMatch = rawHtml?.match(/<title>[^\u2014]*\u2014\s*(.+?)<\/title>/);
+    const titleMatch = rawHtml?.match(
+      /<title>[^\u2014]*\u2014\s*(.+?)<\/title>/,
+    );
     const projectName = titleMatch?.[1]?.trim() || t("proposal.title");
     const shareText = `${projectName}\n${shortUrl}`;
 

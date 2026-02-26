@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Param, Res } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { SettingsService } from '../settings/settings.service';
 import { CalculationsService } from './calculations.service';
@@ -26,5 +26,21 @@ export class PublicProposalController {
       : undefined;
     const html = this.svc.generateProposal(calc.data as any, proposalSettings);
     res.send(html);
+  }
+
+  /** GET /api/public/shorten?url=... — shorten URL via clck.ru */
+  @Get('shorten')
+  async shorten(@Query('url') url: string) {
+    if (!url) return { short: url };
+    try {
+      const res = await fetch(
+        `https://clck.ru/--?url=${encodeURIComponent(url)}`,
+      );
+      if (!res.ok) return { short: url };
+      const short = (await res.text()).trim();
+      return { short: short || url };
+    } catch {
+      return { short: url };
+    }
   }
 }
