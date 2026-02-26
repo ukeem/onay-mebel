@@ -1,12 +1,10 @@
-# syntax=docker/dockerfile:1
-
 # ── Stage 1: Build ──
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN npm ci
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
@@ -18,8 +16,9 @@ RUN npm run build
 # Compile seed separately (ts-node doesn't work in production)
 RUN npx tsc prisma/seed.ts --outDir dist/prisma --esModuleInterop --module commonjs --target ES2023 --skipLibCheck --resolveJsonModule
 
-# Remove dev dependencies to shrink node_modules (~60% smaller)
-RUN npm prune --omit=dev
+# Remove dev dependencies to shrink node_modules
+# Re-add prisma CLI (devDep) needed for runtime migrations
+RUN npm prune --omit=dev && npm install --no-save prisma
 
 # ── Stage 2: Production ──
 FROM node:22-alpine AS runner
