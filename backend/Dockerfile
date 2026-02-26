@@ -16,7 +16,7 @@ RUN npm run build
 # Compile seed separately (ts-node doesn't work in production)
 RUN npx tsc prisma/seed.ts --outDir dist/prisma --esModuleInterop --module commonjs --target ES2023 --skipLibCheck --resolveJsonModule
 
-# Remove dev dependencies to shrink node_modules
+# Remove dev dependencies to shrink node_modules 111
 # Re-add prisma CLI (devDep) needed for runtime migrations
 RUN npm prune --omit=dev && npm install --no-save prisma
 
