@@ -1,4 +1,4 @@
-# CI pipeline: lint, test, build → deploy via Dokploy webhook
+# CI pipeline: lint, test, build → deploy via Dokploy webhook new
 name: CI
 
 on:
