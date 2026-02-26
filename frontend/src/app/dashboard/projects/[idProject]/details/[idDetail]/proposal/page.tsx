@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ArrowLeft, Share2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Download, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useRef, useState } from "react";
@@ -129,6 +129,53 @@ export default function ProposalPage({
     }
   };
 
+  const handleDownload = () => {
+    if (!rawHtml) return;
+    // Inject CSS to show all tiers sequentially (like print mode but for screen)
+    const downloadCss = `
+      <style>
+        .tabs-wrap { display: none !important; }
+        .total-bar { display: none !important; }
+        .tab-content { display: block !important; }
+        .tier-title {
+          display: block;
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--text);
+          text-align: center;
+          padding: 16px 0 12px;
+          margin-bottom: 8px;
+          border-bottom: 2px solid var(--border);
+        }
+        .tier-total {
+          display: flex;
+          justify-content: center;
+          padding: 16px 0;
+          margin-top: 12px;
+          border-top: 2px solid var(--border);
+        }
+        .tier-total .total-inner-bar { gap: 12px; }
+        .tier-total .total-label { font-size: 16px; font-weight: 700; }
+        .tier-total .grand-new { font-size: 20px; }
+        .payment-section { display: block !important; }
+      </style>`;
+    const downloadHtml = rawHtml.replace("</head>", `${downloadCss}</head>`);
+    const blob = new Blob([downloadHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    // Extract project name for filename
+    const titleMatch = rawHtml.match(
+      /<title>[^\u2014]*\u2014\s*(.+?)<\/title>/,
+    );
+    const projectName = titleMatch?.[1]?.trim() || "proposal";
+    a.download = `${projectName}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex h-[calc(100vh-10rem)] md:h-[calc(100vh-6rem)] flex-col">
       {/* toolbar */}
@@ -184,7 +231,7 @@ export default function ProposalPage({
           <Spinner />
         </div>
       )}
-      {/* Bottom bar: total + share */}
+      {/* Bottom bar: total + actions */}
       <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 border-t bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         {totals[activeTier] ? (
           <div className="flex items-baseline gap-2">
@@ -198,15 +245,26 @@ export default function ProposalPage({
         ) : (
           <div />
         )}
-        <Button
-          size="sm"
-          className="gap-1.5 rounded-full bg-green-600 px-4 text-white shadow-md hover:bg-green-700 hover:shadow-lg transition-all"
-          aria-label={t("proposal.share")}
-          onClick={handleShare}
-        >
-          <Share2 className="h-4 w-4" />
-          <span>{t("proposal.share")}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            className="gap-1.5 rounded-full bg-green-600 px-4 text-white shadow-md hover:bg-green-700 hover:shadow-lg transition-all"
+            aria-label={t("proposal.downloadHtml")}
+            onClick={handleDownload}
+          >
+            <Download className="h-4 w-4" />
+            <span>{t("proposal.downloadHtml")}</span>
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5 rounded-full bg-neutral-900 px-4 text-white shadow-md hover:bg-neutral-800 hover:shadow-lg transition-all dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+            aria-label={t("proposal.share")}
+            onClick={handleShare}
+          >
+            <Share2 className="h-4 w-4" />
+            <span>{t("proposal.share")}</span>
+          </Button>
+        </div>
       </div>
     </div>
   );
