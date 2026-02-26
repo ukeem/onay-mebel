@@ -25,7 +25,7 @@ import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface TypeItem {
@@ -38,6 +38,42 @@ interface TypeCrudProps {
   endpoint: string; // e.g. "/catalog/room-types"
   title: string;
   showPrice?: boolean;
+}
+
+function InlinePrice({
+  value,
+  onSave,
+}: {
+  value: number;
+  onSave: (v: number) => Promise<void>;
+}) {
+  const [text, setText] = useState(String(value));
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const num = Number(text) || 0;
+    if (num !== value) onSave(num);
+  };
+
+  return (
+    <Input
+      ref={ref}
+      type="number"
+      min={0}
+      step="any"
+      className="h-8 w-28"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") ref.current?.blur();
+      }}
+    />
+  );
 }
 
 export function TypeCrud({ endpoint, title, showPrice }: TypeCrudProps) {
@@ -202,7 +238,26 @@ export function TypeCrud({ endpoint, title, showPrice }: TypeCrudProps) {
               <TableRow key={item.id}>
                 <TableCell>{item.name}</TableCell>
                 {showPrice && (
-                  <TableCell>{item.price ?? 0}</TableCell>
+                  <TableCell>
+                    <InlinePrice
+                      value={item.price ?? 0}
+                      onSave={async (v) => {
+                        try {
+                          await api.patch(`${endpoint}/${item.id}`, {
+                            name: item.name,
+                            price: v,
+                          });
+                          setItems((prev) =>
+                            prev.map((it) =>
+                              it.id === item.id ? { ...it, price: v } : it,
+                            ),
+                          );
+                        } catch (err: unknown) {
+                          toast.error(getApiError(err, t("common.error")));
+                        }
+                      }}
+                    />
+                  </TableCell>
                 )}
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
