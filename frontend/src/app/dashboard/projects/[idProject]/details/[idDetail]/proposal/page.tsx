@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 
 import api from "@/lib/api";
+import { shortenUrl } from "@/lib/shorten-url";
 
 type Tier = "standard" | "comfort" | "premium";
 
@@ -107,13 +108,14 @@ export default function ProposalPage({
 
   const handleShare = async () => {
     const publicUrl = `${window.location.origin}/proposal/${idDetail}`;
-    const titleMatch = rawHtml?.match(/<title>[^—]*—\s*(.+?)<\/title>/);
+    const shortUrl = await shortenUrl(publicUrl);
+    const titleMatch = rawHtml?.match(/<title>[^\u2014]*\u2014\s*(.+?)<\/title>/);
     const projectName = titleMatch?.[1]?.trim() || t("proposal.title");
-    const shareText = `${projectName}\n${publicUrl}`;
+    const shareText = `${projectName}\n${shortUrl}`;
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: projectName, url: publicUrl });
+        await navigator.share({ title: projectName, url: shortUrl });
       } catch {
         /* user cancelled */
       }

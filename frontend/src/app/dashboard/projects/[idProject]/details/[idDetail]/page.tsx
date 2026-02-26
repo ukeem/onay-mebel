@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/lib/api";
+import { shortenUrl } from "@/lib/shorten-url";
 import {
   ArrowLeft,
   FileText,
@@ -693,11 +694,12 @@ export default function DetailPage({
   const handleCreateKP = async () => {
     await handleSave();
     const publicUrl = `${window.location.origin}/proposal/${idDetail}`;
+    const shortUrl = await shortenUrl(publicUrl);
     try {
-      await navigator.clipboard.writeText(publicUrl);
+      await navigator.clipboard.writeText(shortUrl);
       toast.success(t("detail.linkCopied"));
     } catch {
-      toast.info(t("common.linkFallback", { url: publicUrl }));
+      toast.info(t("common.linkFallback", { url: shortUrl }));
     }
     router.push(
       `/dashboard/projects/${idProject}/details/${idDetail}/proposal`,

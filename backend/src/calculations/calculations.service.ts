@@ -724,7 +724,7 @@ export class CalculationsService {
         const disc = (base * discountPct) / 100;
         totalForClient = Math.round(base - disc + deliveryCost);
       } else {
-        const base = productsSum + workshopTotal + proposalReserve;
+        const base = productsSum + workshopTotal;
         const allCosts =
           base +
           profitValue +
