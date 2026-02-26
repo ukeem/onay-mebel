@@ -38,6 +38,8 @@ export default function ProposalPage({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeLoaded = useRef(false);
   const htmlUrlRef = useRef("");
+  const activeTierRef = useRef<Tier>(activeTier);
+  activeTierRef.current = activeTier;
 
   useEffect(() => {
     api
@@ -58,7 +60,7 @@ export default function ProposalPage({
         );
         if (detected.length > 0) {
           setEnabledTiers(detected);
-          setActiveTier(detected[0]);
+          setActiveTier(detected.includes("comfort") ? "comfort" : detected[0]);
         }
 
         // Extract totals per tier from HTML
@@ -102,7 +104,9 @@ export default function ProposalPage({
     iframeLoaded.current = true;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (iframeRef.current?.contentWindow as any)?.showTab?.(activeTier);
+      (iframeRef.current?.contentWindow as any)?.showTab?.(
+        activeTierRef.current,
+      );
     } catch {
       /* cross-origin fallback */
     }

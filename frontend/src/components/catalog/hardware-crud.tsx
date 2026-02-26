@@ -31,10 +31,12 @@ import {
 } from "@/components/ui/table";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
+import { API_BASE_URL } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/utils";
 import type { Hardware, HardwareType } from "@/types";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -49,6 +51,8 @@ export function HardwareCrud() {
   const [hardwareTypeId, setHardwareTypeId] = useState("");
   const [brand, setBrand] = useState("");
   const [price, setPrice] = useState("0");
+  const [image, setImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -76,6 +80,7 @@ export function HardwareCrud() {
     setHardwareTypeId("");
     setBrand("");
     setPrice("0");
+    setImage(null);
   };
 
   const handleSave = async () => {
@@ -85,6 +90,7 @@ export function HardwareCrud() {
         ...(editId ? {} : { hardwareTypeId }),
         brand: brand || undefined,
         price: parseFloat(price),
+        image: image || undefined,
       };
       if (editId) {
         await api.patch(`/catalog/hardware/${editId}`, body);
@@ -108,7 +114,27 @@ export function HardwareCrud() {
     setHardwareTypeId(h.hardwareType.id);
     setBrand(h.brand || "");
     setPrice(String(h.price));
+    setImage(h.image);
     setOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post("/uploads", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImage(res.data.url);
+      toast.success(t("catalog.imageUploaded"));
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -202,6 +228,37 @@ export function HardwareCrud() {
                     onChange={(e) => setPrice(e.target.value)}
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label>{t("catalog.image")}</Label>
+                  <div className="flex items-center gap-3">
+                    {image && (
+                      <Image
+                        src={`${API_BASE_URL}${image}`}
+                        alt=""
+                        width={56}
+                        height={56}
+                        className="h-14 w-14 rounded-md border object-cover"
+                      />
+                    )}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploading}
+                      />
+                      <span className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        {uploading
+                          ? "..."
+                          : image
+                            ? t("catalog.changeImage")
+                            : t("catalog.uploadImage")}
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={saving}>
@@ -217,6 +274,7 @@ export function HardwareCrud() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead></TableHead>
               <TableHead>{t("common.type")}</TableHead>
               <TableHead>{t("common.brand")}</TableHead>
               <TableHead>{t("common.price")}</TableHead>
@@ -228,6 +286,19 @@ export function HardwareCrud() {
           <TableBody>
             {items.map((h) => (
               <TableRow key={h.id}>
+                <TableCell className="w-12">
+                  {h.image ? (
+                    <Image
+                      src={`${API_BASE_URL}${h.image}`}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="h-8 w-8 rounded border object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded border bg-muted" />
+                  )}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{h.hardwareType.name}</Badge>
                 </TableCell>
@@ -260,7 +331,7 @@ export function HardwareCrud() {
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="h-16 text-center text-muted-foreground"
                 >
                   {t("catalog.noHardware")}
