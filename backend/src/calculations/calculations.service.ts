@@ -952,7 +952,7 @@ export class CalculationsService {
               </div>`;
             })
             .join('');
-          paymentHtml = `<div id="payment-${tier}" class="payment-section" style="display:${idx === 0 ? 'block' : 'none'};">
+          paymentHtml = `<div id="payment-${tier}" class="payment-section">
             <div class="payment-title" data-i18n="paymentTitle">Условия оплаты</div>
             <div class="payment-stages-card">
               ${stagesItems}
@@ -971,6 +971,7 @@ export class CalculationsService {
               ${grandTotalHtml}
             </div>
           </div>
+          ${paymentHtml}
         </div>
         <div id="total-${tier}" class="total-bar" style="display:${idx === 0 ? 'flex' : 'none'};">
           <div class="total-inner-bar">
@@ -978,19 +979,16 @@ export class CalculationsService {
             ${grandTotalHtml}
           </div>
         </div>`,
-          paymentHtml,
         };
       })
       .reduce(
         (acc, item) => {
           acc.tabs += item.tabHtml;
-          acc.payments += item.paymentHtml;
           return acc;
         },
-        { tabs: '', payments: '' },
+        { tabs: '' },
       );
     const tabContentsHtml = tabParts.tabs;
-    const allPaymentsHtml = tabParts.payments;
 
     /* Build contacts HTML */
     const contactIcons: Record<string, string> = {
@@ -1721,7 +1719,6 @@ export class CalculationsService {
 
   ${tabContentsHtml}
 
-  ${allPaymentsHtml}
   ${contactsHtml}
 
   <button onclick="window.print()" class="print-btn no-print" data-i18n="print">Печать / PDF</button>
@@ -1733,15 +1730,12 @@ export class CalculationsService {
       document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
       document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
       document.querySelectorAll('.total-bar').forEach(function(el) { el.style.display = 'none'; });
-      document.querySelectorAll('.payment-section').forEach(function(el) { el.style.display = 'none'; });
       var tab = document.getElementById('tab-' + tier);
       var btn = document.getElementById('tab-btn-' + tier);
       var total = document.getElementById('total-' + tier);
-      var payment = document.getElementById('payment-' + tier);
       if (tab) tab.style.display = 'block';
       if (btn) btn.classList.add('active');
       if (total) total.style.display = 'flex';
-      if (payment) payment.style.display = 'block';
     }
 
     /* ── Theme toggle ── */
