@@ -4,7 +4,7 @@
 
 Монорепо: **Next.js 16 (App Router)** + **NestJS 11** + **PostgreSQL 16** + **Prisma ORM 7** (`@prisma/adapter-pg`). Nginx — reverse proxy в Docker. Деплой через **Dokploy** (Traefik TLS). Предметная область — калькулятор мебели: каталог → пользовательские цены → проекты → комнаты → изделия → расчёт (3 тира) → HTML коммерческое предложение.
 
-**Data flow:** Admin создаёт каталог (`Material`, `Hardware`, `ServiceTemplate`) → при регистрации `CatalogCopyService` (`backend/src/shared/catalog-copy.service.ts`) копирует в `UserMaterial`/`UserHardware`/`UserService` через `createMany({ skipDuplicates: true })` → пользователь строит `Project → Room → Product` (с субкомпонентами) → `CalculationsService.calculate()` генерирует расчёт и HTML-предложение.
+**Data flow:** Admin создаёт каталог (`Material`, `Hardware`, `ServiceTemplate`) → при регистрации `CatalogCopyService` (`backend/src/shared/catalog-copy.service.ts`) копирует в `UserMaterial`/`UserHardware`/`UserService` через `createMany({ skipDuplicates: true })` → пользователь строит `Project → Room → Product` (с субкомпонентами) → `CalculationsService.calculate()` генерирует расчёт и HTML-предложение → `PATCH /api/calculations/:id` позволяет inline-редактирование JSON-snapshot.
 
 ## Команды
 
@@ -28,7 +28,7 @@ docker compose up --build        # postgres + backend + frontend + nginx
 
 ### Структура модулей
 
-Каждый NestJS-модуль = `{module, controller, service, dto/}`. Ключевые модули: `auth`, `catalog`, `settings`, `projects`, `rooms`, `products`, `calculations`, `uploads`, `users`, `ws`.
+Каждый NestJS-модуль = `{module, controller, service, dto/}`. Ключевые модули: `auth`, `catalog`, `settings`, `projects`, `rooms`, `products`, `calculations`, `uploads`, `users`, `ws`, `sms`.
 
 ### Shared-модуль (`backend/src/shared/`)
 
@@ -46,9 +46,16 @@ docker compose up --build        # postgres + backend + frontend + nginx
 - При логине: `WsGateway.forceLogout(userId)` — force-logout предыдущей сессии через Socket.IO.
 - Rate limiting: `@Throttle()` на auth-эндпоинтах (3-10 req/min). Глобальный `ThrottlerGuard` (10 req/s, 100 req/min).
 
+### Публичные эндпоинты
+
+`PublicProposalController` (`@Controller('public')`) — **без** `@UseGuards`. Содержит:
+
+- `GET /api/public/proposal/:id` — публичный доступ к КП.
+- `GET /api/public/shorten?url=...` — прокси к clck.ru (URL-сокращатель). Фронтенд: `frontend/src/lib/shorten-url.ts`.
+
 ### DTOs
 
-`class-validator` + `class-transformer`, один файл на модуль. Субкомпоненты — **отдельные DTO + отдельные PUT-эндпоинты**, без `@ValidateNested`. Глобальный `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`.
+`class-validator` + `class-transformer`, один файл на модуль. Субкомпоненты — **отдельные DTO + отдельные PUT-эндпоинты**, без `@ValidateNested`. Глобальный `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`. Массовые PUT-эндпоинты используют `@Body(new ParseArrayPipe({ items: UpsertXxxDto }))`.
 
 ### Ownership
 
@@ -68,17 +75,20 @@ private async ensureProductOwner(productId, userId) {
 
 ### Upsert-паттерн для субкомпонентов
 
-Все массовые PUT-эндпоинты (`/api/products/:id/sections`, `/facades`, `/drawers`, `/shelves`, `/partitions`, `/extras`):
+Все массовые PUT-эндпоинты (`/api/products/:id/sections`, `/facades`, `/false-facades`, `/drawers`, `/shelves`, `/partitions`, `/countertops`, `/extras`):
 
 ```
 $transaction → deleteMany(where: { productId, id: { notIn: keepIds } }) → update existing (if id) → create new (if !id)
 ```
 
-1:1 субкомпоненты (`/mezzanine`, `/countertop`) — upsert одного объекта + DELETE-эндпоинт.
-
 ### Ошибки
 
 Сообщения на русском: `'Проект не найден'`, `'Нет доступа'`, `'Пользователь заблокирован'`. Exceptions: `NotFoundException`, `ForbiddenException`, `BadRequestException`. `AllExceptionsFilter` скрывает stack trace в production.
+
+### Конвенции сервисов
+
+- Переиспользуемые `const` для Prisma include: `MAT_INCLUDE`, `HW_INCLUDE`, `PRODUCT_INCLUDE`.
+- Инъекция сервисов: `private svc: XxxService` (сокращение `svc`).
 
 ### Health check
 
@@ -108,6 +118,7 @@ const api = axios.create({
 - Auto-refresh на 401 с mutex (`refreshPromise`), redirect на `/login` при неудаче.
 - Обработка 403 INACTIVE/BLOCKED на не-auth эндпоинтах → redirect на `/login`.
 - Нет `NEXT_PUBLIC_*` env-переменных.
+- Security headers в `next.config.ts`: CSP, X-Frame-Options, HSTS, Permissions-Policy и др.
 
 ### Ключевые lib-утилиты (`src/lib/`)
 
@@ -115,7 +126,17 @@ const api = axios.create({
 - `api-error.ts` — `getApiError(err, fallback)` — извлекает `message` из axios response.
 - `constants.ts` — `API_BASE_URL` (пустая строка), `WS_BASE_URL` (runtime из `window.location`).
 - `phone-mask.ts` — `formatPhone()` / `rawPhone()` для казахстанских номеров (+7 7XX XXX XX XX).
-- `utils.ts` — `cn()` (tailwind-merge + clsx).
+- `utils.ts` — `cn()` (tailwind-merge + clsx), `selectOnFocus()`, `parseNum()` (десятичные с запятой), `normalizeNumInput()`.
+- `shorten-url.ts` — прокси к clck.ru через `/api/public/shorten`.
+
+### Кастомные UI-компоненты (`src/components/ui/`)
+
+Помимо shadcn/ui, есть самописные:
+
+- `num-input.tsx` — числовой ввод с поддержкой запятой как десятичного разделителя, `zeroAsEmpty`, `selectOnFocus`.
+- `searchable-select.tsx` — выпадающий список с поиском (Popover + Command).
+- `spinner.tsx` — спиннер загрузки.
+- `password-input.tsx` — пароль с toggle видимости.
 
 ### Hooks (`src/hooks/`)
 
@@ -166,27 +187,42 @@ useEffect(() => {
 - CRUD: `<Dialog>` модалки, подтверждение через `<ConfirmDialog>` (управление через `deleteId` state).
 - Loading: skeleton на `animate-pulse`.
 
+### Редактор изделия (крупная форма)
+
+Расположен в `frontend/src/app/dashboard/projects/[idProject]/[idRoom]/[idProduct]/`. Разбит на:
+
+- `page.tsx` — основной layout.
+- `use-product-form.ts` (~723 строки) — custom hook: state всех субкомпонентов, загрузка справочников, saving.
+- `use-collapse-state.ts` — персистентное collapse-состояние секций в localStorage по productId.
+- `editors.tsx` — UI-компоненты секций/редакторов каждого субкомпонента.
+- `types.ts` — реэкспорт типов + хелперы `num()`, `dec()`, `clamp()`.
+
 ### Роутинг
 
 - `(public)/proposal/[idDetail]` — без auth, публичное КП.
-- `/dashboard` — с `<AuthGuard>`, desktop sidebar 264px + mobile bottom tabs.
+- `(public)/[companySlug]/[idDetail]` — брендированное публичное КП (slug косметический, данные по idDetail).
+- `/dashboard` — редирект → `/dashboard/projects`. С `<AuthGuard>`, desktop sidebar 264px + mobile bottom tabs.
 - `/dashboard/projects/[idProject]/[idRoom]/[idProduct]` — вложенный routing до изделия.
+- `/dashboard/projects/[idProject]/details/[idDetail]` — детальная страница расчёта (inline-редактирование snapshot).
 - `/dashboard/projects/[idProject]/details/[idDetail]/proposal` — предпросмотр КП.
+- `/dashboard/settings` — настройки пользователя (tabs: materials, hardware, services, company).
+- `/dashboard/crm` — **заглушка** (CRM в разработке, бэкенда нет).
 - ADMIN/SUPER видят дополнительные пункты навигации (`catalog`, `users`).
+- Все роли видят: Projects, Settings, CRM.
 - Path alias: `@/*` → `./src/*`.
 
 ## Prisma-схема
 
 ```
 User ─1:N─ Project ─1:N─ Room ─1:N─ Product
-                                       ├─ 1:N Section (опц. mezzanineId)
-                                       ├─ 1:N Partition (опц. mezzanineId)
-                                       ├─ 1:N Shelf (опц. mezzanineId)
-                                       ├─ 1:N Facade (опц. mezzanineId)
-                                       ├─ 1:N Drawer (опц. mezzanineId)
-                                       ├─ 1:1 Mezzanine (имеет свои sub-компоненты)
-                                       ├─ 1:1 Countertop
-                                       └─ 1:N Extra
+                                       ├─ 1:N Section (группа: боковины + крыша/дно + задняя стенка)
+                                       ├─ 1:N Partition (ВхГ)
+                                       ├─ 1:N Shelf (ШхГ)
+                                       ├─ 1:N Facade (фасад с materialId, hardwareId)
+                                       ├─ 1:N FalseFacade (фальш-фасад, ВхГ)
+                                       ├─ 1:N Drawer (ящик, ШхВхГ)
+                                       ├─ 1:N Countertop (столешница + опц. фартук)
+                                       └─ 1:N Extra (доп. позиции)
 
 User ─1:N─ UserMaterial → Material → MaterialType
 User ─1:N─ UserHardware → Hardware → HardwareType
@@ -195,7 +231,13 @@ User ─1:1─ CompanyInfo
 User ─1:N─ PaymentStage, UserContact, RefreshToken, SmsCode
 ```
 
-IDs — `cuid()`. Все модели: `createdAt`/`updatedAt`. Каскадное удаление: `onDelete: Cascade`. Субкомпоненты имеют **опциональный** `mezzanineId` — размещение и на изделии, и на антресоли через одну таблицу.
+**Product** — без собственных габаритов (ширина/высота/глубина в секциях). 8 boolean-свитчеров (`sectionsEnabled`, `partitionsEnabled`, `shelvesEnabled`, `facadesEnabled`, `falseFacadesEnabled`, `drawersEnabled`, `countertopEnabled`, `extrasEnabled`) управляют видимостью блоков в UI.
+
+**Countertop** — содержит опциональный фартук: `apronEnabled`, `apronMaterialId`, `apronWidth`, `apronHeight`.
+
+**Section** — содержит встроенную заднюю стенку: `backWallEnabled`, `backWallMaterialId`.
+
+IDs — `cuid()`. Все модели: `createdAt`/`updatedAt`. Каскадное удаление: `onDelete: Cascade`.
 
 Enums: `Role(SUPER/ADMIN/USER)`, `UserStatus(ACTIVE/INACTIVE/BLOCKED)`, `CalcType(SHEET/SQM/LM)`, `ProfitType(COEF/FIXED)`, `FacadeOpenType(HANDLE/TIP_ON)`, `DrawerSlideType(GUIDE/TANDEM)`.
 
@@ -206,6 +248,8 @@ Enums: `Role(SUPER/ADMIN/USER)`, `UserStatus(ACTIVE/INACTIVE/BLOCKED)`, `CalcTyp
 **Три уровня цен:** чистая (материалы + фурнитура + 10% резерв) → цеховая (+ распил × листы + присадка × листы + кромка × м.п.) → рыночная (COEF: `sum × коэффициент` или FIXED: `sum + наценка`).
 
 **Tier-система:** `computeTierPrices()` группирует материалы по `materialType`, сортирует по цене → `sorted[0]` = Standard, `sorted[median]` = Comfort, `sorted[last]` = Premium. При < 2 материалов — все тиры одинаковые.
+
+**Inline-редактирование:** `PATCH /api/calculations/:id` принимает обновлённый JSON-snapshot (`data`). Фронтенд позволяет включать/выключать позиции, заменять материалы, корректировать цены.
 
 ## Инфраструктура
 

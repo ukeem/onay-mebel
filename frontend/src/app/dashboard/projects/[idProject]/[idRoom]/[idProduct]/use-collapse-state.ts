@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 const STORAGE_PREFIX = "collapse:";
 
@@ -23,12 +23,6 @@ export function useCollapseState(productId: string) {
   };
 
   const [expanded, setExpanded] = useState<Set<string>>(readStorage);
-  const expandedRef = useRef(expanded);
-
-  // Sync ref in effect to avoid "Cannot access refs during render"
-  useEffect(() => {
-    expandedRef.current = expanded;
-  }, [expanded]);
 
   const persist = useCallback(
     (next: Set<string>) => {
@@ -72,16 +66,10 @@ export function useCollapseState(productId: string) {
     [persist],
   );
 
-  /**
-   * Check whether a key is collapsed.
-   * Items without a persisted id (new) default to expanded.
-   */
+  /** Check whether a key is collapsed. Keys not in the expanded set default to collapsed. */
   const isCollapsed = useCallback(
-    (key: string, hasId: boolean) => {
-      if (!hasId) return false; // new items always expanded
-      return !expandedRef.current.has(key);
-    },
-    [], // expandedRef is stable
+    (key: string) => !expanded.has(key),
+    [expanded],
   );
 
   return { isCollapsed, toggle, expand, expanded };

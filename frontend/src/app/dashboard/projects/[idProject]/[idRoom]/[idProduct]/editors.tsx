@@ -404,7 +404,7 @@ export const SectionsEditor = memo(function SectionsEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={t("product.sectionGroup")}
-            collapsed={cs.isCollapsed(ck, !!s.id)}
+            collapsed={cs.isCollapsed(ck)}
             onToggle={() => cs.toggle(ck)}
             t={t}
           >
@@ -549,7 +549,8 @@ export const SectionsEditor = memo(function SectionsEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() =>
+        onClick={() => {
+          cs.expand(`sec_${items.length}`);
           setItems([
             ...items,
             {
@@ -560,8 +561,8 @@ export const SectionsEditor = memo(function SectionsEditor({
               materialId: defaultItem.materialId,
               backWallMaterialId: defaultItem.materialId || undefined,
             },
-          ])
-        }
+          ]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
@@ -626,7 +627,7 @@ export const ComponentEditor = memo(function ComponentEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={defaultLabel || t("product.position")}
-            collapsed={cs ? cs.isCollapsed(ck, !!s.id) : false}
+            collapsed={cs ? cs.isCollapsed(ck) : false}
             onToggle={() => cs?.toggle(ck)}
             t={t}
           >
@@ -710,7 +711,8 @@ export const ComponentEditor = memo(function ComponentEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() =>
+        onClick={() => {
+          cs?.expand(`${collapsePrefix || "comp"}_${items.length}`);
           setItems([
             ...items,
             {
@@ -719,8 +721,8 @@ export const ComponentEditor = memo(function ComponentEditor({
               [dim2Key]: defaultItem?.dim2 ?? 600,
               materialId: defaultItem?.materialId || undefined,
             } as SubItem,
-          ])
-        }
+          ]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
@@ -766,7 +768,7 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={t("product.falseFacade")}
-            collapsed={cs ? cs.isCollapsed(ck, !!ff.id) : false}
+            collapsed={cs ? cs.isCollapsed(ck) : false}
             onToggle={() => cs?.toggle(ck)}
             t={t}
           >
@@ -836,7 +838,8 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() =>
+        onClick={() => {
+          cs?.expand(`ff_${items.length}`);
           setItems([
             ...items,
             {
@@ -845,8 +848,8 @@ export const FalseFacadesEditor = memo(function FalseFacadesEditor({
               depth: defaultItem?.depth ?? 600,
               materialId: defaultItem?.materialId || undefined,
             },
-          ])
-        }
+          ]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
@@ -900,7 +903,7 @@ export const FacadesEditor = memo(function FacadesEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={t("product.facade")}
-            collapsed={cs ? cs.isCollapsed(ck, !!f.id) : false}
+            collapsed={cs ? cs.isCollapsed(ck) : false}
             onToggle={() => cs?.toggle(ck)}
             t={t}
           >
@@ -1081,7 +1084,8 @@ export const FacadesEditor = memo(function FacadesEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() =>
+        onClick={() => {
+          cs?.expand(`fac_${items.length}`);
           setItems([
             ...items,
             {
@@ -1092,8 +1096,8 @@ export const FacadesEditor = memo(function FacadesEditor({
               handleQty: 0,
               openType: "HANDLE" as const,
             },
-          ])
-        }
+          ]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
@@ -1143,7 +1147,7 @@ export const DrawersEditor = memo(function DrawersEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={t("product.drawer")}
-            collapsed={cs ? cs.isCollapsed(ck, !!d.id) : false}
+            collapsed={cs ? cs.isCollapsed(ck) : false}
             onToggle={() => cs?.toggle(ck)}
             t={t}
           >
@@ -1308,7 +1312,8 @@ export const DrawersEditor = memo(function DrawersEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() =>
+        onClick={() => {
+          cs?.expand(`drw_${items.length}`);
           setItems([
             ...items,
             {
@@ -1320,8 +1325,8 @@ export const DrawersEditor = memo(function DrawersEditor({
               handleQty: 0,
               slideType: "GUIDE" as const,
             },
-          ])
-        }
+          ]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
@@ -1370,7 +1375,7 @@ export const CountertopsEditor = memo(function CountertopsEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={t("product.countertop")}
-            collapsed={cs ? cs.isCollapsed(ck, !!ct.id) : false}
+            collapsed={cs ? cs.isCollapsed(ck) : false}
             onToggle={() => cs?.toggle(ck)}
             t={t}
           >
@@ -1490,7 +1495,8 @@ export const CountertopsEditor = memo(function CountertopsEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() =>
+        onClick={() => {
+          cs?.expand(`ct_${items.length}`);
           setItems([
             ...items,
             {
@@ -1501,8 +1507,8 @@ export const CountertopsEditor = memo(function CountertopsEditor({
               apronWidth: null,
               apronHeight: null,
             },
-          ])
-        }
+          ]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
@@ -1547,7 +1553,7 @@ export const ExtrasEditor = memo(function ExtrasEditor({
             }}
             onDelete={() => setItems(items.filter((_, j) => j !== i))}
             defaultLabel={t("product.extra")}
-            collapsed={cs ? cs.isCollapsed(ck, !!e.id) : false}
+            collapsed={cs ? cs.isCollapsed(ck) : false}
             onToggle={() => cs?.toggle(ck)}
             t={t}
           >
@@ -1599,7 +1605,10 @@ export const ExtrasEditor = memo(function ExtrasEditor({
         variant="outline"
         size="sm"
         className="w-full border-dashed"
-        onClick={() => setItems([...items, { name: "", price: 0 }])}
+        onClick={() => {
+          cs?.expand(`ext_${items.length}`);
+          setItems([...items, { name: "", price: 0 }]);
+        }}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("common.add")}
