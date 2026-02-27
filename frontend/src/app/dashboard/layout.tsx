@@ -10,16 +10,20 @@ import { useAuthStore } from "@/stores/auth.store";
 import {
   BookOpen,
   FolderKanban,
+  LayoutGrid,
   LogOut,
+  Menu,
   Moon,
   Settings,
   Sun,
   Users,
+  X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export default function DashboardLayout({
@@ -41,6 +45,7 @@ export default function DashboardLayout({
       icon: FolderKanban,
     },
     { href: "/dashboard/settings", label: t("nav.settings"), icon: Settings },
+    { href: "/dashboard/crm", label: t("nav.crm"), icon: LayoutGrid },
   ];
 
   const adminNavItems = [
@@ -152,15 +157,79 @@ export default function DashboardLayout({
         </main>
 
         {/* Mobile: fixed bottom navigation */}
-        <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 items-center border-t bg-background md:hidden">
-          {allNavItems.slice(0, 5).map((item) => {
+        <MobileBottomNav
+          items={allNavItems}
+          pathname={pathname}
+          moreLabel={t("nav.more")}
+        />
+      </div>
+    </AuthGuard>
+  );
+}
+
+/* ───────── Mobile Bottom Nav ───────── */
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+function MobileBottomNav({
+  items,
+  pathname,
+  moreLabel,
+}: {
+  items: NavItem[];
+  pathname: string;
+  moreLabel: string;
+}) {
+  const MAX_VISIBLE = 3;
+  const needsMore = items.length > MAX_VISIBLE + 1;
+  const visibleItems = needsMore ? items.slice(0, MAX_VISIBLE) : items;
+  const overflowItems = needsMore ? items.slice(MAX_VISIBLE) : [];
+
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // close overflow when navigating
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [open]);
+
+  const isOverflowActive = overflowItems.some((i) => pathname === i.href);
+
+  return (
+    <div ref={menuRef} className="md:hidden">
+      {/* Overflow popup */}
+      {open && overflowItems.length > 0 && (
+        <div className="fixed inset-x-0 bottom-16 z-50 border-t bg-background px-2 py-2 shadow-lg animate-in slide-in-from-bottom-2 duration-200">
+          {overflowItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] leading-tight transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
               >
                 <item.icon className="h-4 w-4" />
@@ -168,8 +237,41 @@ export default function DashboardLayout({
               </Link>
             );
           })}
-        </nav>
-      </div>
-    </AuthGuard>
+        </div>
+      )}
+
+      {/* Bottom bar */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 items-center border-t bg-background">
+        {visibleItems.map((item) => {
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] leading-tight transition-colors ${
+                active ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+        {needsMore && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] leading-tight transition-colors ${
+              open || isOverflowActive
+                ? "text-primary"
+                : "text-muted-foreground"
+            }`}
+          >
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {moreLabel}
+          </button>
+        )}
+      </nav>
+    </div>
   );
 }
