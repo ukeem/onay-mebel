@@ -191,13 +191,6 @@ function MobileBottomNav({
 
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const prevPathname = useRef(pathname);
-
-  // close overflow when navigating
-  if (prevPathname.current !== pathname) {
-    prevPathname.current = pathname;
-    if (open) setOpen(false);
-  }
 
   // close on outside click
   useEffect(() => {
@@ -228,6 +221,7 @@ function MobileBottomNav({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
                     ? "bg-primary text-primary-foreground"
