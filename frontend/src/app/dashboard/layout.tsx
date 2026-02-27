@@ -191,11 +191,13 @@ function MobileBottomNav({
 
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const prevPathname = useRef(pathname);
 
   // close overflow when navigating
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  if (prevPathname.current !== pathname) {
+    prevPathname.current = pathname;
+    if (open) setOpen(false);
+  }
 
   // close on outside click
   useEffect(() => {
