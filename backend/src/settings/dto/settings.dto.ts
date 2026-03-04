@@ -148,3 +148,21 @@ export class UpdateContactDto {
   @IsOptional()
   value?: string;
 }
+
+/* ═══ User Defaults ═══ */
+
+export class UpdateUserDefaultsDto {
+  @IsOptional() @IsString() sectionMaterialId?: string;
+  @IsOptional() @IsString() backWallMaterialId?: string;
+  @IsOptional() @IsString() facadeMaterialId?: string;
+  @IsOptional() @IsString() falseFacadeMaterialId?: string;
+  @IsOptional() @IsString() countertopMaterialId?: string;
+
+  @IsOptional() @IsString() hingeHardwareId?: string;
+  @IsOptional() @IsString() handleHardwareId?: string;
+  @IsOptional() @IsString() tipOnHardwareId?: string;
+  @IsOptional() @IsString() slideHardwareId?: string;
+  @IsOptional() @IsString() tandemHardwareId?: string;
+  @IsOptional() @IsString() holderHardwareId?: string;
+  @IsOptional() @IsString() legsHardwareId?: string;
+}

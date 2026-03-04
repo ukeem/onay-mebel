@@ -130,7 +130,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productSection.deleteMany({
         where: { productId, id: { notIn: keepIds } },
@@ -161,6 +161,18 @@ export class ProductsService {
       }
       return results;
     });
+
+    // Sync user defaults from last section
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      await this.syncUserDefaults(userId, {
+        sectionMaterialId: last.materialId,
+        backWallMaterialId: last.backWallMaterialId,
+        legsHardwareId: last.legsEnabled ? last.legsHardwareId : undefined,
+      });
+    }
+
+    return results;
   }
 
   /* ── Partitions ── */
@@ -205,7 +217,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productShelf.deleteMany({
         where: { productId, id: { notIn: keepIds } },
@@ -232,6 +244,16 @@ export class ProductsService {
       }
       return results;
     });
+
+    // Sync hardware defaults from last shelf
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      await this.syncUserDefaults(userId, {
+        holderHardwareId: last.holderHardwareId,
+      });
+    }
+
+    return results;
   }
 
   /* ── Facades ── */
@@ -241,7 +263,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productFacade.deleteMany({
         where: { productId, id: { notIn: keepIds } },
@@ -272,6 +294,26 @@ export class ProductsService {
       }
       return results;
     });
+
+    // Sync defaults from last facade
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      const hwUpdates: Record<string, string | null | undefined> = {
+        facadeMaterialId: last.materialId,
+        hingeHardwareId: last.hingeHardwareId,
+      };
+      if (
+        (last.openType ?? 'HANDLE') === 'HANDLE' &&
+        (last.handleQty ?? 0) > 0
+      ) {
+        hwUpdates.handleHardwareId = last.handleHardwareId;
+      } else if (last.openType === 'TIP_ON') {
+        hwUpdates.tipOnHardwareId = last.tipOnHardwareId;
+      }
+      await this.syncUserDefaults(userId, hwUpdates);
+    }
+
+    return results;
   }
 
   /* ── Drawers ── */
@@ -281,7 +323,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productDrawer.deleteMany({
         where: { productId, id: { notIn: keepIds } },
@@ -311,6 +353,20 @@ export class ProductsService {
       }
       return results;
     });
+
+    // Sync defaults from last drawer
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      const hwUpdates: Record<string, string | null | undefined> = {};
+      if ((last.slideType ?? 'GUIDE') === 'TANDEM') {
+        hwUpdates.tandemHardwareId = last.slideHardwareId;
+      } else {
+        hwUpdates.slideHardwareId = last.slideHardwareId;
+      }
+      await this.syncUserDefaults(userId, hwUpdates);
+    }
+
+    return results;
   }
 
   /* ── False Facades ── */
@@ -320,7 +376,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productFalseFacade.deleteMany({
         where: { productId, id: { notIn: keepIds } },
@@ -351,6 +407,16 @@ export class ProductsService {
       }
       return results;
     });
+
+    // Sync defaults from last false facade
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      await this.syncUserDefaults(userId, {
+        falseFacadeMaterialId: last.materialId,
+      });
+    }
+
+    return results;
   }
 
   /* ── Countertops ── */
@@ -360,7 +426,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
-    return this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productCountertop.deleteMany({
         where: { productId, id: { notIn: keepIds } },
@@ -389,6 +455,16 @@ export class ProductsService {
       }
       return results;
     });
+
+    // Sync defaults from last countertop
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      await this.syncUserDefaults(userId, {
+        countertopMaterialId: last.materialId,
+      });
+    }
+
+    return results;
   }
 
   /* ── Extras ── */
@@ -434,6 +510,26 @@ export class ProductsService {
   }
 
   /* ========== HELPERS ========== */
+
+  /**
+   * Auto-update UserDefaults when user saves subcomponents.
+   * Takes the last item's materialId/hardwareId from each saved array.
+   */
+  private async syncUserDefaults(
+    userId: string,
+    updates: Record<string, string | null | undefined>,
+  ) {
+    const data: Record<string, string | null> = {};
+    for (const [key, val] of Object.entries(updates)) {
+      if (val !== undefined) data[key] = val || null;
+    }
+    if (Object.keys(data).length === 0) return;
+    await this.prisma.userDefaults.upsert({
+      where: { userId },
+      update: data,
+      create: { userId, ...data },
+    });
+  }
 
   private async ensureRoomOwner(roomId: string, userId: string) {
     const room = await this.prisma.room.findUnique({

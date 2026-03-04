@@ -70,6 +70,7 @@ model User {
   userMaterials UserMaterial[]
   userHardware  UserHardware[]
   userService   UserService?
+  userDefaults  UserDefaults?
   projects      Project[]
   companyInfo   CompanyInfo?
   paymentStages PaymentStage[]
@@ -576,6 +577,35 @@ model ProductExtra {
   updatedAt DateTime @updatedAt
 
   @@index([productId])
+}
+
+// ============================================
+// USER DEFAULTS (preferred materials / hardware)
+// ============================================
+
+model UserDefaults {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Материалы
+  sectionMaterialId     String? // ЛДСП — для секций, перегородок, полок, ящиков
+  backWallMaterialId    String? // ХДФ — задняя стенка секции
+  facadeMaterialId      String? // МДФ — фасады
+  falseFacadeMaterialId String? // МДФ — фальш-фасады
+  countertopMaterialId  String? // Камень/ЛДСП/МДФ — столешницы
+
+  // Фурнитура (по HardwareType)
+  hingeHardwareId  String? // Петли
+  handleHardwareId String? // Ручки
+  tipOnHardwareId  String? // Tip-On
+  slideHardwareId  String? // Направляющие
+  tandemHardwareId String? // Тандем
+  holderHardwareId String? // Полкодержатели
+  legsHardwareId   String? // Ножки
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================

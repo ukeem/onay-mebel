@@ -21,6 +21,9 @@ const mockPrisma = {
   userService: {
     upsert: jest.fn(),
   },
+  userDefaults: {
+    upsert: jest.fn(),
+  },
 };
 
 describe('CatalogCopyService', () => {

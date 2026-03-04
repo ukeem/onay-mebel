@@ -130,6 +130,9 @@ export default function ProductPage() {
               height: f.defaultHeight,
               depth: f.defaultDepth,
               materialId: f.defaultMaterialId,
+              backWallMaterialId:
+                f.userDefaults?.backWallMaterialId || undefined,
+              legsHardwareId: f.userDefaults?.legsHardwareId || undefined,
             }}
             errors={f.sectionErrors}
             cs={cs}
@@ -188,6 +191,7 @@ export default function ProductPage() {
               dim2: f.defaultDepth,
               materialId: f.defaultMaterialId,
             }}
+            defaultHardwareId={f.userDefaults?.holderHardwareId || undefined}
             errors={f.shelfErrors}
             defaultLabel={f.t("product.shelves")}
             cs={cs}
@@ -213,6 +217,10 @@ export default function ProductPage() {
             tipOnHardware={f.tipOnHardware}
             defaultWidth={f.defaultWidth}
             defaultHeight={f.defaultHeight}
+            defaultMaterialId={f.userDefaults?.facadeMaterialId || undefined}
+            defaultHingeId={f.userDefaults?.hingeHardwareId || undefined}
+            defaultHandleId={f.userDefaults?.handleHardwareId || undefined}
+            defaultTipOnId={f.userDefaults?.tipOnHardwareId || undefined}
             cs={cs}
           />
         </ToggleSection>
@@ -232,7 +240,8 @@ export default function ProductPage() {
             defaultItem={{
               height: f.defaultHeight,
               depth: f.defaultDepth,
-              materialId: f.defaultMaterialId,
+              materialId:
+                f.userDefaults?.falseFacadeMaterialId || f.defaultMaterialId,
             }}
             errors={f.falseFacadeErrors}
             cs={cs}
@@ -254,6 +263,8 @@ export default function ProductPage() {
             slideHardware={f.slideHardware}
             tandemHardware={f.tandemHardware}
             defaultMaterialId={f.defaultMaterialId}
+            defaultSlideId={f.userDefaults?.slideHardwareId || undefined}
+            defaultTandemId={f.userDefaults?.tandemHardwareId || undefined}
             errors={f.drawerErrors}
             cs={cs}
           />
@@ -277,6 +288,9 @@ export default function ProductPage() {
             hasError={f.hasError}
             defaultWidth={f.defaultWidth}
             defaultDepth={f.defaultDepth}
+            defaultMaterialId={
+              f.userDefaults?.countertopMaterialId || undefined
+            }
             cs={cs}
           />
         </ToggleSection>

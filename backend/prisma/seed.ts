@@ -103,7 +103,7 @@ async function main() {
   // ===========================
   const hardwareTypeNames = [
     'Петли',
-    'Направляющие',
+    'Телескоп',
     'Полкодержатели',
     'Тандем',
     'Ножки',
@@ -240,17 +240,17 @@ async function main() {
     { hardwareTypeId: hardwareTypes['Петли'], brand: 'GTV', price: 500 },
     { hardwareTypeId: hardwareTypes['Петли'], brand: 'Hettich', price: 1200 },
     {
-      hardwareTypeId: hardwareTypes['Направляющие'],
+      hardwareTypeId: hardwareTypes['Телескоп'],
       brand: 'Blum',
       price: 3500,
     },
     {
-      hardwareTypeId: hardwareTypes['Направляющие'],
+      hardwareTypeId: hardwareTypes['Телескоп'],
       brand: 'GTV',
       price: 1200,
     },
     {
-      hardwareTypeId: hardwareTypes['Направляющие'],
+      hardwareTypeId: hardwareTypes['Телескоп'],
       brand: 'Hettich',
       price: 3000,
     },

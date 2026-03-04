@@ -2490,7 +2490,7 @@ export class CalculationsService {
             tandemUnitPrice = hw.price;
             if (hw.image) tandemImage = hw.image;
           } else {
-            const hw = resolveHw(dr.slideHardwareId, 'Направляющие');
+            const hw = resolveHw(dr.slideHardwareId, 'Телескоп');
             totalGuides += qty;
             guideCost += qty * hw.price;
             if (hw.brand) guideBrand = hw.brand;
@@ -2504,8 +2504,8 @@ export class CalculationsService {
         details.push({
           id: 'slides',
           type: 'hardware',
-          label: `Направляющие (${totalGuides} шт.)`,
-          hardwareType: 'Направляющие',
+          label: `Телескоп (${totalGuides} шт.)`,
+          hardwareType: 'Телескоп',
           brand: guideBrand,
           qty: totalGuides,
           unit: 'шт.',

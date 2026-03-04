@@ -60,5 +60,12 @@ export class CatalogCopyService {
         },
       });
     }
+
+    // Create empty UserDefaults (all null → resolved via median at read time)
+    await this.prisma.userDefaults.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
   }
 }

@@ -384,6 +384,8 @@ export const SectionsEditor = memo(function SectionsEditor({
     height: number;
     depth: number;
     materialId: string;
+    backWallMaterialId?: string;
+    legsHardwareId?: string;
   };
   errors?: Set<string>;
   cs: CollapseState;
@@ -494,7 +496,7 @@ export const SectionsEditor = memo(function SectionsEditor({
                   backWallEnabled: v,
                   backWallMaterialId: v
                     ? s.backWallMaterialId ||
-                      defaultItem.materialId ||
+                      defaultItem.backWallMaterialId ||
                       undefined
                     : undefined,
                 };
@@ -522,7 +524,11 @@ export const SectionsEditor = memo(function SectionsEditor({
                 copy[i] = {
                   ...s,
                   legsEnabled: v,
-                  legsHardwareId: v ? s.legsHardwareId : undefined,
+                  legsHardwareId: v
+                    ? s.legsHardwareId ||
+                      defaultItem.legsHardwareId ||
+                      undefined
+                    : undefined,
                 };
                 setItems(copy);
               }}
@@ -559,7 +565,7 @@ export const SectionsEditor = memo(function SectionsEditor({
               height: defaultItem.height,
               depth: defaultItem.depth,
               materialId: defaultItem.materialId,
-              backWallMaterialId: defaultItem.materialId || undefined,
+              backWallMaterialId: defaultItem.backWallMaterialId || undefined,
             },
           ]);
         }}
@@ -589,6 +595,7 @@ export const ComponentEditor = memo(function ComponentEditor({
   hardwareItems,
   hardwareField,
   defaultItem,
+  defaultHardwareId,
   errors,
   defaultLabel,
   cs,
@@ -606,6 +613,7 @@ export const ComponentEditor = memo(function ComponentEditor({
   hardwareItems?: HwOption[];
   hardwareField?: "holderHardwareId";
   defaultItem?: { dim1: number; dim2: number; materialId: string };
+  defaultHardwareId?: string;
   errors?: Set<string>;
   defaultLabel?: string;
   cs?: CollapseState;
@@ -720,6 +728,9 @@ export const ComponentEditor = memo(function ComponentEditor({
               [dim1Key]: defaultItem?.dim1 ?? 600,
               [dim2Key]: defaultItem?.dim2 ?? 600,
               materialId: defaultItem?.materialId || undefined,
+              ...(hardwareField && defaultHardwareId
+                ? { [hardwareField]: defaultHardwareId }
+                : {}),
             } as SubItem,
           ]);
         }}
@@ -873,6 +884,10 @@ export const FacadesEditor = memo(function FacadesEditor({
   tipOnHardware,
   defaultWidth,
   defaultHeight,
+  defaultMaterialId,
+  defaultHingeId,
+  defaultHandleId,
+  defaultTipOnId,
   cs,
 }: {
   items: SubItem[];
@@ -885,6 +900,10 @@ export const FacadesEditor = memo(function FacadesEditor({
   tipOnHardware?: HwOption[];
   defaultWidth?: number;
   defaultHeight?: number;
+  defaultMaterialId?: string;
+  defaultHingeId?: string;
+  defaultHandleId?: string;
+  defaultTipOnId?: string;
   cs?: CollapseState;
 }) {
   return (
@@ -1004,11 +1023,17 @@ export const FacadesEditor = memo(function FacadesEditor({
                       copy[i] = {
                         ...f,
                         openType: opt,
-                        handleQty: opt === "TIP_ON" ? 0 : f.handleQty,
+                        handleQty: opt === "TIP_ON" ? 0 : f.handleQty || 1,
                         handleHardwareId:
-                          opt === "TIP_ON" ? undefined : f.handleHardwareId,
+                          opt === "TIP_ON"
+                            ? undefined
+                            : f.handleHardwareId ||
+                              defaultHandleId ||
+                              undefined,
                         tipOnHardwareId:
-                          opt === "HANDLE" ? undefined : f.tipOnHardwareId,
+                          opt === "HANDLE"
+                            ? undefined
+                            : f.tipOnHardwareId || defaultTipOnId || undefined,
                       };
                       setItems(copy);
                     }}
@@ -1092,9 +1117,11 @@ export const FacadesEditor = memo(function FacadesEditor({
               qty: 1,
               width: defaultWidth ?? 600,
               height: defaultHeight ?? 600,
-              materialId: "",
+              materialId: defaultMaterialId || "",
               handleQty: 0,
               openType: "HANDLE" as const,
+              hingeHardwareId: defaultHingeId || undefined,
+              handleHardwareId: defaultHandleId || undefined,
             },
           ]);
         }}
@@ -1118,6 +1145,8 @@ export const DrawersEditor = memo(function DrawersEditor({
   slideHardware,
   tandemHardware,
   defaultMaterialId,
+  defaultSlideId,
+  defaultTandemId,
   errors,
   cs,
 }: {
@@ -1128,6 +1157,8 @@ export const DrawersEditor = memo(function DrawersEditor({
   slideHardware?: HwOption[];
   tandemHardware?: HwOption[];
   defaultMaterialId?: string;
+  defaultSlideId?: string;
+  defaultTandemId?: string;
   errors?: Set<string>;
   cs?: CollapseState;
 }) {
@@ -1266,10 +1297,15 @@ export const DrawersEditor = memo(function DrawersEditor({
                     }`}
                     onClick={() => {
                       const copy = [...items];
+                      const changed = opt !== (d.slideType ?? "GUIDE");
                       copy[i] = {
                         ...d,
                         slideType: opt,
-                        slideHardwareId: undefined,
+                        slideHardwareId: changed
+                          ? opt === "GUIDE"
+                            ? defaultSlideId || undefined
+                            : defaultTandemId || undefined
+                          : d.slideHardwareId,
                       };
                       setItems(copy);
                     }}
@@ -1324,6 +1360,7 @@ export const DrawersEditor = memo(function DrawersEditor({
               materialId: defaultMaterialId || undefined,
               handleQty: 0,
               slideType: "GUIDE" as const,
+              slideHardwareId: defaultSlideId || undefined,
             },
           ]);
         }}
@@ -1348,6 +1385,7 @@ export const CountertopsEditor = memo(function CountertopsEditor({
   hasError,
   defaultWidth,
   defaultDepth,
+  defaultMaterialId,
   cs,
 }: {
   items: CountertopData[];
@@ -1357,6 +1395,7 @@ export const CountertopsEditor = memo(function CountertopsEditor({
   hasError: (key: string) => boolean;
   defaultWidth?: number;
   defaultDepth?: number;
+  defaultMaterialId?: string;
   cs?: CollapseState;
 }) {
   return (
@@ -1433,7 +1472,19 @@ export const CountertopsEditor = memo(function CountertopsEditor({
               checked={ct.apronEnabled}
               onChange={(v) => {
                 const copy = [...items];
-                copy[i] = { ...ct, apronEnabled: v };
+                copy[i] = {
+                  ...ct,
+                  apronEnabled: v,
+                  apronMaterialId: v
+                    ? ct.apronMaterialId ||
+                      ct.materialId ||
+                      defaultMaterialId ||
+                      undefined
+                    : ct.apronMaterialId,
+                  apronWidth: v
+                    ? ct.apronWidth || ct.width || defaultWidth || 600
+                    : ct.apronWidth,
+                };
                 setItems(copy);
               }}
             >
@@ -1502,6 +1553,7 @@ export const CountertopsEditor = memo(function CountertopsEditor({
             {
               width: defaultWidth ?? 600,
               depth: defaultDepth ?? 600,
+              materialId: defaultMaterialId || undefined,
               apronEnabled: false,
               apronMaterialId: null,
               apronWidth: null,

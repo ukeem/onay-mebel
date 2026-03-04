@@ -15,6 +15,7 @@ import type {
   MatOption,
   ProductData,
   SubItem,
+  UserDefaults,
 } from "./types";
 
 export function useProductForm(
@@ -59,6 +60,9 @@ export function useProductForm(
   const [defaultDepth, setDefaultDepth] = useState(600);
   const [defaultMaterialId, setDefaultMaterialId] = useState("");
 
+  /* ── user defaults (from settings) ── */
+  const [userDefaults, setUserDefaults] = useState<UserDefaults | null>(null);
+
   /* ref to skip tracking on initial load */
   const initialLoadDone = useRef(false);
 
@@ -66,13 +70,16 @@ export function useProductForm(
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const fetchData = useCallback(async () => {
     try {
-      const [pRes, mRes, hwRes, etRes] = await Promise.all([
+      const [pRes, mRes, hwRes, etRes, defRes] = await Promise.all([
         api.get(`/products/${idProduct}`),
         api.get("/settings/materials"),
         api.get("/settings/hardware"),
         api.get("/catalog/extra-types"),
+        api.get("/settings/defaults"),
       ]);
       const p: ProductData = pRes.data;
+      const defaults: UserDefaults = defRes.data;
+      setUserDefaults(defaults);
       setProduct(p);
       setExtraTypes(etRes.data);
       const enabledMaterials = (mRes.data as any[])
@@ -103,7 +110,7 @@ export function useProductForm(
 
       setSections(p.sections || []);
 
-      /* initialize defaults from last section */
+      /* initialize defaults from last section or user defaults */
       const secs = p.sections || [];
       if (secs.length > 0) {
         const last = secs[secs.length - 1];
@@ -111,6 +118,8 @@ export function useProductForm(
         if (last.height) setDefaultHeight(last.height);
         if (last.depth) setDefaultDepth(last.depth);
         if (last.materialId) setDefaultMaterialId(last.materialId);
+      } else if (defaults.sectionMaterialId) {
+        setDefaultMaterialId(defaults.sectionMaterialId);
       }
       initialLoadDone.current = true;
 
@@ -622,7 +631,7 @@ export function useProductForm(
     [hardwareList],
   );
   const slideHardware = useMemo(
-    () => hardwareList.filter((h) => h.hardwareType.name === "Направляющие"),
+    () => hardwareList.filter((h) => h.hardwareType.name === "Телескоп"),
     [hardwareList],
   );
   const tandemHardware = useMemo(
@@ -679,6 +688,9 @@ export function useProductForm(
     defaultHeight,
     defaultDepth,
     defaultMaterialId,
+
+    /* user defaults (resolved from settings) */
+    userDefaults,
 
     /* toggle callbacks */
     toggleSections,

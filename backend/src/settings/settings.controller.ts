@@ -15,6 +15,7 @@ import {
   CreateContactDto,
   SavePaymentStagesDto,
   UpdateContactDto,
+  UpdateUserDefaultsDto,
   UpdateUserHardwarePriceDto,
   UpdateUserMaterialPriceDto,
   UpdateUserServiceDto,
@@ -126,5 +127,20 @@ export class SettingsController {
   @Delete('contacts/:id')
   deleteContact(@Request() req: any, @Param('id') id: string) {
     return this.settings.deleteContact(req.user.id, id);
+  }
+
+  /* ═══ USER DEFAULTS ═══ */
+
+  @Get('defaults')
+  getUserDefaults(@Request() req: any) {
+    return this.settings.getUserDefaults(req.user.id);
+  }
+
+  @Patch('defaults')
+  updateUserDefaults(@Request() req: any, @Body() dto: UpdateUserDefaultsDto) {
+    return this.settings.updateUserDefaults(
+      req.user.id,
+      dto as unknown as Record<string, string | undefined>,
+    );
   }
 }

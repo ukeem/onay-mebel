@@ -265,6 +265,152 @@ export class SettingsService {
     return this.prisma.userContact.delete({ where: { id: contactId } });
   }
 
+  /* ═══ USER DEFAULTS (preferred materials / hardware) ═══ */
+
+  /**
+   * Pick median-priced item from a sorted array.
+   * Returns materialId/hardwareId or null.
+   */
+  private pickMedian<T extends { id: string; price: number }>(
+    items: T[],
+  ): string | null {
+    if (items.length === 0) return null;
+    const sorted = [...items].sort((a, b) => a.price - b.price);
+    return sorted[Math.floor(sorted.length / 2)].id;
+  }
+
+  /**
+   * Returns resolved defaults: stored preference if valid & enabled,
+   * otherwise median-priced from matching type.
+   */
+  async getUserDefaults(userId: string) {
+    // Ensure record exists
+    const row = await this.prisma.userDefaults.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+    });
+
+    // Load enabled user materials with types
+    const uMats = await this.prisma.userMaterial.findMany({
+      where: { userId, enabled: true },
+      include: { material: { include: { materialType: true } } },
+    });
+
+    // Load enabled user hardware with types
+    const uHws = await this.prisma.userHardware.findMany({
+      where: { userId, enabled: true },
+      include: { hardware: { include: { hardwareType: true } } },
+    });
+
+    // Helpers
+    const matsByType = (typeName: string) =>
+      uMats
+        .filter((um) => um.material.materialType.name === typeName)
+        .map((um) => ({ id: um.materialId, price: Number(um.price) }));
+
+    const hwsByType = (typeName: string) =>
+      uHws
+        .filter((uh) => uh.hardware.hardwareType.name === typeName)
+        .map((uh) => ({ id: uh.hardwareId, price: Number(uh.price) }));
+
+    const enabledMatIds = new Set(uMats.map((um) => um.materialId));
+    const enabledHwIds = new Set(uHws.map((uh) => uh.hardwareId));
+
+    const resolveMat = (
+      stored: string | null,
+      typeName: string,
+    ): string | null => {
+      if (stored && enabledMatIds.has(stored)) return stored;
+      return this.pickMedian(matsByType(typeName));
+    };
+
+    const resolveHw = (
+      stored: string | null,
+      typeName: string,
+    ): string | null => {
+      if (stored && enabledHwIds.has(stored)) return stored;
+      return this.pickMedian(hwsByType(typeName));
+    };
+
+    return {
+      sectionMaterialId: resolveMat(row.sectionMaterialId, 'ЛДСП'),
+      backWallMaterialId: resolveMat(row.backWallMaterialId, 'ХДФ'),
+      facadeMaterialId: resolveMat(row.facadeMaterialId, 'МДФ'),
+      falseFacadeMaterialId: resolveMat(row.falseFacadeMaterialId, 'МДФ'),
+      countertopMaterialId: resolveMat(row.countertopMaterialId, 'Камень'),
+
+      hingeHardwareId: resolveHw(row.hingeHardwareId, 'Петли'),
+      handleHardwareId: resolveHw(row.handleHardwareId, 'Ручки'),
+      tipOnHardwareId: resolveHw(row.tipOnHardwareId, 'Tip-On'),
+      slideHardwareId: resolveHw(row.slideHardwareId, 'Телескоп'),
+      tandemHardwareId: resolveHw(row.tandemHardwareId, 'Тандем'),
+      holderHardwareId: resolveHw(row.holderHardwareId, 'Полкодержатели'),
+      legsHardwareId: resolveHw(row.legsHardwareId, 'Ножки'),
+    };
+  }
+
+  async updateUserDefaults(
+    userId: string,
+    dto: Record<string, string | undefined>,
+  ) {
+    // Validate that referenced IDs belong to the user and are enabled
+    const matFields = [
+      'sectionMaterialId',
+      'backWallMaterialId',
+      'facadeMaterialId',
+      'falseFacadeMaterialId',
+      'countertopMaterialId',
+    ];
+    const hwFields = [
+      'hingeHardwareId',
+      'handleHardwareId',
+      'tipOnHardwareId',
+      'slideHardwareId',
+      'tandemHardwareId',
+      'holderHardwareId',
+      'legsHardwareId',
+    ];
+
+    for (const field of matFields) {
+      const val = dto[field];
+      if (!val) continue;
+      const um = await this.prisma.userMaterial.findUnique({
+        where: { userId_materialId: { userId, materialId: val } },
+      });
+      if (!um || !um.enabled) {
+        throw new BadRequestException(`Материал ${val} не найден или отключён`);
+      }
+    }
+
+    for (const field of hwFields) {
+      const val = dto[field];
+      if (!val) continue;
+      const uh = await this.prisma.userHardware.findUnique({
+        where: { userId_hardwareId: { userId, hardwareId: val } },
+      });
+      if (!uh || !uh.enabled) {
+        throw new BadRequestException(
+          `Фурнитура ${val} не найдена или отключена`,
+        );
+      }
+    }
+
+    // Build update data — only provided fields
+    const data: Record<string, string | null> = {};
+    for (const field of [...matFields, ...hwFields]) {
+      if (dto[field] !== undefined) {
+        data[field] = dto[field] || null;
+      }
+    }
+
+    return this.prisma.userDefaults.upsert({
+      where: { userId },
+      update: data,
+      create: { userId, ...data },
+    });
+  }
+
   /* ═══ GET ALL PROPOSAL DATA (for KP generation) ═══ */
 
   async getProposalSettings(userId: string) {

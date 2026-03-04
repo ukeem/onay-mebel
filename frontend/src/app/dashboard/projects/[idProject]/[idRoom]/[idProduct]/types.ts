@@ -16,6 +16,22 @@ export type {
 
 export type TFunc = any;
 
+/** Resolved user defaults from GET /settings/defaults */
+export interface UserDefaults {
+  sectionMaterialId: string | null;
+  backWallMaterialId: string | null;
+  facadeMaterialId: string | null;
+  falseFacadeMaterialId: string | null;
+  countertopMaterialId: string | null;
+  hingeHardwareId: string | null;
+  handleHardwareId: string | null;
+  tipOnHardwareId: string | null;
+  slideHardwareId: string | null;
+  tandemHardwareId: string | null;
+  holderHardwareId: string | null;
+  legsHardwareId: string | null;
+}
+
 /* ── helpers ── */
 export function num(v: string) {
   return parseInt(String(v).replace(",", ".")) || 0;
