@@ -36,6 +36,19 @@ export class UsersService {
   /** Список пользователей. ADMIN видит только USER, SUPER видит всех */
   async findAll(requesterRole: Role) {
     const where = requesterRole === Role.ADMIN ? { role: Role.USER } : {};
+
+    // Массово деактивировать просроченных пользователей перед выборкой,
+    // чтобы админ всегда видел актуальный статус
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    await this.prisma.user.updateMany({
+      where: {
+        status: UserStatus.ACTIVE,
+        activeUntil: { lt: startOfToday },
+      },
+      data: { status: UserStatus.INACTIVE },
+    });
+
     return this.prisma.user.findMany({
       where,
       select: USER_SELECT,

@@ -64,17 +64,15 @@ export default function CatalogPage() {
             endpoint="/catalog/product-types"
             title={t("catalog.productTypes")}
           />
+          <TypeCrud
+            endpoint="/catalog/material-types"
+            title={t("catalog.materialTypes")}
+          />
           {isSuper && (
-            <>
-              <TypeCrud
-                endpoint="/catalog/material-types"
-                title={t("catalog.materialTypes")}
-              />
-              <TypeCrud
-                endpoint="/catalog/hardware-types"
-                title={t("catalog.hardwareTypes")}
-              />
-            </>
+            <TypeCrud
+              endpoint="/catalog/hardware-types"
+              title={t("catalog.hardwareTypes")}
+            />
           )}
           <TypeCrud
             endpoint="/catalog/extra-types"
