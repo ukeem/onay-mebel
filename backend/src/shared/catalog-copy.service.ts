@@ -14,8 +14,10 @@ export class CatalogCopyService {
    * Uses createMany with skipDuplicates for performance (avoids N+1).
    */
   async copySettingsToUser(userId: string) {
-    // Copy all materials from catalog
-    const materials = await this.prisma.material.findMany();
+    // Copy all catalog materials (userId=null)
+    const materials = await this.prisma.material.findMany({
+      where: { userId: null },
+    });
     if (materials.length > 0) {
       await this.prisma.userMaterial.createMany({
         data: materials.map((mat) => ({
@@ -27,8 +29,10 @@ export class CatalogCopyService {
       });
     }
 
-    // Copy all hardware from catalog
-    const hardware = await this.prisma.hardware.findMany();
+    // Copy all catalog hardware (userId=null)
+    const hardware = await this.prisma.hardware.findMany({
+      where: { userId: null },
+    });
     if (hardware.length > 0) {
       await this.prisma.userHardware.createMany({
         data: hardware.map((hw) => ({

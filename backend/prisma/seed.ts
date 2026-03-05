@@ -108,7 +108,6 @@ async function main() {
     'Тандем',
     'Ножки',
     'Ручки',
-    'Конфирмат',
     'Tip-On',
   ];
   const hardwareTypes: Record<string, string> = {};
@@ -271,7 +270,6 @@ async function main() {
     { hardwareTypeId: hardwareTypes['Ручки'], brand: 'Boyard', price: 800 },
     { hardwareTypeId: hardwareTypes['Ручки'], brand: 'GTV', price: 400 },
     { hardwareTypeId: hardwareTypes['Ручки'], brand: 'Gamet', price: 1500 },
-    { hardwareTypeId: hardwareTypes['Конфирмат'], brand: 'GTV', price: 20 },
     { hardwareTypeId: hardwareTypes['Tip-On'], brand: 'Blum', price: 1200 },
     { hardwareTypeId: hardwareTypes['Tip-On'], brand: 'GTV', price: 500 },
     { hardwareTypeId: hardwareTypes['Tip-On'], brand: 'Hettich', price: 900 },

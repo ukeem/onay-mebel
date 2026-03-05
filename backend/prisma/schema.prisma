@@ -66,15 +66,17 @@ model User {
   status      UserStatus @default(INACTIVE)
   activeUntil DateTime?
 
-  refreshTokens RefreshToken[]
-  userMaterials UserMaterial[]
-  userHardware  UserHardware[]
-  userService   UserService?
-  userDefaults  UserDefaults?
-  projects      Project[]
-  companyInfo   CompanyInfo?
-  paymentStages PaymentStage[]
-  contacts      UserContact[]
+  refreshTokens   RefreshToken[]
+  userMaterials   UserMaterial[]
+  userHardware    UserHardware[]
+  userService     UserService?
+  userDefaults    UserDefaults?
+  projects        Project[]
+  companyInfo     CompanyInfo?
+  paymentStages   PaymentStage[]
+  contacts        UserContact[]
+  customMaterials Material[]     @relation("CustomMaterials")
+  customHardware  Hardware[]     @relation("CustomHardware")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -169,6 +171,10 @@ model Material {
   price          Decimal      @default(0)
   image          String?
 
+  // null = каталожный (от админа), non-null = кастомный (от пользователя)
+  userId String?
+  owner  User?   @relation("CustomMaterials", fields: [userId], references: [id], onDelete: Cascade)
+
   userMaterials    UserMaterial[]
   sectionBodies    ProductSection[]     @relation("SectionMaterial")
   sectionBackWalls ProductSection[]     @relation("SectionBackWallMaterial")
@@ -184,6 +190,7 @@ model Material {
   updatedAt DateTime @updatedAt
 
   @@index([materialTypeId])
+  @@index([userId])
 }
 
 model Hardware {
@@ -193,6 +200,10 @@ model Hardware {
   brand          String?
   price          Decimal      @default(0)
   image          String?
+
+  // null = каталожный (от админа), non-null = кастомный (от пользователя)
+  userId String?
+  owner  User?   @relation("CustomHardware", fields: [userId], references: [id], onDelete: Cascade)
 
   userHardware UserHardware[]
 
@@ -208,6 +219,7 @@ model Hardware {
   updatedAt DateTime @updatedAt
 
   @@index([hardwareTypeId])
+  @@index([userId])
 }
 
 model ServiceTemplate {

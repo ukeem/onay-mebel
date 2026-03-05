@@ -117,8 +117,10 @@ export class SettingsService {
   /* ═══ SYNC: добавить новые материалы/фурнитуру из каталога ═══ */
 
   async syncCatalog(userId: string) {
-    // Материалы
-    const allMaterials = await this.prisma.material.findMany();
+    // Материалы (только каталожные, userId=null)
+    const allMaterials = await this.prisma.material.findMany({
+      where: { userId: null },
+    });
     const userMaterials = await this.prisma.userMaterial.findMany({
       where: { userId },
       select: { materialId: true },
@@ -133,8 +135,10 @@ export class SettingsService {
       }
     }
 
-    // Фурнитура
-    const allHardware = await this.prisma.hardware.findMany();
+    // Фурнитура (только каталожная, userId=null)
+    const allHardware = await this.prisma.hardware.findMany({
+      where: { userId: null },
+    });
     const userHardware = await this.prisma.userHardware.findMany({
       where: { userId },
       select: { hardwareId: true },
@@ -306,12 +310,12 @@ export class SettingsService {
     // Helpers
     const matsByType = (typeName: string) =>
       uMats
-        .filter((um) => um.material.materialType.name === typeName)
+        .filter((um) => um.material?.materialType?.name === typeName)
         .map((um) => ({ id: um.materialId, price: Number(um.price) }));
 
     const hwsByType = (typeName: string) =>
       uHws
-        .filter((uh) => uh.hardware.hardwareType.name === typeName)
+        .filter((uh) => uh.hardware?.hardwareType?.name === typeName)
         .map((uh) => ({ id: uh.hardwareId, price: Number(uh.price) }));
 
     const enabledMatIds = new Set(uMats.map((um) => um.materialId));
@@ -426,5 +430,110 @@ export class SettingsService {
       }),
     ]);
     return { companyInfo, paymentStages, contacts };
+  }
+
+  /* ═══ CUSTOM USER MATERIALS ═══ */
+
+  async createCustomMaterial(
+    userId: string,
+    dto: {
+      materialTypeId: string;
+      brand?: string;
+      calcType?: 'SHEET' | 'SQM' | 'LM';
+      length?: number;
+      width?: number;
+      price?: number;
+    },
+  ) {
+    // Verify materialType exists
+    const matType = await this.prisma.materialType.findUnique({
+      where: { id: dto.materialTypeId },
+    });
+    if (!matType) throw new NotFoundException('Тип материала не найден');
+
+    const price = dto.price ?? 0;
+
+    // Create material owned by user + UserMaterial link in a single tx
+    return this.prisma.$transaction(async (tx) => {
+      const material = await tx.material.create({
+        data: {
+          materialTypeId: dto.materialTypeId,
+          brand: dto.brand,
+          calcType: dto.calcType,
+          length: dto.length,
+          width: dto.width,
+          price,
+          userId,
+        },
+        include: { materialType: true },
+      });
+
+      const userMaterial = await tx.userMaterial.create({
+        data: { userId, materialId: material.id, price },
+        include: { material: { include: { materialType: true } } },
+      });
+
+      return userMaterial;
+    });
+  }
+
+  async deleteCustomMaterial(userId: string, materialId: string) {
+    const material = await this.prisma.material.findUnique({
+      where: { id: materialId },
+    });
+    if (!material) throw new NotFoundException('Материал не найден');
+    if (material.userId !== userId) throw new ForbiddenException('Нет доступа');
+
+    await this.prisma.material.delete({ where: { id: materialId } });
+    return { message: 'Материал удалён' };
+  }
+
+  /* ═══ CUSTOM USER HARDWARE ═══ */
+
+  async createCustomHardware(
+    userId: string,
+    dto: {
+      hardwareTypeId: string;
+      brand?: string;
+      price?: number;
+    },
+  ) {
+    // Verify hardwareType exists
+    const hwType = await this.prisma.hardwareType.findUnique({
+      where: { id: dto.hardwareTypeId },
+    });
+    if (!hwType) throw new NotFoundException('Тип фурнитуры не найден');
+
+    const price = dto.price ?? 0;
+
+    return this.prisma.$transaction(async (tx) => {
+      const hardware = await tx.hardware.create({
+        data: {
+          hardwareTypeId: dto.hardwareTypeId,
+          brand: dto.brand,
+          price,
+          userId,
+        },
+        include: { hardwareType: true },
+      });
+
+      const userHardware = await tx.userHardware.create({
+        data: { userId, hardwareId: hardware.id, price },
+        include: { hardware: { include: { hardwareType: true } } },
+      });
+
+      return userHardware;
+    });
+  }
+
+  async deleteCustomHardware(userId: string, hardwareId: string) {
+    const hardware = await this.prisma.hardware.findUnique({
+      where: { id: hardwareId },
+    });
+    if (!hardware) throw new NotFoundException('Фурнитура не найдена');
+    if (hardware.userId !== userId) throw new ForbiddenException('Нет доступа');
+
+    await this.prisma.hardware.delete({ where: { id: hardwareId } });
+    return { message: 'Фурнитура удалена' };
   }
 }

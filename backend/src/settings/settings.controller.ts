@@ -13,6 +13,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   CreateContactDto,
+  CreateCustomHardwareDto,
+  CreateCustomMaterialDto,
   SavePaymentStagesDto,
   UpdateContactDto,
   UpdateUserDefaultsDto,
@@ -44,6 +46,22 @@ export class SettingsController {
     return this.settings.updateUserMaterialPrice(req.user.id, materialId, dto);
   }
 
+  @Post('materials/custom')
+  createCustomMaterial(
+    @Request() req: any,
+    @Body() dto: CreateCustomMaterialDto,
+  ) {
+    return this.settings.createCustomMaterial(req.user.id, dto);
+  }
+
+  @Delete('materials/custom/:materialId')
+  deleteCustomMaterial(
+    @Request() req: any,
+    @Param('materialId') materialId: string,
+  ) {
+    return this.settings.deleteCustomMaterial(req.user.id, materialId);
+  }
+
   /* ═══ USER HARDWARE ═══ */
 
   @Get('hardware')
@@ -58,6 +76,22 @@ export class SettingsController {
     @Body() dto: UpdateUserHardwarePriceDto,
   ) {
     return this.settings.updateUserHardwarePrice(req.user.id, hardwareId, dto);
+  }
+
+  @Post('hardware/custom')
+  createCustomHardware(
+    @Request() req: any,
+    @Body() dto: CreateCustomHardwareDto,
+  ) {
+    return this.settings.createCustomHardware(req.user.id, dto);
+  }
+
+  @Delete('hardware/custom/:hardwareId')
+  deleteCustomHardware(
+    @Request() req: any,
+    @Param('hardwareId') hardwareId: string,
+  ) {
+    return this.settings.deleteCustomHardware(req.user.id, hardwareId);
   }
 
   /* ═══ USER SERVICE ═══ */

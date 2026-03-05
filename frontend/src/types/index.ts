@@ -93,6 +93,7 @@ export interface UserMaterial {
     length: number;
     width: number;
     image: string | null;
+    userId: string | null;
     materialType: { name: string };
   };
 }
@@ -105,6 +106,7 @@ export interface UserHardware {
     id: string;
     brand: string | null;
     image: string | null;
+    userId: string | null;
     hardwareType: { name: string };
   };
 }

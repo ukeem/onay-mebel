@@ -83,15 +83,15 @@ export function useProductForm(
       setProduct(p);
       setExtraTypes(etRes.data);
       const enabledMaterials = (mRes.data as any[])
-        .filter((um) => um.enabled !== false)
+        .filter((um) => um.enabled !== false && um.material)
         .map((um) => um.material as MatOption);
       setMaterials(
-        enabledMaterials.filter((m) => m.materialType.name !== "Кромка"),
+        enabledMaterials.filter((m) => m.materialType?.name !== "Кромка"),
       );
       // Transform UserHardware[] → HwOption[]
       setHardwareList(
         (hwRes.data as any[])
-          .filter((uh) => uh.enabled !== false)
+          .filter((uh) => uh.enabled !== false && uh.hardware)
           .map((uh) => ({
             id: uh.hardware.id,
             brand: uh.hardware.brand,

@@ -1,8 +1,24 @@
 "use client";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -15,7 +31,7 @@ import {
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { parseNum, selectOnFocus } from "@/lib/utils";
-import { RefreshCw, Save } from "lucide-react";
+import { Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -24,7 +40,7 @@ import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { API_BASE_URL } from "@/lib/constants";
 
-import type { UserHardware } from "./types";
+import type { HardwareType, UserHardware } from "@/types";
 
 const API_BASE = API_BASE_URL;
 
@@ -35,16 +51,32 @@ export function UserHardwareTab() {
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [syncing, setSyncing] = useState(false);
 
-  const fetch = useCallback(async () => {
+  /* add dialog */
+  const [addOpen, setAddOpen] = useState(false);
+  const [hardwareTypes, setHardwareTypes] = useState<HardwareType[]>([]);
+  const [newTypeId, setNewTypeId] = useState("");
+  const [newBrand, setNewBrand] = useState("");
+  const [newPrice, setNewPrice] = useState("0");
+  const [adding, setAdding] = useState(false);
+
+  /* delete confirm */
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
     try {
       const res = await api.get("/settings/hardware");
-      const list: UserHardware[] = res.data;
-      list.sort((a, b) =>
-        a.hardware.hardwareType.name.localeCompare(
-          b.hardware.hardwareType.name,
-          "ru",
-        ),
+      const list: UserHardware[] = (res.data as UserHardware[]).filter(
+        (uh) => uh.hardware,
       );
+      list.sort((a, b) => {
+        const aCustom = a.hardware.userId ? 0 : 1;
+        const bCustom = b.hardware.userId ? 0 : 1;
+        if (aCustom !== bCustom) return aCustom - bCustom;
+        return (a.hardware.hardwareType?.name ?? "").localeCompare(
+          b.hardware.hardwareType?.name ?? "",
+          "ru",
+        );
+      });
       setItems(list);
       const p: Record<string, string> = {};
       list.forEach((i) => (p[i.id] = String(i.price)));
@@ -57,8 +89,8 @@ export function UserHardwareTab() {
   }, [t]);
 
   useEffect(() => {
-    fetch();
-  }, [fetch]);
+    fetchData();
+  }, [fetchData]);
 
   const savePrice = async (uh: UserHardware) => {
     try {
@@ -88,11 +120,64 @@ export function UserHardwareTab() {
     try {
       await api.post("/settings/sync");
       toast.success(t("common.synced"));
-      fetch();
+      fetchData();
     } catch (err: unknown) {
       toast.error(getApiError(err, t("common.error")));
     } finally {
       setSyncing(false);
+    }
+  };
+
+  /* ── Add custom hardware ── */
+
+  const openAddDialog = async () => {
+    try {
+      const res = await api.get("/catalog/hardware-types");
+      setHardwareTypes(res.data);
+    } catch {
+      toast.error(t("common.error"));
+      return;
+    }
+    setNewTypeId("");
+    setNewBrand("");
+    setNewPrice("0");
+    setAddOpen(true);
+  };
+
+  const handleAdd = async () => {
+    if (!newTypeId) return;
+    setAdding(true);
+    try {
+      const created: UserHardware = (
+        await api.post("/settings/hardware/custom", {
+          hardwareTypeId: newTypeId,
+          brand: newBrand || undefined,
+          price: parseNum(newPrice),
+        })
+      ).data;
+      setItems((prev) => [created, ...prev]);
+      setPrices((p) => ({ ...p, [created.id]: String(created.price) }));
+      setAddOpen(false);
+      toast.success(t("settings.customHardwareAdded"));
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  /* ── Delete custom hardware ── */
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await api.delete(`/settings/hardware/custom/${deleteId}`);
+      setItems((prev) => prev.filter((i) => i.hardware.id !== deleteId));
+      toast.success(t("settings.customHardwareDeleted"));
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -109,12 +194,24 @@ export function UserHardwareTab() {
         <h2 className="text-sm font-medium text-muted-foreground">
           {t("settings.myHardware")}
         </h2>
-        <Button size="sm" variant="outline" onClick={sync} disabled={syncing}>
-          <RefreshCw
-            className={`mr-1 h-3 w-3 ${syncing ? "animate-spin" : ""}`}
-          />
-          {t("common.sync")}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={openAddDialog}>
+            <Plus className="mr-1 h-3 w-3" />
+            {t("common.add")}
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-8 w-8"
+            onClick={sync}
+            disabled={syncing}
+            title={t("common.sync")}
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
+            />
+          </Button>
+        </div>
       </div>
       <div className="rounded-md border overflow-x-auto">
         <Table>
@@ -134,7 +231,10 @@ export function UserHardwareTab() {
           </TableHeader>
           <TableBody>
             {items.map((uh) => (
-              <TableRow key={uh.id}>
+              <TableRow
+                key={uh.id}
+                className={uh.hardware.userId ? "bg-muted" : ""}
+              >
                 <TableCell className="hidden md:table-cell">
                   {uh.hardware.image ? (
                     <Image
@@ -192,14 +292,37 @@ export function UserHardwareTab() {
                   />
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => savePrice(uh)}
-                  >
-                    <Save className="h-3 w-3" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => savePrice(uh)}
+                    >
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    {uh.hardware.userId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteId(uh.hardware.id)}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
+                {/* Mobile delete */}
+                {uh.hardware.userId && (
+                  <TableCell className="md:hidden">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteId(uh.hardware.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
             {items.length === 0 && (
@@ -215,6 +338,65 @@ export function UserHardwareTab() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Add custom hardware dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("settings.addCustomHardware")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>{t("common.type")}</Label>
+              <Select value={newTypeId} onValueChange={setNewTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("settings.selectType")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {hardwareTypes.map((ht) => (
+                    <SelectItem key={ht.id} value={ht.id}>
+                      {ht.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("common.brand")}</Label>
+              <Input
+                value={newBrand}
+                onChange={(e) => setNewBrand(e.target.value)}
+                placeholder={t("settings.brandPlaceholder")}
+              />
+            </div>
+            <div>
+              <Label>{t("settings.myPrice")}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={newPrice}
+                onFocus={selectOnFocus}
+                onChange={(e) =>
+                  setNewPrice(e.target.value.replace(/\./g, ","))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAdd} disabled={!newTypeId || adding}>
+              {t("common.add")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        description={t("settings.deleteCustomHardwareConfirm")}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

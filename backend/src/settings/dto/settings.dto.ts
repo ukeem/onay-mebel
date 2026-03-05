@@ -1,4 +1,4 @@
-import { ContactType, ProfitType } from '@prisma/client';
+import { CalcType, ContactType, ProfitType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -165,4 +165,48 @@ export class UpdateUserDefaultsDto {
   @IsOptional() @IsString() tandemHardwareId?: string;
   @IsOptional() @IsString() holderHardwareId?: string;
   @IsOptional() @IsString() legsHardwareId?: string;
+}
+
+/* ═══ Custom User Materials / Hardware ═══ */
+
+export class CreateCustomMaterialDto {
+  @IsString()
+  materialTypeId!: string;
+
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsEnum(CalcType)
+  calcType?: CalcType;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  length?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  width?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+}
+
+export class CreateCustomHardwareDto {
+  @IsString()
+  hardwareTypeId!: string;
+
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
 }

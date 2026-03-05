@@ -187,6 +187,7 @@ export class CatalogService {
 
   findAllMaterials() {
     return this.prisma.material.findMany({
+      where: { userId: null },
       include: { materialType: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -241,6 +242,7 @@ export class CatalogService {
 
   findAllHardware() {
     return this.prisma.hardware.findMany({
+      where: { userId: null },
       include: { hardwareType: true },
       orderBy: { createdAt: 'desc' },
     });

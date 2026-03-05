@@ -2533,39 +2533,6 @@ export class CalculationsService {
       }
     }
 
-    /* Konfirmats (approximate) */
-    let konfPrice = hwPrice.get('Конфирмат') ?? 0;
-    let konfBrand = '';
-    let konfImage: string | null = null;
-    if (hwIdMap) {
-      for (const [, entry] of hwIdMap) {
-        if (entry.typeName === 'Конфирмат') {
-          konfPrice = entry.price;
-          konfBrand = entry.brand;
-          konfImage = entry.image;
-          break;
-        }
-      }
-    }
-    const konfQty = 20;
-    const konfCost = konfQty * konfPrice;
-    hardwareCost += konfCost;
-    if (konfCost > 0) {
-      details.push({
-        id: 'konfirmats',
-        type: 'hardware',
-        label: `Конфирмат (${konfQty} шт.)`,
-        hardwareType: 'Конфирмат',
-        brand: konfBrand,
-        qty: konfQty,
-        unit: 'шт.',
-        unitPrice: konfPrice,
-        cost: Math.round(konfCost),
-        enabled: true,
-        image: konfImage,
-      });
-    }
-
     /* ═══ Extras ═══ */
     let extrasCost = 0;
     if (product.extrasEnabled && product.extras) {
