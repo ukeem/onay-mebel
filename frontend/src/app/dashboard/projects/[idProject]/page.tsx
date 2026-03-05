@@ -361,7 +361,10 @@ export default function ProjectPage({
       )}
 
       {/* ── Fixed bottom bar ── */}
-      <ProjectBottomBar projectId={idProject} />
+      <ProjectBottomBar
+        projectId={idProject}
+        hasProducts={!!project?.rooms?.some((r) => r.products.length > 0)}
+      />
 
       {/* ── Edit project dialog ── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

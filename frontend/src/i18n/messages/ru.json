@@ -517,6 +517,7 @@
     "role": "Роль",
     "statusLabel": "Статус",
     "activeTill": "Активен до",
+    "registered": "Зарегистрирован:",
     "active": "Активен",
     "blocked": "Заблокирован",
     "inactive": "Неактивен",

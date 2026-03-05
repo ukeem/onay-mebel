@@ -324,7 +324,10 @@ export default function RoomPage({
       )}
 
       {/* ── Fixed bottom bar ── */}
-      <ProjectBottomBar projectId={idProject} />
+      <ProjectBottomBar
+        projectId={idProject}
+        hasProducts={(room?.products?.length ?? 0) > 0}
+      />
 
       <ConfirmDialog
         open={!!deleteProductId}

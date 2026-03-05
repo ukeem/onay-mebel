@@ -12,9 +12,13 @@ import { toast } from "sonner";
 
 interface ProjectBottomBarProps {
   projectId: string;
+  hasProducts?: boolean;
 }
 
-export function ProjectBottomBar({ projectId }: ProjectBottomBarProps) {
+export function ProjectBottomBar({
+  projectId,
+  hasProducts = true,
+}: ProjectBottomBarProps) {
   const t = useTranslations();
   const router = useRouter();
   const [calculating, setCalculating] = useState(false);
@@ -34,7 +38,7 @@ export function ProjectBottomBar({ projectId }: ProjectBottomBarProps) {
         </Button>
         <Button
           className="flex-1"
-          disabled={calculating}
+          disabled={calculating || !hasProducts}
           onClick={async () => {
             setCalculating(true);
             try {

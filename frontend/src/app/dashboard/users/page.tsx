@@ -338,22 +338,28 @@ export default function UsersPage() {
                     <div className="pl-11 flex flex-col gap-2 md:flex-row md:items-end">
                       <div className="space-y-1 md:flex-1">
                         <span className="text-[11px] text-muted-foreground">
-                          {t("users.activeTill")}
+                          {t("users.registered")}{" "}
+                          {new Date(u.createdAt).toLocaleDateString("ru-RU")}
                         </span>
-                        <Input
-                          type="date"
-                          className="h-8 w-full text-sm"
-                          value={
-                            u.activeUntil
-                              ? new Date(u.activeUntil)
-                                  .toISOString()
-                                  .split("T")[0]
-                              : ""
-                          }
-                          onChange={(e) =>
-                            handleActiveUntilChange(u.id, e.target.value)
-                          }
-                        />
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-muted-foreground">
+                            {t("users.activeTill")}
+                          </span>
+                          <Input
+                            type="date"
+                            className="h-8 w-full text-sm"
+                            value={
+                              u.activeUntil
+                                ? new Date(u.activeUntil)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : ""
+                            }
+                            onChange={(e) =>
+                              handleActiveUntilChange(u.id, e.target.value)
+                            }
+                          />
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 md:flex-1">
                         <div className="relative flex-1">

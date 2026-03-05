@@ -517,6 +517,7 @@
     "role": "Рөл",
     "statusLabel": "Мәртебесі",
     "activeTill": "Белсенді дейін",
+    "registered": "Тіркелген:",
     "active": "Белсенді",
     "blocked": "Бұғатталған",
     "inactive": "Белсенді емес",

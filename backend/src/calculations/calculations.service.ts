@@ -1164,8 +1164,8 @@ export class CalculationsService {
       padding: 20px 16px;
     }
     .company-logo {
-      max-height: 72px;
-      max-width: 220px;
+      max-height: 144px;
+      max-width: 440px;
       object-fit: contain;
       margin: 0 auto 12px;
       display: block;
