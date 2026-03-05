@@ -528,6 +528,8 @@
     "passwordChanged": "Пароль изменён",
     "termUpdated": "Срок обновлён",
     "noUsers": "Нет пользователей",
+    "searchPlaceholder": "Поиск по номеру...",
+    "noResults": "По запросу ничего не найдено",
     "roleSuper": "Супер",
     "roleAdmin": "Админ",
     "roleUser": "Пользователь",

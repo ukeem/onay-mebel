@@ -528,6 +528,8 @@
     "passwordChanged": "Құпия сөз өзгертілді",
     "termUpdated": "Мерзім жаңартылды",
     "noUsers": "Қолданушылар жоқ",
+    "searchPlaceholder": "Нөмір бойынша іздеу...",
+    "noResults": "Сұраныс бойынша ештеңе табылмады",
     "roleSuper": "Супер",
     "roleAdmin": "Әкімші",
     "roleUser": "Қолданушы",

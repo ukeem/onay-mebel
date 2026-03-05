@@ -34,9 +34,11 @@ import {
   EyeOff,
   Lock,
   Plus,
+  Search,
   Trash2,
   Unlock,
   User as UserIcon,
+  X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -72,6 +74,34 @@ const statusBadge = (status: string, t: (key: string) => string) => {
   }
 };
 
+const normalizeDigits = (s: string) => s.replace(/\D/g, "").replace(/^8/, "7");
+
+function highlightPhone(phone: string, normalizedQuery: string) {
+  if (!normalizedQuery) return <>{phone}</>;
+
+  const digitPositions: number[] = [];
+  for (let i = 0; i < phone.length; i++) {
+    if (/\d/.test(phone[i])) digitPositions.push(i);
+  }
+  const normalizedPhone = normalizeDigits(phone);
+  const matchIdx = normalizedPhone.indexOf(normalizedQuery);
+  if (matchIdx === -1) return <>{phone}</>;
+
+  const startPos = digitPositions[matchIdx];
+  const endPos = digitPositions[matchIdx + normalizedQuery.length - 1];
+  if (startPos === undefined || endPos === undefined) return <>{phone}</>;
+
+  return (
+    <>
+      {phone.slice(0, startPos)}
+      <mark className="rounded-sm bg-yellow-200 px-0 text-foreground dark:bg-yellow-700">
+        {phone.slice(startPos, endPos + 1)}
+      </mark>
+      {phone.slice(endPos + 1)}
+    </>
+  );
+}
+
 export default function UsersPage() {
   const t = useTranslations();
   const currentUser = useAuthStore((s) => s.user);
@@ -89,6 +119,7 @@ export default function UsersPage() {
   const [pwdEdits, setPwdEdits] = useState<Record<string, string>>({});
   const [pwdVisible, setPwdVisible] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -187,6 +218,10 @@ export default function UsersPage() {
   };
 
   const isSuper = currentUser?.role === "SUPER";
+  const normalizedQuery = normalizeDigits(searchQuery);
+  const filteredUsers = normalizedQuery
+    ? users.filter((u) => normalizeDigits(u.phone).includes(normalizedQuery))
+    : users;
 
   return (
     <div className="space-y-3">
@@ -260,7 +295,28 @@ export default function UsersPage() {
               </form>
             </DialogContent>
           </Dialog>
-        </div>
+        </div>{" "}
+        <div className="pb-2.5">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="h-8 pl-8 pr-8 text-sm"
+              placeholder={t("users.searchPlaceholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Очистить поиск"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>{" "}
       </div>
 
       {loading ? (
@@ -269,9 +325,11 @@ export default function UsersPage() {
         </div>
       ) : users.length === 0 ? (
         <EmptyState icon={UserIcon} title={t("users.noUsers")} />
+      ) : filteredUsers.length === 0 ? (
+        <EmptyState icon={Search} title={t("users.noResults")} />
       ) : (
         <div className="space-y-2">
-          {users.map((u) => {
+          {filteredUsers.map((u) => {
             const isSelf = u.id === currentUser?.id;
             const isSuperTarget = u.role === "SUPER";
             const canEdit = !isSelf && !isSuperTarget;
@@ -286,7 +344,9 @@ export default function UsersPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="block text-sm font-medium truncate">
-                        {u.phone}
+                        {normalizedQuery
+                          ? highlightPhone(u.phone, normalizedQuery)
+                          : u.phone}
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {statusBadge(u.status, t)}
