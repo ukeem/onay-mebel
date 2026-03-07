@@ -71,12 +71,13 @@ model User {
   userHardware    UserHardware[]
   userService     UserService?
   userDefaults    UserDefaults?
+  tierPreferences TierPreference[]
   projects        Project[]
   companyInfo     CompanyInfo?
   paymentStages   PaymentStage[]
   contacts        UserContact[]
-  customMaterials Material[]     @relation("CustomMaterials")
-  customHardware  Hardware[]     @relation("CustomHardware")
+  customMaterials Material[]       @relation("CustomMaterials")
+  customHardware  Hardware[]       @relation("CustomHardware")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,8 +138,9 @@ model MaterialType {
 
   materials Material[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tierPreferences TierPreference[]
 }
 
 model HardwareType {
@@ -147,8 +149,9 @@ model HardwareType {
 
   hardware Hardware[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tierPreferences TierPreference[]
 }
 
 model ExtraType {
@@ -186,8 +189,9 @@ model Material {
   countertopMat    ProductCountertop[]  @relation("CountertopMaterial")
   apronMat         ProductCountertop[]  @relation("ApronMaterial")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tierPreferences TierPreference[]
 
   @@index([materialTypeId])
   @@index([userId])
@@ -215,8 +219,9 @@ model Hardware {
   shelfHolders  ProductShelf[]   @relation("ShelfHolderHardware")
   drawerSlides  ProductDrawer[]  @relation("DrawerSlideHardware")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tierPreferences TierPreference[]
 
   @@index([hardwareTypeId])
   @@index([userId])
@@ -618,6 +623,40 @@ model UserDefaults {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// TIER PREFERENCES (per-user tier material/hardware bindings)
+// ============================================
+
+enum TierLevel {
+  STANDARD
+  PREMIUM
+}
+
+model TierPreference {
+  id     String    @id @default(cuid())
+  userId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier   TierLevel
+
+  // Один из двух вариантов заполнен: материал ИЛИ фурнитура
+  materialTypeId String?
+  materialType   MaterialType? @relation(fields: [materialTypeId], references: [id], onDelete: Cascade)
+  materialId     String?
+  material       Material?     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  hardwareTypeId String?
+  hardwareType   HardwareType? @relation(fields: [hardwareTypeId], references: [id], onDelete: Cascade)
+  hardwareId     String?
+  hardware       Hardware?     @relation(fields: [hardwareId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tier, materialTypeId])
+  @@unique([userId, tier, hardwareTypeId])
+  @@index([userId])
 }
 
 // ============================================

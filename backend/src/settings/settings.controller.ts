@@ -16,6 +16,7 @@ import {
   CreateCustomHardwareDto,
   CreateCustomMaterialDto,
   SavePaymentStagesDto,
+  SaveTierPreferencesDto,
   UpdateContactDto,
   UpdateUserDefaultsDto,
   UpdateUserHardwarePriceDto,
@@ -176,5 +177,20 @@ export class SettingsController {
       req.user.id,
       dto as unknown as Record<string, string | undefined>,
     );
+  }
+
+  /* ═══ TIER PREFERENCES ═══ */
+
+  @Get('tier-preferences')
+  getTierPreferences(@Request() req: any) {
+    return this.settings.getTierPreferences(req.user.id);
+  }
+
+  @Put('tier-preferences')
+  saveTierPreferences(
+    @Request() req: any,
+    @Body() dto: SaveTierPreferencesDto,
+  ) {
+    return this.settings.saveTierPreferences(req.user.id, dto.items);
   }
 }

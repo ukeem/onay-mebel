@@ -1,4 +1,4 @@
-import { CalcType, ContactType, ProfitType } from '@prisma/client';
+import { CalcType, ContactType, ProfitType, TierLevel } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -209,4 +209,34 @@ export class CreateCustomHardwareDto {
   @IsNumber()
   @Min(0)
   price?: number;
+}
+
+/* ═══ Tier Preferences ═══ */
+
+export class TierPreferenceItemDto {
+  @IsEnum(TierLevel)
+  tier!: TierLevel;
+
+  @IsOptional()
+  @IsString()
+  materialTypeId?: string;
+
+  @IsOptional()
+  @IsString()
+  materialId?: string;
+
+  @IsOptional()
+  @IsString()
+  hardwareTypeId?: string;
+
+  @IsOptional()
+  @IsString()
+  hardwareId?: string;
+}
+
+export class SaveTierPreferencesDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TierPreferenceItemDto)
+  items!: TierPreferenceItemDto[];
 }

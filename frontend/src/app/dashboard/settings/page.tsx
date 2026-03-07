@@ -16,6 +16,9 @@ const UserServiceTab = dynamic(
   () => import("./service-tab").then((m) => m.UserServiceTab),
   { ssr: false },
 );
+const TiersTab = dynamic(() => import("./tiers-tab").then((m) => m.TiersTab), {
+  ssr: false,
+});
 
 export default function SettingsPage() {
   const t = useTranslations();
@@ -35,6 +38,9 @@ export default function SettingsPage() {
           <TabsTrigger value="service" className="flex-1">
             {t("settings.services")}
           </TabsTrigger>
+          <TabsTrigger value="tiers" className="flex-1">
+            {t("settings.tiers.title")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="materials" className="pt-4">
           <UserMaterialsTab />
@@ -44,6 +50,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="service" className="pt-4">
           <UserServiceTab />
+        </TabsContent>
+        <TabsContent value="tiers" className="pt-4">
+          <TiersTab />
         </TabsContent>
       </Tabs>
     </div>

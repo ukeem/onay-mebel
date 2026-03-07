@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ContactType, ProfitType } from '@prisma/client';
+import { ContactType, ProfitType, TierLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -535,5 +535,91 @@ export class SettingsService {
 
     await this.prisma.hardware.delete({ where: { id: hardwareId } });
     return { message: 'Фурнитура удалена' };
+  }
+
+  /* ═══ TIER PREFERENCES ═══ */
+
+  async getTierPreferences(userId: string) {
+    return this.prisma.tierPreference.findMany({
+      where: { userId },
+      include: {
+        materialType: true,
+        material: { include: { materialType: true } },
+        hardwareType: true,
+        hardware: { include: { hardwareType: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async saveTierPreferences(
+    userId: string,
+    items: {
+      tier: TierLevel;
+      materialTypeId?: string;
+      materialId?: string;
+      hardwareTypeId?: string;
+      hardwareId?: string;
+    }[],
+  ) {
+    // Validate each item
+    for (const item of items) {
+      const hasMat = item.materialTypeId && item.materialId;
+      const hasHw = item.hardwareTypeId && item.hardwareId;
+      if (!hasMat && !hasHw) {
+        throw new BadRequestException('Укажите материал или фурнитуру');
+      }
+
+      if (hasMat) {
+        const um = await this.prisma.userMaterial.findUnique({
+          where: {
+            userId_materialId: { userId, materialId: item.materialId! },
+          },
+        });
+        if (!um || !um.enabled) {
+          throw new BadRequestException(
+            `Материал ${item.materialId} не найден или отключён`,
+          );
+        }
+      }
+
+      if (hasHw) {
+        const uh = await this.prisma.userHardware.findUnique({
+          where: {
+            userId_hardwareId: { userId, hardwareId: item.hardwareId! },
+          },
+        });
+        if (!uh || !uh.enabled) {
+          throw new BadRequestException(
+            `Фурнитура ${item.hardwareId} не найдена или отключена`,
+          );
+        }
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.tierPreference.deleteMany({ where: { userId } });
+      if (items.length > 0) {
+        await tx.tierPreference.createMany({
+          data: items.map((item) => ({
+            userId,
+            tier: item.tier,
+            materialTypeId: item.materialTypeId ?? null,
+            materialId: item.materialId ?? null,
+            hardwareTypeId: item.hardwareTypeId ?? null,
+            hardwareId: item.hardwareId ?? null,
+          })),
+        });
+      }
+      return tx.tierPreference.findMany({
+        where: { userId },
+        include: {
+          materialType: true,
+          material: { include: { materialType: true } },
+          hardwareType: true,
+          hardware: { include: { hardwareType: true } },
+        },
+      });
+    });
   }
 }

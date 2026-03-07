@@ -86,17 +86,27 @@ export class CalculationsService {
     if (project.userId !== userId) throw new ForbiddenException('Нет доступа');
 
     /* Fetch user settings */
-    const [userMaterials, userHardware, userService] = await Promise.all([
-      this.prisma.userMaterial.findMany({
-        where: { userId },
-        include: { material: { include: { materialType: true } } },
-      }),
-      this.prisma.userHardware.findMany({
-        where: { userId },
-        include: { hardware: { include: { hardwareType: true } } },
-      }),
-      this.prisma.userService.findFirst({ where: { userId } }),
-    ]);
+    const [userMaterials, userHardware, userService, tierPreferences] =
+      await Promise.all([
+        this.prisma.userMaterial.findMany({
+          where: { userId },
+          include: { material: { include: { materialType: true } } },
+        }),
+        this.prisma.userHardware.findMany({
+          where: { userId },
+          include: { hardware: { include: { hardwareType: true } } },
+        }),
+        this.prisma.userService.findFirst({ where: { userId } }),
+        this.prisma.tierPreference.findMany({
+          where: { userId },
+          include: {
+            materialType: true,
+            material: { include: { materialType: true } },
+            hardwareType: true,
+            hardware: { include: { hardwareType: true } },
+          },
+        }),
+      ]);
 
     /* Material price map: materialId -> price */
     const matPriceMap = new Map<string, number>();
@@ -341,6 +351,7 @@ export class CalculationsService {
       if (um.enabled === false) continue;
       materialOptions.push({
         materialId: um.materialId,
+        materialTypeId: um.material.materialType?.id ?? '',
         materialType: um.material.materialType?.name ?? '',
         brand: um.material.brand ?? '',
         price: toNum(um.price),
@@ -354,6 +365,7 @@ export class CalculationsService {
       if (uh.enabled === false) continue;
       hardwareOptions.push({
         hardwareId: uh.hardwareId,
+        hardwareTypeId: uh.hardware.hardwareType?.id ?? '',
         hardwareType: uh.hardware.hardwareType?.name ?? '',
         brand: uh.hardware.brand ?? '',
         price: toNum(uh.price),
@@ -361,7 +373,11 @@ export class CalculationsService {
     }
 
     /* ═══ Tier prices (Standard / Comfort / Premium) ═══ */
-    const tierPrices = computeTierPrices(userMaterials, userHardware);
+    const tierPrices = computeTierPrices(
+      userMaterials,
+      userHardware,
+      tierPreferences,
+    );
 
     /* ═══ Compute per-tier totals ═══ */
     const tierTotals: Record<
@@ -2260,13 +2276,28 @@ export class CalculationsService {
     const resolveHw = (
       hwId: string | null | undefined,
       typeName: string,
-    ): { price: number; brand: string; image: string | null } => {
+    ): {
+      price: number;
+      brand: string;
+      image: string | null;
+      hardwareId: string | null;
+    } => {
       if (hwId && hwIdMap) {
         const entry = hwIdMap.get(hwId);
         if (entry)
-          return { price: entry.price, brand: entry.brand, image: entry.image };
+          return {
+            price: entry.price,
+            brand: entry.brand,
+            image: entry.image,
+            hardwareId: hwId,
+          };
       }
-      return { price: hwPrice.get(typeName) ?? 0, brand: '', image: null };
+      return {
+        price: hwPrice.get(typeName) ?? 0,
+        brand: '',
+        image: null,
+        hardwareId: null,
+      };
     };
 
     /* Hinges: ≤699→2, 700-1199→3, ... — per facade, using facade’s hingeHardwareId */
@@ -2313,6 +2344,7 @@ export class CalculationsService {
       let handleBrand = '';
       let handleUnitPrice = 0;
       let handleImage: string | null = null;
+      let handleHwId: string | null = null;
       if (product.facadesEnabled) {
         for (const f of product.facades ?? []) {
           if (f.openType !== 'TIP_ON' && f.handleQty > 0) {
@@ -2322,6 +2354,7 @@ export class CalculationsService {
             handleCost += qty * hw.price;
             if (hw.brand) handleBrand = hw.brand;
             handleUnitPrice = hw.price;
+            if (hw.hardwareId) handleHwId = hw.hardwareId;
           }
         }
       }
@@ -2335,6 +2368,7 @@ export class CalculationsService {
             if (!handleBrand && hw.brand) handleBrand = hw.brand;
             if (!handleUnitPrice) handleUnitPrice = hw.price;
             if (hw.image) handleImage = hw.image;
+            if (!handleHwId && hw.hardwareId) handleHwId = hw.hardwareId;
           }
         }
       }
@@ -2345,6 +2379,7 @@ export class CalculationsService {
           type: 'hardware',
           label: `Ручки (${totalHandles} шт.)`,
           hardwareType: 'Ручки',
+          hardwareId: handleHwId,
           brand: handleBrand,
           qty: totalHandles,
           unit: 'шт.',
@@ -2363,6 +2398,7 @@ export class CalculationsService {
       let tipOnBrand = '';
       let tipOnUnitPrice = 0;
       let tipOnImage: string | null = null;
+      let tipOnHwId: string | null = null;
       if (product.facadesEnabled) {
         for (const f of product.facades ?? []) {
           if (f.openType === 'TIP_ON') {
@@ -2373,6 +2409,7 @@ export class CalculationsService {
             if (hw.brand) tipOnBrand = hw.brand;
             tipOnUnitPrice = hw.price;
             if (hw.image) tipOnImage = hw.image;
+            if (hw.hardwareId) tipOnHwId = hw.hardwareId;
           }
         }
       }
@@ -2383,6 +2420,7 @@ export class CalculationsService {
           type: 'hardware',
           label: `Tip-On (${totalTipOn} шт.)`,
           hardwareType: 'Tip-On',
+          hardwareId: tipOnHwId,
           brand: tipOnBrand,
           qty: totalTipOn,
           unit: 'шт.',
@@ -2401,6 +2439,7 @@ export class CalculationsService {
       let legBrand = '';
       let legUnitPrice = 0;
       let legImage: string | null = null;
+      let legHwId: string | null = null;
       for (const sec of product.sections) {
         if (!sec.legsEnabled) continue;
         const legsPerSection =
@@ -2412,6 +2451,7 @@ export class CalculationsService {
         if (hw.brand) legBrand = hw.brand;
         legUnitPrice = hw.price;
         if (hw.image) legImage = hw.image;
+        if (hw.hardwareId) legHwId = hw.hardwareId;
       }
       if (totalLegs > 0) {
         hardwareCost += legCost;
@@ -2420,6 +2460,7 @@ export class CalculationsService {
           type: 'hardware',
           label: `Ножки (${totalLegs} шт.)`,
           hardwareType: 'Ножки',
+          hardwareId: legHwId,
           brand: legBrand,
           qty: totalLegs,
           unit: 'шт.',
@@ -2438,6 +2479,7 @@ export class CalculationsService {
       let shBrand = '';
       let shUnitPrice = 0;
       let shImage: string | null = null;
+      let shHwId: string | null = null;
       if (product.shelvesEnabled && product.shelves) {
         for (const sh of product.shelves) {
           const qty = 4 * sh.qty;
@@ -2447,6 +2489,7 @@ export class CalculationsService {
           if (hw.brand) shBrand = hw.brand;
           shUnitPrice = hw.price;
           if (hw.image) shImage = hw.image;
+          if (hw.hardwareId) shHwId = hw.hardwareId;
         }
       }
       if (totalShelfHolders > 0) {
@@ -2456,6 +2499,7 @@ export class CalculationsService {
           type: 'hardware',
           label: `Полкодержатели (${totalShelfHolders} шт.)`,
           hardwareType: 'Полкодержатели',
+          hardwareId: shHwId,
           brand: shBrand,
           qty: totalShelfHolders,
           unit: 'шт.',
@@ -2474,11 +2518,13 @@ export class CalculationsService {
       let guideBrand = '';
       let guideUnitPrice = 0;
       let guideImage: string | null = null;
+      let guideHwId: string | null = null;
       let totalTandems = 0;
       let tandemCost = 0;
       let tandemBrand = '';
       let tandemUnitPrice = 0;
       let tandemImage: string | null = null;
+      let tandemHwId: string | null = null;
       if (product.drawersEnabled && product.drawers) {
         for (const dr of product.drawers) {
           const qty = dr.qty;
@@ -2489,6 +2535,7 @@ export class CalculationsService {
             if (hw.brand) tandemBrand = hw.brand;
             tandemUnitPrice = hw.price;
             if (hw.image) tandemImage = hw.image;
+            if (hw.hardwareId) tandemHwId = hw.hardwareId;
           } else {
             const hw = resolveHw(dr.slideHardwareId, 'Телескоп');
             totalGuides += qty;
@@ -2496,6 +2543,7 @@ export class CalculationsService {
             if (hw.brand) guideBrand = hw.brand;
             guideUnitPrice = hw.price;
             if (hw.image) guideImage = hw.image;
+            if (hw.hardwareId) guideHwId = hw.hardwareId;
           }
         }
       }
@@ -2506,6 +2554,7 @@ export class CalculationsService {
           type: 'hardware',
           label: `Телескоп (${totalGuides} шт.)`,
           hardwareType: 'Телескоп',
+          hardwareId: guideHwId,
           brand: guideBrand,
           qty: totalGuides,
           unit: 'шт.',
@@ -2522,6 +2571,7 @@ export class CalculationsService {
           type: 'hardware',
           label: `Тандем (${totalTandems} шт.)`,
           hardwareType: 'Тандем',
+          hardwareId: tandemHwId,
           brand: tandemBrand,
           qty: totalTandems,
           unit: 'шт.',
@@ -2676,9 +2726,55 @@ function _findMat(product: any, materialId: string): any {
 }
 
 /* ═══ Tier price computation ═══ */
-function computeTierPrices(userMaterials: any[], userHardware: any[]) {
+function computeTierPrices(
+  userMaterials: any[],
+  userHardware: any[],
+  preferences: any[] = [],
+) {
   const materials: Record<string, any[]> = {};
   const hardware: Record<string, any[]> = {};
+
+  /* Build preference lookups: typeName -> { standard?: item, premium?: item } */
+  const matPrefs: Record<string, Record<string, any>> = {};
+  const hwPrefs: Record<string, Record<string, any>> = {};
+
+  for (const pref of preferences) {
+    const tierKey = pref.tier === 'STANDARD' ? 'standard' : 'premium';
+
+    if (pref.materialTypeId && pref.materialId && pref.materialType) {
+      const typeName = pref.materialType.name;
+      if (!matPrefs[typeName]) matPrefs[typeName] = {};
+      // Find matching UserMaterial to get user price
+      const um = userMaterials.find(
+        (m: any) => m.materialId === pref.materialId && m.enabled !== false,
+      );
+      if (um) {
+        matPrefs[typeName][tierKey] = {
+          materialId: um.materialId,
+          brand: um.material?.brand ?? '',
+          price: toNum(um.price),
+          length: um.material?.length ?? 1,
+          width: um.material?.width ?? 1,
+          calcType: um.material?.calcType ?? 'SHEET',
+        };
+      }
+    }
+
+    if (pref.hardwareTypeId && pref.hardwareId && pref.hardwareType) {
+      const typeName = pref.hardwareType.name;
+      if (!hwPrefs[typeName]) hwPrefs[typeName] = {};
+      const uh = userHardware.find(
+        (h: any) => h.hardwareId === pref.hardwareId && h.enabled !== false,
+      );
+      if (uh) {
+        hwPrefs[typeName][tierKey] = {
+          hardwareId: uh.hardwareId,
+          brand: uh.hardware?.brand ?? '',
+          price: toNum(uh.price),
+        };
+      }
+    }
+  }
 
   /* Group materials by type */
   const matByType: Record<string, any[]> = {};
@@ -2698,15 +2794,12 @@ function computeTierPrices(userMaterials: any[], userHardware: any[]) {
 
   for (const [typeName, items] of Object.entries(matByType)) {
     const sorted = [...items].sort((a: any, b: any) => a.price - b.price);
-    /* Standard = cheapest, Premium = most expensive.
-       Comfort is NOT derived here — it uses the user's actual chosen material
-       (already in details[].unitPrice). We still include a comfort entry
-       that equals the cheapest for backward compat, but it is never used
-       for price replacement in the tier loop. */
+    const stdItem = matPrefs[typeName]?.standard ?? sorted[0];
+    const premItem = matPrefs[typeName]?.premium ?? sorted[sorted.length - 1];
     materials[typeName] = [
-      { ...sorted[0], tier: 'standard' },
+      { ...stdItem, tier: 'standard' },
       { ...sorted[0], tier: 'comfort' }, // placeholder, not used for price calc
-      { ...sorted[sorted.length - 1], tier: 'premium' },
+      { ...premItem, tier: 'premium' },
     ];
   }
 
@@ -2725,10 +2818,12 @@ function computeTierPrices(userMaterials: any[], userHardware: any[]) {
 
   for (const [typeName, items] of Object.entries(hwByType)) {
     const sorted = [...items].sort((a: any, b: any) => a.price - b.price);
+    const stdItem = hwPrefs[typeName]?.standard ?? sorted[0];
+    const premItem = hwPrefs[typeName]?.premium ?? sorted[sorted.length - 1];
     hardware[typeName] = [
-      { ...sorted[0], tier: 'standard' },
+      { ...stdItem, tier: 'standard' },
       { ...sorted[0], tier: 'comfort' }, // placeholder, comfort uses actual product prices
-      { ...sorted[sorted.length - 1], tier: 'premium' },
+      { ...premItem, tier: 'premium' },
     ];
   }
 

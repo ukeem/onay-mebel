@@ -44,6 +44,7 @@ interface DetailItem {
   label: string;
   materialId?: string;
   materialType?: string;
+  hardwareId?: string | null;
   hardwareType?: string;
   brand?: string;
   qty: number;
@@ -78,6 +79,7 @@ interface RoomResult {
 
 interface MaterialOption {
   materialId: string;
+  materialTypeId: string;
   materialType: string;
   brand: string;
   price: number;
@@ -88,6 +90,7 @@ interface MaterialOption {
 
 interface HardwareOption {
   hardwareId: string;
+  hardwareTypeId: string;
   hardwareType: string;
   brand: string;
   price: number;
@@ -559,6 +562,9 @@ export default function DetailPage({
           }
         }
       }
+      if ("hardwareId" in option) {
+        item.hardwareId = option.hardwareId;
+      }
       item.cost = Math.round(item.qty * item.unitPrice);
       next[activeTier] = tierData;
       return next;
@@ -684,6 +690,95 @@ export default function DetailPage({
       };
 
       await api.patch(`/calculations/${calc.id}`, { data: updatedData });
+
+      /* ═══ Sync tier preferences from snapshot ═══ */
+      /* Only save preferences that differ from comfort (base tier) */
+      const matOpts = d.materialOptions ?? [];
+      const hwOpts = d.hardwareOptions ?? [];
+      const prefItems: {
+        tier: "STANDARD" | "PREMIUM";
+        materialTypeId?: string;
+        materialId?: string;
+        hardwareTypeId?: string;
+        hardwareId?: string;
+      }[] = [];
+
+      /* Build comfort baseline maps */
+      const comfortMatMap = new Map<string, string>();
+      const comfortHwMap = new Map<string, string>();
+      for (const room of tierRooms.comfort) {
+        for (const product of room.products) {
+          for (const det of product.details) {
+            if (det.type === "material" && det.materialType && det.materialId) {
+              comfortMatMap.set(det.materialType, det.materialId);
+            }
+            if (det.type === "hardware" && det.hardwareType && det.hardwareId) {
+              comfortHwMap.set(det.hardwareType, det.hardwareId);
+            }
+          }
+        }
+      }
+
+      for (const tier of ["standard", "premium"] as const) {
+        const tierEnum = tier === "standard" ? "STANDARD" : "PREMIUM";
+        const matMap = new Map<string, string>();
+        const hwMap = new Map<string, string>();
+
+        for (const room of tierRooms[tier]) {
+          for (const product of room.products) {
+            for (const det of product.details) {
+              if (
+                det.type === "material" &&
+                det.materialType &&
+                det.materialId
+              ) {
+                matMap.set(det.materialType, det.materialId);
+              }
+              if (
+                det.type === "hardware" &&
+                det.hardwareType &&
+                det.hardwareId
+              ) {
+                hwMap.set(det.hardwareType, det.hardwareId);
+              }
+            }
+          }
+        }
+
+        for (const [matType, matId] of matMap) {
+          /* Skip if same as comfort — not a user override */
+          if (comfortMatMap.get(matType) === matId) continue;
+          const opt = matOpts.find(
+            (o) => o.materialId === matId && o.materialType === matType,
+          );
+          if (opt?.materialTypeId) {
+            prefItems.push({
+              tier: tierEnum,
+              materialTypeId: opt.materialTypeId,
+              materialId: matId,
+            });
+          }
+        }
+        for (const [hwType, hwId] of hwMap) {
+          /* Skip if same as comfort — not a user override */
+          if (comfortHwMap.get(hwType) === hwId) continue;
+          const opt = hwOpts.find(
+            (o) => o.hardwareId === hwId && o.hardwareType === hwType,
+          );
+          if (opt?.hardwareTypeId) {
+            prefItems.push({
+              tier: tierEnum,
+              hardwareTypeId: opt.hardwareTypeId,
+              hardwareId: hwId,
+            });
+          }
+        }
+      }
+
+      await api
+        .put("/settings/tier-preferences", { items: prefItems })
+        .catch(() => {});
+
       toast.success(t("detail.saved"));
     } catch {
       toast.error(t("detail.saveError"));
