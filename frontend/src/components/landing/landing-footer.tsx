@@ -1,6 +1,6 @@
 "use client";
 
-import { Instagram, MessageCircle, Send } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
@@ -12,9 +12,7 @@ const NAV_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { key: "whatsapp", Icon: MessageCircle, href: "#" },
-  { key: "instagram", Icon: Instagram, href: "#" },
-  { key: "telegram", Icon: Send, href: "#" },
+  { key: "whatsapp", Icon: MessageCircle, href: "https://wa.me/77071512424" },
 ];
 
 export function LandingFooter() {
@@ -92,13 +90,18 @@ export function LandingFooter() {
             </h4>
             <ul className="space-y-2">
               <li>
-                <span className="text-sm text-muted-foreground">
+                <a
+                  href="tel:+77071512424"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
                   {t("phone")}
-                </span>
+                </a>
               </li>
               <li>
                 <a
-                  href="#"
+                  href="https://wa.me/77071512424"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {t("whatsapp")}

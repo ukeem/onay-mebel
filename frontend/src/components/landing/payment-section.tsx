@@ -65,16 +65,28 @@ export function PaymentSection() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
           <Button
+            asChild
             size="lg"
             className="h-12 gap-2 shadow-md shadow-primary/20"
-            disabled
           >
-            <CreditCard className="h-4 w-4" />
-            {t("ctaPay")}
+            <a
+              href="https://pay.kaspi.kz/pay/1pffbpeg"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <CreditCard className="h-4 w-4" />
+              {t("ctaPay")}
+            </a>
           </Button>
-          <Button variant="outline" size="lg" className="h-12 gap-2" disabled>
-            <Send className="h-4 w-4" />
-            {t("ctaReceipt")}
+          <Button asChild variant="outline" size="lg" className="h-12 gap-2">
+            <a
+              href="https://wa.me/77071512424"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Send className="h-4 w-4" />
+              {t("ctaReceipt")}
+            </a>
           </Button>
         </div>
       </div>
