@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
+import { Instagram, MessageCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
@@ -13,6 +13,11 @@ const NAV_LINKS = [
 
 const SOCIAL_LINKS = [
   { key: "whatsapp", Icon: MessageCircle, href: "https://wa.me/77071512424" },
+  {
+    key: "instagram",
+    Icon: Instagram,
+    href: "https://www.instagram.com/onaymebel.kz",
+  },
 ];
 
 export function LandingFooter() {
