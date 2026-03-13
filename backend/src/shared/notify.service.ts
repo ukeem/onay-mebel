@@ -18,7 +18,10 @@ export class NotifyService {
 
   /** Send notification about new user registration */
   async notifyNewUser(phone: string, userId: string): Promise<void> {
-    const text = `🆕 Новый пользователь: ${phone}\nID: ${userId}\n${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`;
+    this.logger.log(
+      `Sending registration notification for ${phone} (${userId})`,
+    );
+    const text = `🆕 Новый пользователь: ${phone}\n${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`;
     await this.sendTelegram(text);
   }
 
@@ -30,7 +33,10 @@ export class NotifyService {
   }
 
   private async sendTelegram(text: string): Promise<void> {
-    if (!this.telegramToken || !this.telegramChatId) return;
+    if (!this.telegramToken || !this.telegramChatId) {
+      this.logger.warn('Telegram credentials missing, skipping notification');
+      return;
+    }
 
     try {
       const url = `https://api.telegram.org/bot${this.telegramToken}/sendMessage`;
@@ -46,6 +52,8 @@ export class NotifyService {
       if (!res.ok) {
         const body = await res.text();
         this.logger.error(`Telegram API error: ${res.status} ${body}`);
+      } else {
+        this.logger.log('Telegram notification sent successfully');
       }
     } catch (err) {
       this.logger.error(`Telegram notification failed: ${err}`);

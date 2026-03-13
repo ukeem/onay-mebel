@@ -62,7 +62,9 @@ export class AuthService {
     await this.catalogCopy.copySettingsToUser(user.id);
 
     // Fire-and-forget notification
-    this.notify.notifyNewUser(phone, user.id).catch(() => {});
+    this.notify.notifyNewUser(phone, user.id).catch((err) => {
+      this.logger.error(`Notification failed for ${phone}: ${err}`);
+    });
 
     return {
       message:
