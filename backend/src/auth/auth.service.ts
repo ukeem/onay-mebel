@@ -14,6 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogCopyService } from '../shared/catalog-copy.service';
+import { NotifyService } from '../shared/notify.service';
 import { parseDuration } from '../shared/parse-duration.util';
 import { SmsService } from '../sms/sms.service';
 import { WsGateway } from '../ws/ws.gateway';
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly sms: SmsService,
     private readonly ws: WsGateway,
     private readonly catalogCopy: CatalogCopyService,
+    private readonly notify: NotifyService,
   ) {}
 
   /* ─────────────── REGISTER ─────────────── */
@@ -42,20 +44,29 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
 
+    // 7-day free trial
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7);
+    trialEnd.setHours(23, 59, 59, 999);
+
     const user = await this.prisma.user.create({
       data: {
         phone,
         password: hashedPassword,
-        status: UserStatus.INACTIVE,
+        status: UserStatus.ACTIVE,
+        activeUntil: trialEnd,
       },
     });
 
     // Copy catalog settings to new user
     await this.catalogCopy.copySettingsToUser(user.id);
 
+    // Fire-and-forget notification
+    this.notify.notifyNewUser(phone, user.id).catch(() => {});
+
     return {
       message:
-        'Регистрация успешна. Обратитесь к администратору для активации.',
+        'Регистрация успешна. Вам предоставлен 7 дней бесплатного доступа.',
       userId: user.id,
     };
   }

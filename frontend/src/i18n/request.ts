@@ -2,7 +2,7 @@ import { getRequestConfig } from "next-intl/server";
 import { cookies } from "next/headers";
 
 export type Locale = "ru" | "kz";
-export const defaultLocale: Locale = "ru";
+export const defaultLocale: Locale = "kz";
 export const locales: Locale[] = ["ru", "kz"];
 
 export default getRequestConfig(async () => {

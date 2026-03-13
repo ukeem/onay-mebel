@@ -38,6 +38,16 @@ import { WsModule } from './ws/ws.module';
         SUPER_ADMIN_PHONE: Joi.string().required(),
         SUPER_ADMIN_PASSWORD: Joi.string().required().min(8),
         UPLOAD_DIR: Joi.string().default('./uploads'),
+
+        // Notifications (optional)
+        SMTP_HOST: Joi.string().optional().allow(''),
+        SMTP_PORT: Joi.number().optional().default(587),
+        SMTP_USER: Joi.string().optional().allow(''),
+        SMTP_PASS: Joi.string().optional().allow(''),
+        SMTP_FROM: Joi.string().optional().allow(''),
+        NOTIFY_EMAIL: Joi.string().optional().allow(''),
+        TELEGRAM_BOT_TOKEN: Joi.string().optional().allow(''),
+        TELEGRAM_CHAT_ID: Joi.string().optional().allow(''),
       }),
     }),
     ThrottlerModule.forRoot({

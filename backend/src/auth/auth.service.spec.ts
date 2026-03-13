@@ -52,6 +52,10 @@ const mockCatalogCopy = {
   copySettingsToUser: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockNotify = {
+  notifyNewUser: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('AuthService', () => {
   let service: AuthService;
 
@@ -65,6 +69,7 @@ describe('AuthService', () => {
       mockSms as any,
       mockWs as any,
       mockCatalogCopy as any,
+      mockNotify as any,
     );
 
     // Default: refreshToken.findMany returns empty
@@ -80,7 +85,7 @@ describe('AuthService', () => {
       mockPrisma.user.create.mockResolvedValue({
         id: 'user-1',
         phone: '+77001234567',
-        status: UserStatus.INACTIVE,
+        status: UserStatus.ACTIVE,
       });
 
       const result = await service.register('+77001234567', 'password123');
@@ -91,7 +96,8 @@ describe('AuthService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             phone: '+77001234567',
-            status: UserStatus.INACTIVE,
+            status: UserStatus.ACTIVE,
+            activeUntil: expect.any(Date),
           }),
         }),
       );
@@ -111,7 +117,7 @@ describe('AuthService', () => {
       mockPrisma.user.create.mockResolvedValue({
         id: 'user-1',
         phone: '+77001234567',
-        status: UserStatus.INACTIVE,
+        status: UserStatus.ACTIVE,
       });
 
       await service.register('+77001234567', 'password123');

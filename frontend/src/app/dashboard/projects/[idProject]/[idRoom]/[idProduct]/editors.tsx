@@ -37,7 +37,7 @@ export const ToggleSection = memo(function ToggleSection({
   disabled,
   children,
 }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;

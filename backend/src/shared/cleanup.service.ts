@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotifyService } from './notify.service';
 
 /**
  * Периодическая очистка и обслуживание:
@@ -13,7 +14,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CleanupService {
   private readonly logger = new Logger(CleanupService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notify: NotifyService,
+  ) {}
 
   /**
    * Каждый день в 0:05 — деактивация пользователей с истёкшей подпиской.
@@ -25,6 +29,17 @@ export class CleanupService {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
+    // Find users before deactivating to get their phones
+    const expiredUsers = await this.prisma.user.findMany({
+      where: {
+        status: UserStatus.ACTIVE,
+        activeUntil: { lt: startOfToday },
+      },
+      select: { phone: true },
+    });
+
+    if (expiredUsers.length === 0) return;
+
     const result = await this.prisma.user.updateMany({
       where: {
         status: UserStatus.ACTIVE,
@@ -33,11 +48,12 @@ export class CleanupService {
       data: { status: UserStatus.INACTIVE },
     });
 
-    if (result.count > 0) {
-      this.logger.log(
-        `Деактивировано ${result.count} пользователей с истёкшей подпиской`,
-      );
-    }
+    this.logger.log(
+      `Деактивировано ${result.count} пользователей с истёкшей подпиской`,
+    );
+
+    const phones = expiredUsers.map((u) => u.phone);
+    this.notify.notifyExpiredUsers(phones).catch(() => {});
   }
 
   /** Каждый день в 3:00 — удаление старых refresh-токенов */
