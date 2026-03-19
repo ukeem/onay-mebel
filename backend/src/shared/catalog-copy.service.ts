@@ -24,6 +24,7 @@ export class CatalogCopyService {
           userId,
           materialId: mat.id,
           price: mat.price,
+          moduleTypes: mat.moduleTypes,
         })),
         skipDuplicates: true,
       });

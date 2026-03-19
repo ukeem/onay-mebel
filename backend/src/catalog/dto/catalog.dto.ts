@@ -1,5 +1,6 @@
-import { CalcType, ProfitType } from '@prisma/client';
+import { CalcType, ModuleType, ProfitType } from '@prisma/client';
 import {
+  IsArray,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -63,6 +64,11 @@ export class CreateMaterialDto {
   @IsString()
   @IsOptional()
   image?: string;
+
+  @IsArray()
+  @IsEnum(ModuleType, { each: true })
+  @IsOptional()
+  moduleTypes?: ModuleType[];
 }
 
 export class UpdateMaterialDto {
@@ -92,6 +98,11 @@ export class UpdateMaterialDto {
   @IsString()
   @IsOptional()
   image?: string;
+
+  @IsArray()
+  @IsEnum(ModuleType, { each: true })
+  @IsOptional()
+  moduleTypes?: ModuleType[];
 }
 
 /* ─── Hardware ─── */

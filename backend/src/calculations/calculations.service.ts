@@ -2309,6 +2309,7 @@ export class CalculationsService {
       let hingeImage: string | null = null;
       if (product.facadesEnabled && product.facades) {
         for (const f of product.facades) {
+          if (!f.hingesEnabled) continue;
           const perFacade = 2 + Math.max(0, Math.floor((f.height - 200) / 500));
           const qty = perFacade * f.qty;
           const hw = resolveHw(f.hingeHardwareId, 'Петли');

@@ -57,6 +57,7 @@ export interface ProductWithSubComponents {
     qty: number;
     handleQty: number;
     openType: FacadeOpenType | null;
+    hingesEnabled: boolean;
     hingeHardwareId: string | null;
     handleHardwareId: string | null;
     tipOnHardwareId: string | null;
@@ -189,6 +190,7 @@ export async function copyProductData(
         qty: f.qty,
         handleQty: f.handleQty,
         openType: f.openType ?? undefined,
+        hingesEnabled: f.hingesEnabled,
         hingeHardwareId: f.hingeHardwareId,
         handleHardwareId: f.handleHardwareId,
         tipOnHardwareId: f.tipOnHardwareId,

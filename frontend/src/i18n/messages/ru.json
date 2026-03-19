@@ -251,6 +251,7 @@
     "legs": "Ножки",
     "legsBrand": "Бренд ножек",
     "hinges": "Петли",
+    "hingesBrand": "Бренд петель",
     "shelfHolders": "Полкодержатели",
     "slideHardware": "Телескоп",
     "tandemHardware": "Тандем",
@@ -539,7 +540,18 @@
     "image": "Изображение",
     "uploadImage": "Загрузить фото",
     "changeImage": "Изменить фото",
-    "imageUploaded": "Фото загружено"
+    "imageUploaded": "Фото загружено",
+    "moduleTypes": "Тип модуля",
+    "moduleTypeLabels": {
+      "SECTION": "Секции",
+      "BACK_WALL": "Задняя стенка",
+      "PARTITION": "Перегородка",
+      "SHELF": "Полка",
+      "FACADE": "Фасад",
+      "DRAWER": "Ящик",
+      "FALSE_FACADE": "Фальш-фасад",
+      "COUNTERTOP": "Столешница"
+    }
   },
   "users": {
     "title": "Пользователи",

@@ -75,14 +75,14 @@ export function SearchableSelect({
             className,
           )}
         >
-          <span className="truncate">
+          <span className="truncate min-w-0">
             {selected ? selected.label : placeholder}
           </span>
           <ChevronDownIcon className="ml-1 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="min-w-[var(--radix-popover-trigger-width)] w-auto max-w-[min(400px,90vw)] p-0"
         align="start"
         side="bottom"
         avoidCollisions
@@ -109,7 +109,7 @@ export function SearchableSelect({
                     setOpen(false);
                   }}
                 >
-                  <span className="truncate flex-1">{option.label}</span>
+                  <span className="flex-1">{option.label}</span>
                   {value === option.value && (
                     <CheckIcon className="size-4 shrink-0" />
                   )}

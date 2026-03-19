@@ -153,7 +153,7 @@ export default function ProductPage() {
             dim1Label={f.t("product.height")}
             dim2Key="depth"
             dim2Label={f.t("product.depth")}
-            materials={f.bodyMaterials}
+            materials={f.partitionMaterials}
             t={f.t}
             defaultItem={{
               dim1: f.defaultHeight,
@@ -181,7 +181,7 @@ export default function ProductPage() {
             dim1Label={f.t("product.width")}
             dim2Key="depth"
             dim2Label={f.t("product.depth")}
-            materials={f.bodyMaterials}
+            materials={f.shelfMaterials}
             t={f.t}
             hardwareLabel={f.t("product.shelfHolders")}
             hardwareItems={f.holderHardware}
@@ -235,7 +235,7 @@ export default function ProductPage() {
           <FalseFacadesEditor
             items={f.falseFacades}
             setItems={f.setFalseFacades}
-            materials={f.bodyMaterials}
+            materials={f.falseFacadeMaterials}
             t={f.t}
             defaultItem={{
               height: f.defaultHeight,
@@ -258,7 +258,7 @@ export default function ProductPage() {
           <DrawersEditor
             items={f.drawers}
             setItems={f.setDrawers}
-            materials={f.bodyMaterials}
+            materials={f.drawerMaterials}
             t={f.t}
             slideHardware={f.slideHardware}
             tandemHardware={f.tandemHardware}

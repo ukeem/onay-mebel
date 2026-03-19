@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ContactType, ProfitType, TierLevel } from '@prisma/client';
+import { ContactType, ModuleType, ProfitType, TierLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -26,9 +26,13 @@ export class SettingsService {
   async updateUserMaterialPrice(
     userId: string,
     materialId: string,
-    dto: { price?: number; enabled?: boolean },
+    dto: { price?: number; enabled?: boolean; moduleTypes?: ModuleType[] },
   ) {
-    if (dto.price === undefined && dto.enabled === undefined) {
+    if (
+      dto.price === undefined &&
+      dto.enabled === undefined &&
+      dto.moduleTypes === undefined
+    ) {
       throw new BadRequestException('Нет данных для обновления');
     }
     const record = await this.prisma.userMaterial.findUnique({
@@ -40,6 +44,9 @@ export class SettingsService {
       data: {
         ...(dto.price !== undefined ? { price: dto.price } : {}),
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+        ...(dto.moduleTypes !== undefined
+          ? { moduleTypes: dto.moduleTypes }
+          : {}),
       },
       include: { material: { include: { materialType: true } } },
     });
@@ -443,6 +450,7 @@ export class SettingsService {
       length?: number;
       width?: number;
       price?: number;
+      moduleTypes?: ModuleType[];
     },
   ) {
     // Verify materialType exists
@@ -452,6 +460,7 @@ export class SettingsService {
     if (!matType) throw new NotFoundException('Тип материала не найден');
 
     const price = dto.price ?? 0;
+    const moduleTypes = dto.moduleTypes ?? [];
 
     // Create material owned by user + UserMaterial link in a single tx
     return this.prisma.$transaction(async (tx) => {
@@ -464,12 +473,13 @@ export class SettingsService {
           width: dto.width,
           price,
           userId,
+          moduleTypes,
         },
         include: { materialType: true },
       });
 
       const userMaterial = await tx.userMaterial.create({
-        data: { userId, materialId: material.id, price },
+        data: { userId, materialId: material.id, price, moduleTypes },
         include: { material: { include: { materialType: true } } },
       });
 
@@ -486,6 +496,58 @@ export class SettingsService {
 
     await this.prisma.material.delete({ where: { id: materialId } });
     return { message: 'Материал удалён' };
+  }
+
+  async updateCustomMaterial(
+    userId: string,
+    materialId: string,
+    dto: {
+      brand?: string;
+      calcType?: 'SHEET' | 'SQM' | 'LM';
+      length?: number;
+      width?: number;
+      price?: number;
+      moduleTypes?: ModuleType[];
+    },
+  ) {
+    const material = await this.prisma.material.findUnique({
+      where: { id: materialId },
+    });
+    if (!material) throw new NotFoundException('Материал не найден');
+    if (material.userId !== userId) throw new ForbiddenException('Нет доступа');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.material.update({
+        where: { id: materialId },
+        data: {
+          ...(dto.brand !== undefined ? { brand: dto.brand } : {}),
+          ...(dto.calcType !== undefined ? { calcType: dto.calcType } : {}),
+          ...(dto.length !== undefined ? { length: dto.length } : {}),
+          ...(dto.width !== undefined ? { width: dto.width } : {}),
+          ...(dto.price !== undefined ? { price: dto.price } : {}),
+          ...(dto.moduleTypes !== undefined
+            ? { moduleTypes: dto.moduleTypes }
+            : {}),
+        },
+        include: { materialType: true },
+      });
+
+      // Sync price and moduleTypes to UserMaterial
+      const umUpdate: Record<string, unknown> = {};
+      if (dto.price !== undefined) umUpdate.price = dto.price;
+      if (dto.moduleTypes !== undefined) umUpdate.moduleTypes = dto.moduleTypes;
+      if (Object.keys(umUpdate).length > 0) {
+        await tx.userMaterial.updateMany({
+          where: { materialId },
+          data: umUpdate,
+        });
+      }
+
+      return tx.userMaterial.findUnique({
+        where: { userId_materialId: { userId, materialId } },
+        include: { material: { include: { materialType: true } } },
+      });
+    });
   }
 
   /* ═══ CUSTOM USER HARDWARE ═══ */

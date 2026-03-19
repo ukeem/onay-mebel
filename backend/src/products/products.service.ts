@@ -278,7 +278,10 @@ export class ProductsService {
           qty: item.qty,
           handleQty: item.handleQty ?? 0,
           openType: item.openType ?? ('HANDLE' as const),
-          hingeHardwareId: item.hingeHardwareId || null,
+          hingesEnabled: item.hingesEnabled ?? false,
+          hingeHardwareId: item.hingesEnabled
+            ? item.hingeHardwareId || null
+            : null,
           handleHardwareId: item.handleHardwareId || null,
           tipOnHardwareId: item.tipOnHardwareId || null,
         };

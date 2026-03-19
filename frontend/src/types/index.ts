@@ -18,6 +18,15 @@ export type ContactType =
   | "INSTAGRAM"
   | "TIKTOK";
 export type Tier = "standard" | "comfort" | "premium";
+export type ModuleType =
+  | "SECTION"
+  | "BACK_WALL"
+  | "PARTITION"
+  | "SHELF"
+  | "FACADE"
+  | "DRAWER"
+  | "FALSE_FACADE"
+  | "COUNTERTOP";
 
 /* ═══════════════ User ═══════════════ */
 
@@ -45,6 +54,7 @@ export interface Material {
   width: number;
   price: string;
   image: string | null;
+  moduleTypes: ModuleType[];
   materialType: MaterialType;
 }
 
@@ -86,6 +96,7 @@ export interface UserMaterial {
   id: string;
   price: string;
   enabled: boolean;
+  moduleTypes: ModuleType[];
   material: {
     id: string;
     brand: string | null;
@@ -191,6 +202,7 @@ export interface MatOption {
   brand: string | null;
   calcType: CalcType;
   materialType: { name: string };
+  moduleTypes: ModuleType[];
 }
 
 export interface HwOption {
@@ -215,6 +227,7 @@ export interface SubItem {
   // hardware references
   legsEnabled?: boolean;
   legsHardwareId?: string;
+  hingesEnabled?: boolean;
   hingeHardwareId?: string;
   handleHardwareId?: string;
   tipOnHardwareId?: string;

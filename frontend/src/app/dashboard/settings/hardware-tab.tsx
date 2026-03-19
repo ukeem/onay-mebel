@@ -346,7 +346,7 @@ export function UserHardwareTab() {
             <DialogTitle>{t("settings.addCustomHardware")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
+            <div className="space-y-1">
               <Label>{t("common.type")}</Label>
               <Select value={newTypeId} onValueChange={setNewTypeId}>
                 <SelectTrigger>
@@ -361,7 +361,7 @@ export function UserHardwareTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1">
               <Label>{t("common.brand")}</Label>
               <Input
                 value={newBrand}
@@ -369,7 +369,7 @@ export function UserHardwareTab() {
                 placeholder={t("settings.brandPlaceholder")}
               />
             </div>
-            <div>
+            <div className="space-y-1">
               <Label>{t("settings.myPrice")}</Label>
               <Input
                 type="text"

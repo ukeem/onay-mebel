@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CalcType } from '@prisma/client';
+import { CalcType, ModuleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /* ─── DTOs (inline for catalog) ─── */
@@ -21,6 +21,7 @@ interface CreateMaterialDto {
   width?: number;
   price?: number;
   image?: string;
+  moduleTypes?: ModuleType[];
 }
 
 interface UpdateMaterialDto {
@@ -30,6 +31,7 @@ interface UpdateMaterialDto {
   width?: number;
   price?: number;
   image?: string;
+  moduleTypes?: ModuleType[];
 }
 
 interface CreateHardwareDto {
@@ -203,6 +205,7 @@ export class CatalogService {
         width: dto.width,
         price: dto.price,
         image: dto.image,
+        moduleTypes: dto.moduleTypes ?? [],
       },
       include: { materialType: true },
     });
@@ -215,6 +218,7 @@ export class CatalogService {
           userId: u.id,
           materialId: mat.id,
           price: mat.price,
+          moduleTypes: mat.moduleTypes,
         })),
         skipDuplicates: true,
       });
@@ -225,11 +229,21 @@ export class CatalogService {
 
   async updateMaterial(id: string, dto: UpdateMaterialDto) {
     await this.ensureExists('material', id);
-    return this.prisma.material.update({
+    const mat = await this.prisma.material.update({
       where: { id },
       data: dto,
       include: { materialType: true },
     });
+
+    // Sync moduleTypes to all UserMaterial records
+    if (dto.moduleTypes !== undefined) {
+      await this.prisma.userMaterial.updateMany({
+        where: { materialId: id },
+        data: { moduleTypes: dto.moduleTypes },
+      });
+    }
+
+    return mat;
   }
 
   async deleteMaterial(id: string) {

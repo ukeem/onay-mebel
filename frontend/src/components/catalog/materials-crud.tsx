@@ -3,6 +3,7 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -32,9 +38,9 @@ import {
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { API_BASE_URL } from "@/lib/constants";
-import { selectOnFocus } from "@/lib/utils";
-import type { Material, MaterialType } from "@/types";
-import { ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { parseNum, selectOnFocus } from "@/lib/utils";
+import type { Material, MaterialType, ModuleType } from "@/types";
+import { ChevronDown, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -42,6 +48,18 @@ import { toast } from "sonner";
 
 export function MaterialsCrud() {
   const t = useTranslations();
+
+  const ALL_MODULE_TYPES: ModuleType[] = [
+    "SECTION",
+    "BACK_WALL",
+    "PARTITION",
+    "SHELF",
+    "FACADE",
+    "DRAWER",
+    "FALSE_FACADE",
+    "COUNTERTOP",
+  ];
+
   const calcTypeLabels: Record<string, string> = {
     SHEET: t("settings.calcLabels.SHEET"),
     SQM: t("settings.calcLabels.SQM"),
@@ -63,6 +81,7 @@ export function MaterialsCrud() {
   const [uploading, setUploading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [moduleTypes, setModuleTypes] = useState<ModuleType[]>([]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -92,6 +111,7 @@ export function MaterialsCrud() {
     setWidth("2070");
     setPrice("0");
     setImage(null);
+    setModuleTypes([]);
   };
 
   const handleSave = async () => {
@@ -104,8 +124,9 @@ export function MaterialsCrud() {
         ...(calcType === "SHEET"
           ? { length: parseInt(length), width: parseInt(width) }
           : {}),
-        price: parseFloat(price),
+        price: parseNum(price),
         image: image || undefined,
+        moduleTypes,
       };
       if (editId) {
         await api.patch(`/catalog/materials/${editId}`, body);
@@ -133,6 +154,7 @@ export function MaterialsCrud() {
     setWidth(String(m.width));
     setPrice(String(m.price));
     setImage(m.image);
+    setModuleTypes(m.moduleTypes ?? []);
     setOpen(true);
   };
 
@@ -194,7 +216,7 @@ export function MaterialsCrud() {
               {t("common.add")}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
                 {editId ? t("common.edit") : t("common.add")}
@@ -206,15 +228,15 @@ export function MaterialsCrud() {
                 handleSave();
               }}
             >
-              <div className="grid gap-3">
+              <div className="grid gap-4">
                 {!editId && (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <Label>{t("catalog.materialLabel")}</Label>
                     <Select
                       value={materialTypeId}
                       onValueChange={setMaterialTypeId}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder={t("common.selectType")} />
                       </SelectTrigger>
                       <SelectContent>
@@ -227,19 +249,21 @@ export function MaterialsCrud() {
                     </Select>
                   </div>
                 )}
-                <div className="space-y-1">
-                  <Label>{t("common.brand")}</Label>
+                <div className="space-y-1.5">
+                  <Label>{t("common.brand")} *</Label>
                   <Input
+                    className="w-full"
+                    required
                     autoFocus={!!editId}
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
-                    placeholder={t("common.optional")}
+                    placeholder={t("common.brand")}
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <Label>{t("catalog.calcType")}</Label>
                   <Select value={calcType} onValueChange={setCalcType}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -256,10 +280,12 @@ export function MaterialsCrud() {
                   </Select>
                 </div>
                 {calcType === "SHEET" && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label>{t("catalog.lengthMm")}</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>{t("catalog.lengthMm")} *</Label>
                       <Input
+                        className="w-full"
+                        required
                         type="text"
                         inputMode="decimal"
                         value={length}
@@ -267,9 +293,11 @@ export function MaterialsCrud() {
                         onChange={(e) => setLength(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label>{t("catalog.widthMm")}</Label>
+                    <div className="space-y-1.5">
+                      <Label>{t("catalog.widthMm")} *</Label>
                       <Input
+                        className="w-full"
+                        required
                         type="text"
                         inputMode="decimal"
                         value={width}
@@ -279,9 +307,11 @@ export function MaterialsCrud() {
                     </div>
                   </div>
                 )}
-                <div className="space-y-1">
-                  <Label>{t("catalog.priceLabel")}</Label>
+                <div className="space-y-1.5">
+                  <Label>{t("catalog.priceLabel")} *</Label>
                   <Input
+                    className="w-full"
+                    required
                     type="text"
                     inputMode="decimal"
                     value={price}
@@ -320,9 +350,43 @@ export function MaterialsCrud() {
                     </label>
                   </div>
                 </div>
+                <div className="space-y-1">
+                  <Label>{t("catalog.moduleTypes")}</Label>
+                  <div className="rounded-md border p-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                      {ALL_MODULE_TYPES.map((mt) => (
+                        <label
+                          key={mt}
+                          className="flex items-center gap-2 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={moduleTypes.includes(mt)}
+                            onCheckedChange={(checked) => {
+                              setModuleTypes((prev) =>
+                                checked
+                                  ? [...prev, mt]
+                                  : prev.filter((v) => v !== mt),
+                              );
+                            }}
+                          />
+                          {t(`catalog.moduleTypeLabels.${mt}`)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={saving}>
+                <Button
+                  type="submit"
+                  disabled={
+                    saving ||
+                    !brand.trim() ||
+                    !price.trim() ||
+                    parseNum(price) <= 0 ||
+                    (calcType === "SHEET" && (!length.trim() || !width.trim()))
+                  }
+                >
                   {t("common.save")}
                 </Button>
               </DialogFooter>
@@ -341,6 +405,7 @@ export function MaterialsCrud() {
               <TableHead>{t("settings.calcType")}</TableHead>
               <TableHead>{t("settings.size")}</TableHead>
               <TableHead>{t("common.price")}</TableHead>
+              <TableHead>{t("catalog.moduleTypes")}</TableHead>
               <TableHead className="w-24 text-right">
                 {t("common.actions")}
               </TableHead>
@@ -371,6 +436,49 @@ export function MaterialsCrud() {
                   {m.calcType === "SHEET" ? `${m.length}×${m.width}` : "—"}
                 </TableCell>
                 <TableCell>{Number(m.price).toLocaleString()}</TableCell>
+                <TableCell>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                      >
+                        {(m.moduleTypes ?? []).length || "—"}
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2">
+                      {ALL_MODULE_TYPES.map((mt) => (
+                        <label
+                          key={mt}
+                          className="flex items-center gap-2 py-1 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={(m.moduleTypes ?? []).includes(mt)}
+                            onCheckedChange={async () => {
+                              const current = m.moduleTypes ?? [];
+                              const next = current.includes(mt)
+                                ? current.filter((v) => v !== mt)
+                                : [...current, mt];
+                              try {
+                                await api.patch(`/catalog/materials/${m.id}`, {
+                                  moduleTypes: next,
+                                });
+                                fetchAll();
+                              } catch (err: unknown) {
+                                toast.error(
+                                  getApiError(err, t("common.error")),
+                                );
+                              }
+                            }}
+                          />
+                          {t(`catalog.moduleTypeLabels.${mt}`)}
+                        </label>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button
@@ -398,7 +506,7 @@ export function MaterialsCrud() {
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="h-16 text-center text-muted-foreground"
                 >
                   {t("catalog.noMaterials")}

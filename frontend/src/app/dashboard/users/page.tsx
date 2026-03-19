@@ -304,6 +304,9 @@ export default function UsersPage() {
               placeholder={t("users.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
+              name="users-search-nofill"
+              data-form-type="other"
             />
             {searchQuery && (
               <button
@@ -408,6 +411,7 @@ export default function UsersPage() {
                           <Input
                             type="date"
                             className="h-8 w-full text-sm"
+                            autoComplete="off"
                             value={
                               u.activeUntil
                                 ? new Date(u.activeUntil)
@@ -427,6 +431,7 @@ export default function UsersPage() {
                             type={pwdVisible[u.id] ? "text" : "password"}
                             placeholder={t("users.newPasswordPlaceholder")}
                             className="h-8 w-full text-sm pr-8"
+                            autoComplete="new-password"
                             value={pwdEdits[u.id] || ""}
                             onChange={(e) =>
                               setPwdEdits((prev) => ({

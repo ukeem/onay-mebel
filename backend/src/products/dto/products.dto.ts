@@ -206,6 +206,10 @@ export class UpsertFacadeDto {
   openType?: FacadeOpenType;
 
   @IsOptional()
+  @IsBoolean()
+  hingesEnabled?: boolean;
+
+  @IsOptional()
   @IsString()
   hingeHardwareId?: string | null;
 

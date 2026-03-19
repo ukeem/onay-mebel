@@ -1068,7 +1068,7 @@ export default function DetailPage({
                                       <div className="min-w-0 flex-1 space-y-1">
                                         <div className="flex items-baseline justify-between gap-2">
                                           <span
-                                            className={`max-w-[140px] text-xs font-medium leading-tight ${!det.enabled ? "line-through" : ""}`}
+                                            className={`max-w-[200px] text-xs font-medium leading-tight ${!det.enabled ? "line-through" : ""}`}
                                           >
                                             {det.label}
                                           </span>
@@ -1078,7 +1078,7 @@ export default function DetailPage({
                                               : ""}
                                           </span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                           {brandOpts.length > 1 ? (
                                             <SearchableSelect
                                               value={
@@ -1129,11 +1129,11 @@ export default function DetailPage({
                                                 t("common.search") + "…"
                                               }
                                               emptyText={t("common.noResults")}
-                                              className="w-[140px] text-[11px] px-2 h-8"
+                                              className="min-w-[180px] flex-1 text-[11px] px-2 h-8"
                                             />
                                           ) : (
                                             <span
-                                              className="inline-flex w-[140px] items-center text-[11px] text-muted-foreground"
+                                              className="inline-flex min-w-[180px] flex-1 items-center text-[11px] text-muted-foreground"
                                               style={{ height: 32 }}
                                             >
                                               {det.brand

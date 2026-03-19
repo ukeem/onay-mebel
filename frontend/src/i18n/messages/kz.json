@@ -251,6 +251,7 @@
     "legs": "Аяқтар",
     "legsBrand": "Аяқтар бренді",
     "hinges": "Ілмектер",
+    "hingesBrand": "Ілмектер бренді",
     "shelfHolders": "Сөре ұстағыштар",
     "slideHardware": "Бағыттауыштар",
     "tandemHardware": "Тандем",
@@ -539,7 +540,18 @@
     "image": "Сурет",
     "uploadImage": "Фото жүктеу",
     "changeImage": "Фотоны өзгерту",
-    "imageUploaded": "Фото жүктелді"
+    "imageUploaded": "Фото жүктелді",
+    "moduleTypes": "Модуль түрі",
+    "moduleTypeLabels": {
+      "SECTION": "Секциялар",
+      "BACK_WALL": "Артқы қабырға",
+      "PARTITION": "Бөлгіш",
+      "SHELF": "Сөре",
+      "FACADE": "Фасад",
+      "DRAWER": "Серпе",
+      "FALSE_FACADE": "Жалған фасад",
+      "COUNTERTOP": "Үстел үсті"
+    }
   },
   "users": {
     "title": "Қолданушылар",

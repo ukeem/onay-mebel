@@ -3,6 +3,7 @@
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -32,7 +38,14 @@ import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { API_BASE_URL } from "@/lib/constants";
 import { parseNum, selectOnFocus } from "@/lib/utils";
-import { Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -40,11 +53,23 @@ import { toast } from "sonner";
 
 import { Spinner } from "@/components/ui/spinner";
 
-import type { MaterialType } from "@/types";
+import type { MaterialType, ModuleType } from "@/types";
 import type { UserMaterial } from "./types";
 
 export function UserMaterialsTab() {
   const t = useTranslations();
+
+  const ALL_MODULE_TYPES: ModuleType[] = [
+    "SECTION",
+    "BACK_WALL",
+    "PARTITION",
+    "SHELF",
+    "FACADE",
+    "DRAWER",
+    "FALSE_FACADE",
+    "COUNTERTOP",
+  ];
+
   const [items, setItems] = useState<UserMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [prices, setPrices] = useState<Record<string, string>>({});
@@ -60,9 +85,21 @@ export function UserMaterialsTab() {
   const [newWidth, setNewWidth] = useState("2070");
   const [newPrice, setNewPrice] = useState("0");
   const [adding, setAdding] = useState(false);
+  const [newModuleTypes, setNewModuleTypes] = useState<ModuleType[]>([]);
 
   /* delete confirm */
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  /* edit dialog */
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editBrand, setEditBrand] = useState("");
+  const [editCalcType, setEditCalcType] = useState("SHEET");
+  const [editLength, setEditLength] = useState("2800");
+  const [editWidth, setEditWidth] = useState("2070");
+  const [editPrice, setEditPrice] = useState("0");
+  const [editModuleTypes, setEditModuleTypes] = useState<ModuleType[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -117,6 +154,25 @@ export function UserMaterialsTab() {
     }
   };
 
+  const toggleModuleType = async (um: UserMaterial, mt: ModuleType) => {
+    const current = um.moduleTypes ?? [];
+    const next = current.includes(mt)
+      ? current.filter((v) => v !== mt)
+      : [...current, mt];
+    try {
+      await api.patch(`/settings/materials/${um.material.id}`, {
+        moduleTypes: next,
+      });
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === um.id ? { ...item, moduleTypes: next } : item,
+        ),
+      );
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    }
+  };
+
   const sync = async () => {
     setSyncing(true);
     try {
@@ -146,6 +202,7 @@ export function UserMaterialsTab() {
     setNewLength("2800");
     setNewWidth("2070");
     setNewPrice("0");
+    setNewModuleTypes([]);
     setAddOpen(true);
   };
 
@@ -161,6 +218,7 @@ export function UserMaterialsTab() {
           length: parseInt(newLength) || 1,
           width: parseInt(newWidth) || 1,
           price: parseNum(newPrice),
+          moduleTypes: newModuleTypes,
         })
       ).data;
       setItems((prev) => [created, ...prev]);
@@ -186,6 +244,45 @@ export function UserMaterialsTab() {
       toast.error(getApiError(err, t("common.error")));
     } finally {
       setDeleteId(null);
+    }
+  };
+
+  /* ── Edit custom material ── */
+
+  const openEditDialog = (um: UserMaterial) => {
+    setEditId(um.material.id);
+    setEditBrand(um.material.brand || "");
+    setEditCalcType(um.material.calcType || "SHEET");
+    setEditLength(String(um.material.length || 2800));
+    setEditWidth(String(um.material.width || 2070));
+    setEditPrice(String(um.price));
+    setEditModuleTypes(um.moduleTypes ?? []);
+    setEditOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editId) return;
+    setSaving(true);
+    try {
+      const res = await api.patch(`/settings/materials/custom/${editId}`, {
+        brand: editBrand || undefined,
+        calcType: editCalcType,
+        length: parseInt(editLength) || 1,
+        width: parseInt(editWidth) || 1,
+        price: parseNum(editPrice),
+        moduleTypes: editModuleTypes,
+      });
+      const updated: UserMaterial = res.data;
+      setItems((prev) =>
+        prev.map((i) => (i.material.id === editId ? updated : i)),
+      );
+      setPrices((p) => ({ ...p, [updated.id]: String(updated.price) }));
+      setEditOpen(false);
+      toast.success(t("common.updated"));
+    } catch (err: unknown) {
+      toast.error(getApiError(err, t("common.error")));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -237,6 +334,9 @@ export function UserMaterialsTab() {
               <TableHead className="w-28 md:w-36">
                 {t("settings.myPrice")}
               </TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t("catalog.moduleTypes")}
+              </TableHead>
               <TableHead className="w-20 text-center hidden md:table-cell">
                 {t("settings.visible")}
               </TableHead>
@@ -279,7 +379,17 @@ export function UserMaterialsTab() {
                   </div>
                 </TableCell>
                 <TableCell className="max-w-[110px] truncate">
-                  {um.material.brand || "—"}
+                  {um.material.userId ? (
+                    <button
+                      type="button"
+                      className="text-left underline decoration-dotted underline-offset-4 hover:text-primary cursor-pointer"
+                      onClick={() => openEditDialog(um)}
+                    >
+                      {um.material.brand || "—"}
+                    </button>
+                  ) : (
+                    um.material.brand || "—"
+                  )}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {t(`settings.calcLabels.${um.material.calcType}`)}
@@ -303,6 +413,40 @@ export function UserMaterialsTab() {
                     onBlur={() => savePrice(um)}
                   />
                 </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {um.material.userId ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                        >
+                          {(um.moduleTypes ?? []).length || "—"}
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-2">
+                        {ALL_MODULE_TYPES.map((mt) => (
+                          <label
+                            key={mt}
+                            className="flex items-center gap-2 py-1 text-sm cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={(um.moduleTypes ?? []).includes(mt)}
+                              onCheckedChange={() => toggleModuleType(um, mt)}
+                            />
+                            {t(`catalog.moduleTypeLabels.${mt}`)}
+                          </label>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {(um.moduleTypes ?? []).length || "—"}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="text-center hidden md:table-cell">
                   <Switch
                     checked={um.enabled}
@@ -321,13 +465,22 @@ export function UserMaterialsTab() {
                       <Save className="h-3 w-3" />
                     </Button>
                     {um.material.userId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteId(um.material.id)}
-                      >
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(um)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteId(um.material.id)}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </TableCell>
@@ -348,7 +501,7 @@ export function UserMaterialsTab() {
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="h-16 text-center text-muted-foreground"
                 >
                   {t("settings.noMaterials")}
@@ -361,15 +514,15 @@ export function UserMaterialsTab() {
 
       {/* Add custom material dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("settings.addCustomMaterial")}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
               <Label>{t("common.type")}</Label>
               <Select value={newTypeId} onValueChange={setNewTypeId}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder={t("settings.selectType")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -381,18 +534,20 @@ export function UserMaterialsTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>{t("common.brand")}</Label>
+            <div className="space-y-1.5">
+              <Label>{t("common.brand")} *</Label>
               <Input
+                className="w-full"
+                required
                 value={newBrand}
                 onChange={(e) => setNewBrand(e.target.value)}
                 placeholder={t("settings.brandPlaceholder")}
               />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>{t("settings.calcType")}</Label>
               <Select value={newCalcType} onValueChange={setNewCalcType}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -408,27 +563,33 @@ export function UserMaterialsTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>{t("settings.lengthMm")}</Label>
-                <Input
-                  type="number"
-                  value={newLength}
-                  onChange={(e) => setNewLength(e.target.value)}
-                />
+            {newCalcType === "SHEET" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>{t("settings.lengthMm")}</Label>
+                  <Input
+                    className="w-full"
+                    type="number"
+                    value={newLength}
+                    onChange={(e) => setNewLength(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("settings.widthMm")}</Label>
+                  <Input
+                    className="w-full"
+                    type="number"
+                    value={newWidth}
+                    onChange={(e) => setNewWidth(e.target.value)}
+                  />
+                </div>
               </div>
-              <div>
-                <Label>{t("settings.widthMm")}</Label>
-                <Input
-                  type="number"
-                  value={newWidth}
-                  onChange={(e) => setNewWidth(e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>{t("settings.myPrice")}</Label>
+            )}
+            <div className="space-y-1.5">
+              <Label>{t("settings.myPrice")} *</Label>
               <Input
+                className="w-full"
+                required
                 type="text"
                 inputMode="decimal"
                 value={newPrice}
@@ -438,10 +599,164 @@ export function UserMaterialsTab() {
                 }
               />
             </div>
+            <div className="space-y-2">
+              <Label>{t("catalog.moduleTypes")}</Label>
+              <div className="rounded-md border p-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  {ALL_MODULE_TYPES.map((mt) => (
+                    <label
+                      key={mt}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={newModuleTypes.includes(mt)}
+                        onCheckedChange={(checked) => {
+                          setNewModuleTypes((prev) =>
+                            checked
+                              ? [...prev, mt]
+                              : prev.filter((v) => v !== mt),
+                          );
+                        }}
+                      />
+                      {t(`catalog.moduleTypeLabels.${mt}`)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAdd} disabled={!newTypeId || adding}>
+            <Button
+              onClick={handleAdd}
+              disabled={
+                !newTypeId ||
+                !newBrand.trim() ||
+                !newPrice.trim() ||
+                parseFloat(newPrice.replace(",", ".")) <= 0 ||
+                (newCalcType === "SHEET" &&
+                  (!newLength.trim() || !newWidth.trim())) ||
+                adding
+              }
+            >
               {t("common.add")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit custom material dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("common.edit")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>{t("common.brand")} *</Label>
+              <Input
+                className="w-full"
+                required
+                autoFocus
+                value={editBrand}
+                onChange={(e) => setEditBrand(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("settings.calcType")}</Label>
+              <Select value={editCalcType} onValueChange={setEditCalcType}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SHEET">
+                    {t("settings.calcLabels.SHEET")}
+                  </SelectItem>
+                  <SelectItem value="SQM">
+                    {t("settings.calcLabels.SQM")}
+                  </SelectItem>
+                  <SelectItem value="LM">
+                    {t("settings.calcLabels.LM")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editCalcType === "SHEET" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>{t("settings.lengthMm")} *</Label>
+                  <Input
+                    className="w-full"
+                    required
+                    type="number"
+                    value={editLength}
+                    onChange={(e) => setEditLength(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("settings.widthMm")} *</Label>
+                  <Input
+                    className="w-full"
+                    required
+                    type="number"
+                    value={editWidth}
+                    onChange={(e) => setEditWidth(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>{t("settings.myPrice")} *</Label>
+              <Input
+                className="w-full"
+                required
+                type="text"
+                inputMode="decimal"
+                value={editPrice}
+                onFocus={selectOnFocus}
+                onChange={(e) =>
+                  setEditPrice(e.target.value.replace(/\./g, ","))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("catalog.moduleTypes")}</Label>
+              <div className="rounded-md border p-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  {ALL_MODULE_TYPES.map((mt) => (
+                    <label
+                      key={mt}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={editModuleTypes.includes(mt)}
+                        onCheckedChange={(checked) => {
+                          setEditModuleTypes((prev) =>
+                            checked
+                              ? [...prev, mt]
+                              : prev.filter((v) => v !== mt),
+                          );
+                        }}
+                      />
+                      {t(`catalog.moduleTypeLabels.${mt}`)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleEditSave}
+              disabled={
+                saving ||
+                !editBrand.trim() ||
+                !editPrice.trim() ||
+                parseFloat(editPrice.replace(",", ".")) <= 0 ||
+                (editCalcType === "SHEET" &&
+                  (!editLength.trim() || !editWidth.trim()))
+              }
+            >
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

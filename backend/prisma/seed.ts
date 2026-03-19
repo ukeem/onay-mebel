@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
   CalcType,
+  ModuleType,
   PrismaClient,
   ProfitType,
   Role,
@@ -125,6 +126,34 @@ async function main() {
   // ===========================
   // 6. Начальные материалы
   // ===========================
+
+  // Default moduleTypes per material type
+  const matTypeModules: Record<string, ModuleType[]> = {
+    ЛДСП: [
+      ModuleType.SECTION,
+      ModuleType.BACK_WALL,
+      ModuleType.PARTITION,
+      ModuleType.SHELF,
+      ModuleType.FACADE,
+      ModuleType.DRAWER,
+      ModuleType.FALSE_FACADE,
+      ModuleType.COUNTERTOP,
+    ],
+    МДФ: [
+      ModuleType.SECTION,
+      ModuleType.BACK_WALL,
+      ModuleType.PARTITION,
+      ModuleType.SHELF,
+      ModuleType.FACADE,
+      ModuleType.DRAWER,
+      ModuleType.FALSE_FACADE,
+      ModuleType.COUNTERTOP,
+    ],
+    ХДФ: [ModuleType.BACK_WALL],
+    Камень: [ModuleType.COUNTERTOP],
+    Кромка: [],
+  };
+
   const materials = [
     // ЛДСП
     {
@@ -225,8 +254,20 @@ async function main() {
     const existing = await prisma.material.findFirst({
       where: { materialTypeId: mat.materialTypeId, brand: mat.brand },
     });
+    // Resolve moduleTypes from materialType name
+    const typeName = Object.entries(materialTypes).find(
+      ([, id]) => id === mat.materialTypeId,
+    )?.[0];
+    const moduleTypes = typeName ? (matTypeModules[typeName] ?? []) : [];
     if (!existing) {
-      await prisma.material.create({ data: mat });
+      await prisma.material.create({
+        data: { ...mat, moduleTypes },
+      });
+    } else if (existing.moduleTypes.length === 0 && moduleTypes.length > 0) {
+      await prisma.material.update({
+        where: { id: existing.id },
+        data: { moduleTypes },
+      });
     }
   }
   console.log(`✅ Materials: ${materials.length}`);
@@ -312,6 +353,20 @@ async function main() {
   await copySettingsToUser(superAdmin.id);
   console.log('✅ Settings copied to super admin');
 
+  // ===========================
+  // Sync UserMaterial.moduleTypes from Material for all users
+  // ===========================
+  const allMaterials = await prisma.material.findMany();
+  for (const mat of allMaterials) {
+    await prisma.userMaterial.updateMany({
+      where: { materialId: mat.id },
+      data: { moduleTypes: mat.moduleTypes },
+    });
+  }
+  console.log(
+    `✅ Synced moduleTypes for ${allMaterials.length} materials to all users`,
+  );
+
   console.log('🎉 Seed completed!');
 }
 
@@ -325,11 +380,12 @@ async function copySettingsToUser(userId: string) {
   for (const mat of materials) {
     await prisma.userMaterial.upsert({
       where: { userId_materialId: { userId, materialId: mat.id } },
-      update: {},
+      update: { moduleTypes: mat.moduleTypes },
       create: {
         userId,
         materialId: mat.id,
         price: mat.price,
+        moduleTypes: mat.moduleTypes,
       },
     });
   }

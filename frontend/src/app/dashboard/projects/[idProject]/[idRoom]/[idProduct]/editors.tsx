@@ -990,18 +990,34 @@ export const FacadesEditor = memo(function FacadesEditor({
             />
             {/* Row 4: петли */}
             {hingeHardware && hingeHardware.length > 0 && (
-              <HwSelect
+              <SwitchRow
                 label={t("product.hinges")}
-                value={f.hingeHardwareId || ""}
+                checked={f.hingesEnabled ?? false}
                 onChange={(v) => {
                   const copy = [...items];
-                  copy[i] = { ...f, hingeHardwareId: v };
+                  copy[i] = {
+                    ...f,
+                    hingesEnabled: v,
+                    hingeHardwareId: v
+                      ? f.hingeHardwareId || defaultHingeId || undefined
+                      : undefined,
+                  };
                   setItems(copy);
                 }}
-                items={hingeHardware}
-                t={t}
-                error={errorKeys?.has(`hinge_${i}`)}
-              />
+              >
+                <HwSelect
+                  label={t("product.hingesBrand")}
+                  value={f.hingeHardwareId || ""}
+                  onChange={(v) => {
+                    const copy = [...items];
+                    copy[i] = { ...f, hingeHardwareId: v };
+                    setItems(copy);
+                  }}
+                  items={hingeHardware}
+                  t={t}
+                  error={errorKeys?.has(`hinge_${i}`)}
+                />
+              </SwitchRow>
             )}
             {/* Row 5: тип открывания */}
             <div className="space-y-1.5">

@@ -18,6 +18,7 @@ import {
   SavePaymentStagesDto,
   SaveTierPreferencesDto,
   UpdateContactDto,
+  UpdateCustomMaterialDto,
   UpdateUserDefaultsDto,
   UpdateUserHardwarePriceDto,
   UpdateUserMaterialPriceDto,
@@ -61,6 +62,15 @@ export class SettingsController {
     @Param('materialId') materialId: string,
   ) {
     return this.settings.deleteCustomMaterial(req.user.id, materialId);
+  }
+
+  @Patch('materials/custom/:materialId')
+  updateCustomMaterial(
+    @Request() req: any,
+    @Param('materialId') materialId: string,
+    @Body() dto: UpdateCustomMaterialDto,
+  ) {
+    return this.settings.updateCustomMaterial(req.user.id, materialId, dto);
   }
 
   /* ═══ USER HARDWARE ═══ */

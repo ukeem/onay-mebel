@@ -84,7 +84,10 @@ export function useProductForm(
       setExtraTypes(etRes.data);
       const enabledMaterials = (mRes.data as any[])
         .filter((um) => um.enabled !== false && um.material)
-        .map((um) => um.material as MatOption);
+        .map((um) => ({
+          ...um.material,
+          moduleTypes: um.moduleTypes ?? [],
+        })) as MatOption[];
       setMaterials(
         enabledMaterials.filter((m) => m.materialType?.name !== "Кромка"),
       );
@@ -238,7 +241,7 @@ export function useProductForm(
       if (facades.length === 0) e.add("facadeRequired");
       facades.forEach((f, i) => {
         if (!f.materialId) e.add(`facadeMaterial_${i}`);
-        if (hingeHardware.length > 0 && !f.hingeHardwareId)
+        if (f.hingesEnabled && hingeHardware.length > 0 && !f.hingeHardwareId)
           e.add(`facadeHinge_${i}`);
         if ((f.openType ?? "HANDLE") === "HANDLE") {
           if (
@@ -419,7 +422,10 @@ export function useProductForm(
               materialId: f.materialId || null,
               handleQty: f.handleQty || 0,
               openType: f.openType || "HANDLE",
-              hingeHardwareId: f.hingeHardwareId || null,
+              hingesEnabled: f.hingesEnabled || false,
+              hingeHardwareId: f.hingesEnabled
+                ? f.hingeHardwareId || null
+                : null,
               handleHardwareId: f.handleHardwareId || null,
               tipOnHardwareId: f.tipOnHardwareId || null,
             })),
@@ -496,39 +502,49 @@ export function useProductForm(
 
   /* ── computed ── */
   const facadeMaterials = useMemo(
-    () =>
-      materials.filter(
-        (m) =>
-          m.materialType.name !== "ХДФ" && m.materialType.name !== "Камень",
-      ),
+    () => materials.filter((m) => m.moduleTypes.includes("FACADE")),
     [materials],
   );
 
-  /* Материалы корпуса: без Камня и ХДФ */
+  /* Материалы корпуса: секции */
   const bodyMaterials = useMemo(
-    () =>
-      materials.filter(
-        (m) =>
-          m.materialType.name !== "Камень" && m.materialType.name !== "ХДФ",
-      ),
+    () => materials.filter((m) => m.moduleTypes.includes("SECTION")),
     [materials],
   );
 
-  /* Задняя стенка: ХДФ + ЛДСП + МДФ */
+  /* Задняя стенка */
   const backWallMaterials = useMemo(
-    () =>
-      materials.filter((m) =>
-        ["ХДФ", "ЛДСП", "МДФ"].includes(m.materialType.name),
-      ),
+    () => materials.filter((m) => m.moduleTypes.includes("BACK_WALL")),
     [materials],
   );
 
-  /* Столешница: Камень + ЛДСП + МДФ */
+  /* Перегородки */
+  const partitionMaterials = useMemo(
+    () => materials.filter((m) => m.moduleTypes.includes("PARTITION")),
+    [materials],
+  );
+
+  /* Полки */
+  const shelfMaterials = useMemo(
+    () => materials.filter((m) => m.moduleTypes.includes("SHELF")),
+    [materials],
+  );
+
+  /* Фальш-фасады */
+  const falseFacadeMaterials = useMemo(
+    () => materials.filter((m) => m.moduleTypes.includes("FALSE_FACADE")),
+    [materials],
+  );
+
+  /* Ящики */
+  const drawerMaterials = useMemo(
+    () => materials.filter((m) => m.moduleTypes.includes("DRAWER")),
+    [materials],
+  );
+
+  /* Столешница */
   const countertopMaterials = useMemo(
-    () =>
-      materials.filter((m) =>
-        ["Камень", "ЛДСП", "МДФ"].includes(m.materialType.name),
-      ),
+    () => materials.filter((m) => m.moduleTypes.includes("COUNTERTOP")),
     [materials],
   );
 
@@ -714,6 +730,10 @@ export function useProductForm(
     facadeMaterials,
     bodyMaterials,
     backWallMaterials,
+    partitionMaterials,
+    shelfMaterials,
+    falseFacadeMaterials,
+    drawerMaterials,
     countertopMaterials,
     facadeErrorKeys,
     sectionErrors,

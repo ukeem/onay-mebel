@@ -54,6 +54,17 @@ enum DrawerSlideType {
   TANDEM // тандем
 }
 
+enum ModuleType {
+  SECTION
+  BACK_WALL
+  PARTITION
+  SHELF
+  FACADE
+  DRAWER
+  FALSE_FACADE
+  COUNTERTOP
+}
+
 // ============================================
 // AUTH & USERS
 // ============================================
@@ -174,6 +185,8 @@ model Material {
   price          Decimal      @default(0)
   image          String?
 
+  moduleTypes ModuleType[] @default([])
+
   // null = каталожный (от админа), non-null = кастомный (от пользователя)
   userId String?
   owner  User?   @relation("CustomMaterials", fields: [userId], references: [id], onDelete: Cascade)
@@ -248,13 +261,14 @@ model ServiceTemplate {
 // ============================================
 
 model UserMaterial {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  materialId String
-  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  price      Decimal  @default(0)
-  enabled    Boolean  @default(true)
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId  String
+  material    Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  price       Decimal      @default(0)
+  enabled     Boolean      @default(true)
+  moduleTypes ModuleType[] @default([])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -497,6 +511,7 @@ model ProductFacade {
   openType   FacadeOpenType @default(HANDLE)
 
   // Петли
+  hingesEnabled   Boolean   @default(false)
   hingeHardwareId String?
   hingeHardware   Hardware? @relation("FacadeHingeHardware", fields: [hingeHardwareId], references: [id])
 

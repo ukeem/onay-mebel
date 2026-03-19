@@ -1,4 +1,10 @@
-import { CalcType, ContactType, ProfitType, TierLevel } from '@prisma/client';
+import {
+  CalcType,
+  ContactType,
+  ModuleType,
+  ProfitType,
+  TierLevel,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -24,6 +30,11 @@ export class UpdateUserMaterialPriceDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ModuleType, { each: true })
+  moduleTypes?: ModuleType[];
 }
 
 export class UpdateUserHardwarePriceDto {
@@ -195,6 +206,41 @@ export class CreateCustomMaterialDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ModuleType, { each: true })
+  moduleTypes?: ModuleType[];
+}
+
+export class UpdateCustomMaterialDto {
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsEnum(CalcType)
+  calcType?: CalcType;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  length?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  width?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ModuleType, { each: true })
+  moduleTypes?: ModuleType[];
 }
 
 export class CreateCustomHardwareDto {
