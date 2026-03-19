@@ -9,6 +9,11 @@ import { PasswordInput } from "@/components/ui/password-input";
 import api from "@/lib/api";
 import { getApiError } from "@/lib/api-error";
 import { formatPhone, rawPhone } from "@/lib/phone-mask";
+import {
+  PRICE_MONTHLY_FMT,
+  PRICE_YEARLY_FMT,
+  YEARLY_SAVING_FMT,
+} from "@/lib/pricing";
 import { useAuthStore } from "@/stores/auth.store";
 import {
   ArrowLeft,
@@ -94,7 +99,9 @@ export default function LoginPage() {
                   {t("status.plans.monthly.name")}
                 </h3>
                 <div>
-                  <span className="text-3xl font-bold">25 000 ₸</span>
+                  <span className="text-3xl font-bold">
+                    {PRICE_MONTHLY_FMT}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     /{t("status.plans.monthly.period")}
                   </span>
@@ -119,7 +126,7 @@ export default function LoginPage() {
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-semibold whitespace-nowrap">
                   <TrendingDown className="h-3 w-3" />
-                  {t("status.plans.saving")}
+                  {t("status.plans.saving", { amount: YEARLY_SAVING_FMT })}
                 </span>
               </div>
               <CardContent className="pt-7 pb-5 text-center space-y-4">
@@ -127,7 +134,7 @@ export default function LoginPage() {
                   {t("status.plans.yearly.name")}
                 </h3>
                 <div>
-                  <span className="text-3xl font-bold">240 000 ₸</span>
+                  <span className="text-3xl font-bold">{PRICE_YEARLY_FMT}</span>
                   <span className="text-sm text-muted-foreground">
                     /{t("status.plans.yearly.period")}
                   </span>

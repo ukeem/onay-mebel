@@ -49,6 +49,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_PRICE_MONTHLY: ${NEXT_PUBLIC_PRICE_MONTHLY:-25000}
+        NEXT_PUBLIC_PRICE_YEARLY: ${NEXT_PUBLIC_PRICE_YEARLY:-240000}
     container_name: onay-mebel-frontend
     restart: unless-stopped
     depends_on:

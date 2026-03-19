@@ -1,6 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  PRICE_MONTHLY_FMT,
+  PRICE_YEARLY_FMT,
+  YEARLY_SAVING_FMT,
+} from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Check, Star, TrendingDown } from "lucide-react";
@@ -10,7 +15,7 @@ import Link from "next/link";
 export function PricingSection() {
   const t = useTranslations("landing.pricing");
 
-  const plans = t.raw("plans") as {
+  const rawPlans = t.raw("plans") as {
     name: string;
     price: string;
     period: string;
@@ -19,6 +24,14 @@ export function PricingSection() {
     features: string[];
     cta: string;
   }[];
+
+  const priceOverrides = ["0 ₸", PRICE_MONTHLY_FMT, PRICE_YEARLY_FMT];
+  const plans = rawPlans.map((plan, i) => ({
+    ...plan,
+    price: priceOverrides[i] ?? plan.price,
+    badge:
+      i === 2 ? t("savingBadge", { amount: YEARLY_SAVING_FMT }) : plan.badge,
+  }));
 
   return (
     <section id="pricing" className="relative py-24 sm:py-32 overflow-hidden">
