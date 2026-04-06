@@ -27,7 +27,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Increase body size limit for large calculation snapshots
-  const bodyLimit = process.env.BODY_LIMIT || '25mb';
+  const bodyLimit = process.env.BODY_LIMIT || '1024mb';
   app.use(json({ limit: bodyLimit }));
   app.use(urlencoded({ limit: bodyLimit, extended: true }));
 
