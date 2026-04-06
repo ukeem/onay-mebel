@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/client';
@@ -19,6 +20,8 @@ import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class CalculationsService {
+  private readonly logger = new Logger(CalculationsService.name);
+
   constructor(
     private prisma: PrismaService,
     private settingsService: SettingsService,
@@ -605,10 +608,31 @@ export class CalculationsService {
   /* ── update snapshot data (editable detail page) ── */
   async update(id: string, userId: string, data: any) {
     const calc = await this.findOne(id, userId);
-    return this.prisma.calculation.update({
-      where: { id: calc.id },
-      data: { data: data },
-    });
+    const summary = summarizeCalculationData(data);
+    const startedAt = Date.now();
+
+    this.logger.log(
+      `[calc.update] start id=${calc.id} projectId=${calc.projectId} userId=${userId} rooms=${summary.rooms} products=${summary.products} details=${summary.details} materialOptions=${summary.materialOptions} hardwareOptions=${summary.hardwareOptions} tiers=${summary.tiers || '-'} payloadBytes=${summary.payloadBytes ?? 'n/a'}`,
+    );
+
+    try {
+      const updated = await this.prisma.calculation.update({
+        where: { id: calc.id },
+        data: { data: data },
+      });
+      this.logger.log(
+        `[calc.update] success id=${calc.id} durationMs=${Date.now() - startedAt}`,
+      );
+      return updated;
+    } catch (err) {
+      this.logger.error(
+        `[calc.update] failed id=${calc.id} durationMs=${Date.now() - startedAt} ${describeError(
+          err,
+        )}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
+    }
   }
 
   /* ── delete all for project ── */
@@ -2639,6 +2663,73 @@ function toNum(val: any): number {
   if (val === null || val === undefined) return 0;
   if (val instanceof Decimal) return val.toNumber();
   return Number(val) || 0;
+}
+
+function summarizeCalculationData(data: any): {
+  rooms: number;
+  products: number;
+  details: number;
+  materialOptions: number;
+  hardwareOptions: number;
+  tiers: string;
+  payloadBytes: number | null;
+} {
+  const roomsArr = Array.isArray(data?.rooms) ? data.rooms : [];
+  let products = 0;
+  let details = 0;
+
+  for (const room of roomsArr) {
+    const prods = Array.isArray(room?.products) ? room.products : [];
+    products += prods.length;
+    for (const pr of prods) {
+      const dets = Array.isArray(pr?.details) ? pr.details : [];
+      details += dets.length;
+    }
+  }
+
+  const materialOptions = Array.isArray(data?.materialOptions)
+    ? data.materialOptions.length
+    : 0;
+  const hardwareOptions = Array.isArray(data?.hardwareOptions)
+    ? data.hardwareOptions.length
+    : 0;
+  const tiers = Array.isArray(data?.enabledTiers)
+    ? data.enabledTiers.join(',')
+    : '';
+
+  let payloadBytes: number | null = null;
+  try {
+    payloadBytes = Buffer.byteLength(JSON.stringify(data), 'utf8');
+  } catch {
+    payloadBytes = null;
+  }
+
+  return {
+    rooms: roomsArr.length,
+    products,
+    details,
+    materialOptions,
+    hardwareOptions,
+    tiers,
+    payloadBytes,
+  };
+}
+
+function describeError(err: unknown): string {
+  if (!err || typeof err !== 'object') return '';
+  const anyErr = err as any;
+  const parts: string[] = [];
+  if (anyErr.name) parts.push(`name=${anyErr.name}`);
+  if (anyErr.code) parts.push(`code=${anyErr.code}`);
+  if (anyErr.meta) {
+    try {
+      parts.push(`meta=${JSON.stringify(anyErr.meta)}`);
+    } catch {
+      // ignore meta serialization errors
+    }
+  }
+  if (anyErr.message) parts.push(`message=${anyErr.message}`);
+  return parts.length ? `error { ${parts.join(' ')} }` : '';
 }
 
 function escapeHtml(value: string): string {
