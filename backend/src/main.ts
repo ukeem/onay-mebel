@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 import helmet from 'helmet';
 import * as path from 'path';
 import { AppModule } from './app.module';
@@ -24,6 +25,11 @@ async function bootstrap() {
 
   // Cookie parser (for httpOnly cookie auth)
   app.use(cookieParser());
+
+  // Increase body size limit for large calculation snapshots
+  const bodyLimit = process.env.BODY_LIMIT || '25mb';
+  app.use(json({ limit: bodyLimit }));
+  app.use(urlencoded({ limit: bodyLimit, extended: true }));
 
   // Global exception filter (hides stack traces in production)
   app.useGlobalFilters(new AllExceptionsFilter());
