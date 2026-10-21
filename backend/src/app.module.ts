@@ -38,6 +38,21 @@ import { WsModule } from './ws/ws.module';
         SUPER_ADMIN_PHONE: Joi.string().required(),
         SUPER_ADMIN_PASSWORD: Joi.string().required().min(8),
         UPLOAD_DIR: Joi.string().default('./uploads'),
+        JSON_BODY_LIMIT_BYTES: Joi.number()
+          .integer()
+          .min(1024)
+          .max(2 * 1024 * 1024)
+          .default(2 * 1024 * 1024),
+        UPLOAD_USER_LIMIT_BYTES: Joi.number()
+          .integer()
+          .min(5 * 1024 * 1024)
+          .max(1024 * 1024 * 1024)
+          .default(100 * 1024 * 1024),
+        UPLOAD_TOTAL_LIMIT_BYTES: Joi.number()
+          .integer()
+          .min(100 * 1024 * 1024)
+          .max(5 * 1024 * 1024 * 1024)
+          .default(1024 * 1024 * 1024),
 
         // Notifications (optional)
         SMTP_HOST: Joi.string().optional().allow(''),

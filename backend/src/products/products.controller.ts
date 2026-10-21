@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   Param,
   ParseArrayPipe,
+  PipeTransform,
   Patch,
   Post,
   Put,
@@ -26,6 +28,19 @@ import {
   UpsertShelfDto,
 } from './dto/products.dto';
 import { ProductsService } from './products.service';
+
+class MaxArrayLengthPipe implements PipeTransform {
+  constructor(private readonly maxItems: number) {}
+
+  transform(value: unknown): unknown[] {
+    if (!Array.isArray(value) || value.length > this.maxItems) {
+      throw new BadRequestException(
+        `Допустимо не более ${this.maxItems} компонентов`,
+      );
+    }
+    return value as unknown[];
+  }
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('products')
@@ -80,7 +95,10 @@ export class ProductsController {
   @Put(':id/sections')
   upsertSections(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertSectionDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertSectionDto }),
+    )
     items: UpsertSectionDto[],
     @Req() req: any,
   ) {
@@ -91,7 +109,10 @@ export class ProductsController {
   @Put(':id/partitions')
   upsertPartitions(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertPartitionDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertPartitionDto }),
+    )
     items: UpsertPartitionDto[],
     @Req() req: any,
   ) {
@@ -102,7 +123,10 @@ export class ProductsController {
   @Put(':id/shelves')
   upsertShelves(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertShelfDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertShelfDto }),
+    )
     items: UpsertShelfDto[],
     @Req() req: any,
   ) {
@@ -113,7 +137,10 @@ export class ProductsController {
   @Put(':id/facades')
   upsertFacades(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertFacadeDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertFacadeDto }),
+    )
     items: UpsertFacadeDto[],
     @Req() req: any,
   ) {
@@ -124,7 +151,10 @@ export class ProductsController {
   @Put(':id/drawers')
   upsertDrawers(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertDrawerDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertDrawerDto }),
+    )
     items: UpsertDrawerDto[],
     @Req() req: any,
   ) {
@@ -135,7 +165,10 @@ export class ProductsController {
   @Put(':id/false-facades')
   upsertFalseFacades(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertFalseFacadeDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertFalseFacadeDto }),
+    )
     items: UpsertFalseFacadeDto[],
     @Req() req: any,
   ) {
@@ -146,7 +179,10 @@ export class ProductsController {
   @Put(':id/countertops')
   upsertCountertops(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertCountertopDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertCountertopDto }),
+    )
     items: UpsertCountertopDto[],
     @Req() req: any,
   ) {
@@ -157,7 +193,10 @@ export class ProductsController {
   @Put(':id/extras')
   upsertExtras(
     @Param('id') id: string,
-    @Body(new ParseArrayPipe({ items: UpsertExtraDto }))
+    @Body(
+      new MaxArrayLengthPipe(100),
+      new ParseArrayPipe({ items: UpsertExtraDto }),
+    )
     items: UpsertExtraDto[],
     @Req() req: any,
   ) {

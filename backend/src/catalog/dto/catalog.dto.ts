@@ -1,5 +1,6 @@
 import { CalcType, ModuleType, ProfitType } from '@prisma/client';
 import {
+  ArrayMaxSize,
   IsArray,
   IsEnum,
   IsInt,
@@ -7,6 +8,8 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -15,6 +18,7 @@ import {
 export class CreateTypeDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   name!: string;
 }
 
@@ -23,10 +27,12 @@ export class CreateTypeDto {
 export class CreateExtraTypeDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   name!: string;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   price?: number;
 }
@@ -36,10 +42,12 @@ export class CreateExtraTypeDto {
 export class CreateMaterialDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   materialTypeId!: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   brand?: string;
 
   @IsEnum(CalcType)
@@ -48,24 +56,29 @@ export class CreateMaterialDto {
 
   @IsInt()
   @Min(1)
+  @Max(100_000)
   @IsOptional()
   length?: number;
 
   @IsInt()
   @Min(1)
+  @Max(100_000)
   @IsOptional()
   width?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   price?: number;
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   image?: string;
 
   @IsArray()
+  @ArrayMaxSize(8)
   @IsEnum(ModuleType, { each: true })
   @IsOptional()
   moduleTypes?: ModuleType[];
@@ -74,6 +87,7 @@ export class CreateMaterialDto {
 export class UpdateMaterialDto {
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   brand?: string;
 
   @IsEnum(CalcType)
@@ -82,24 +96,29 @@ export class UpdateMaterialDto {
 
   @IsInt()
   @Min(1)
+  @Max(100_000)
   @IsOptional()
   length?: number;
 
   @IsInt()
   @Min(1)
+  @Max(100_000)
   @IsOptional()
   width?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   price?: number;
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   image?: string;
 
   @IsArray()
+  @ArrayMaxSize(8)
   @IsEnum(ModuleType, { each: true })
   @IsOptional()
   moduleTypes?: ModuleType[];
@@ -110,34 +129,41 @@ export class UpdateMaterialDto {
 export class CreateHardwareDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   hardwareTypeId!: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   brand?: string;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   price?: number;
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   image?: string;
 }
 
 export class UpdateHardwareDto {
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   brand?: string;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   price?: number;
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   image?: string;
 }
 
@@ -146,36 +172,43 @@ export class UpdateHardwareDto {
 export class UpdateServiceTemplateDto {
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   sawingPrice?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   drillingPrice?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   edgeBandingPrice?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(100)
   @IsOptional()
   technologistPercent?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(100)
   @IsOptional()
   designerPercent?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(100)
   @IsOptional()
   assemblyPercent?: number;
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   deliveryPrice?: number;
 
@@ -185,6 +218,7 @@ export class UpdateServiceTemplateDto {
 
   @IsNumber()
   @Min(0)
+  @Max(1_000_000_000)
   @IsOptional()
   profitValue?: number;
 }

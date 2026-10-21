@@ -25,6 +25,7 @@ export class PublicProposalController {
       ? await this.settingsService.getProposalSettings(calcWithProject.userId)
       : undefined;
     const html = this.svc.generateProposal(calc.data as any, proposalSettings);
+    setProposalSecurityHeaders(res);
     res.send(html);
   }
 
@@ -43,4 +44,14 @@ export class PublicProposalController {
       return { short: url };
     }
   }
+}
+
+function setProposalSecurityHeaders(res: Response) {
+  res.set({
+    'Content-Security-Policy':
+      "sandbox allow-scripts allow-modals; default-src 'none'; img-src data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'Cache-Control': 'public, max-age=60',
+  });
 }

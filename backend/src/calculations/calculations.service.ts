@@ -3,12 +3,14 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { isBoundedSnapshot } from './dto/snapshot-limits';
 
 /* ================================================================
    CALCULATION ENGINE
@@ -550,6 +552,12 @@ export class CalculationsService {
       calculatedAt: new Date().toISOString(),
     };
 
+    if (!isBoundedSnapshot(data)) {
+      throw new PayloadTooLargeException(
+        'Снимок расчёта превышает допустимый размер или сложность',
+      );
+    }
+
     /* Save snapshot */
     const calc = await this.prisma.calculation.create({
       data: { projectId, data: data as any },
@@ -608,6 +616,11 @@ export class CalculationsService {
   /* ── update snapshot data (editable detail page) ── */
   async update(id: string, userId: string, data: any) {
     const calc = await this.findOne(id, userId);
+    if (!isBoundedSnapshot(data)) {
+      throw new PayloadTooLargeException(
+        'Снимок расчёта превышает допустимый размер или сложность',
+      );
+    }
     const summary = summarizeCalculationData(data);
     const startedAt = Date.now();
 
@@ -661,11 +674,20 @@ export class CalculationsService {
       `<span style="white-space:nowrap">${new Intl.NumberFormat('ru-RU').format(Math.round(n))}&nbsp;₸</span>`;
 
     const tierOrder = ['standard', 'comfort', 'premium'];
-    const enabledTiers: string[] = (
-      d.enabledTiers ?? ['standard', 'comfort', 'premium']
-    ).sort(
+    const requestedTiers: unknown[] = Array.isArray(d.enabledTiers)
+      ? d.enabledTiers
+      : tierOrder;
+    const enabledTiers: string[] = [
+      ...new Set(
+        requestedTiers.filter(
+          (tier: unknown): tier is string =>
+            typeof tier === 'string' && tierOrder.includes(tier),
+        ),
+      ),
+    ].sort(
       (a: string, b: string) => tierOrder.indexOf(a) - tierOrder.indexOf(b),
     );
+    if (enabledTiers.length === 0) enabledTiers.push('standard');
     const tierLabels: Record<string, string> = {
       standard: 'Стандарт',
       comfort: 'Комфорт',
@@ -915,7 +937,7 @@ export class CalculationsService {
               detailsHtml += `
               <div class="detail-item">
                 ${detThumbHtml}
-                <span class="detail-name">${stripQtyFromLabel(det.label)}${det.brand ? ' <span class="brand">(' + det.brand + ')</span>' : ''}</span>
+                <span class="detail-name">${escapeHtml(stripQtyFromLabel(String(det.label ?? '')))}${det.brand ? ' <span class="brand">(' + escapeHtml(String(det.brand)) + ')</span>' : ''}</span>
               </div>`;
             });
 
@@ -939,7 +961,7 @@ export class CalculationsService {
             productsHtml += `
             <div class="product-block">
               <div class="product-header">
-                <span class="product-name">${pr.productType}</span>
+                <span class="product-name">${escapeHtml(String(pr.productType ?? ''))}</span>
                 <span class="product-price">${productPriceHtml}</span>
               </div>
               <div class="${productContentClass}">
@@ -953,7 +975,7 @@ export class CalculationsService {
           <div class="room-block">
             <div class="room-header">
               <svg class="room-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span class="room-name">${room.roomType}</span>
+              <span class="room-name">${escapeHtml(String(room.roomType ?? ''))}</span>
             </div>
             ${productsHtml}
           </div>`;
@@ -1064,11 +1086,27 @@ export class CalculationsService {
       TIKTOK: '#000000',
     };
     const contactLinks: Record<string, (v: string) => string> = {
-      WHATSAPP: (v) => `https://wa.me/${v.replace(/[^\d+]/g, '')}`,
-      TELEGRAM: (v) => `https://t.me/${v.replace('@', '')}`,
-      EMAIL: (v) => `mailto:${v}`,
-      INSTAGRAM: (v) => `https://instagram.com/${v.replace('@', '')}`,
-      TIKTOK: (v) => `https://tiktok.com/@${v.replace('@', '')}`,
+      WHATSAPP: (v) => `https://wa.me/${v.replace(/\D/g, '').slice(0, 15)}`,
+      TELEGRAM: (v) =>
+        `https://t.me/${v
+          .replace(/^@/, '')
+          .replace(/[^A-Za-z0-9_]/g, '')
+          .slice(0, 32)}`,
+      EMAIL: (v) =>
+        `mailto:${v
+          .trim()
+          .replace(/[^A-Za-z0-9@._+-]/g, '')
+          .slice(0, 254)}`,
+      INSTAGRAM: (v) =>
+        `https://instagram.com/${v
+          .replace(/^@/, '')
+          .replace(/[^A-Za-z0-9._]/g, '')
+          .slice(0, 30)}`,
+      TIKTOK: (v) =>
+        `https://tiktok.com/@${v
+          .replace(/^@/, '')
+          .replace(/[^A-Za-z0-9._]/g, '')
+          .slice(0, 24)}`,
     };
     let contactsHtml = '';
     if (ps.contacts && ps.contacts.length > 0) {
@@ -1076,12 +1114,13 @@ export class CalculationsService {
         .map((c: any) => {
           const color = contactColors[c.type] ?? '#64748b';
           const icon = contactIcons[c.type] ?? '';
-          const label = contactTypeLabels[c.type] ?? c.type;
+          const label = contactTypeLabels[c.type];
           const linkFn = contactLinks[c.type];
-          const href = linkFn ? linkFn(c.value) : '#';
-          return `<a class="contact-btn" href="${href}" target="_blank" rel="noopener" style="--contact-color:${color}">
+          if (!label || !linkFn || typeof c.value !== 'string') return '';
+          const href = linkFn(c.value);
+          return `<a class="contact-btn" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" style="--contact-color:${color}">
             <span class="contact-btn-icon">${icon}</span>
-            <span class="contact-btn-text"><span class="contact-btn-label">${label}</span><span class="contact-btn-value">${c.value}</span></span>
+            <span class="contact-btn-text"><span class="contact-btn-label">${label}</span><span class="contact-btn-value">${escapeHtml(c.value)}</span></span>
           </a>`;
         })
         .join('');
@@ -1092,8 +1131,9 @@ export class CalculationsService {
 <html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Коммерческое предложение — ${d.projectName}</title>
+  <title>Коммерческое предложение — ${escapeHtml(String(d.projectName ?? ''))}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1828,17 +1868,17 @@ export class CalculationsService {
   ${
     ps.companyInfo
       ? `<div class="company-info">
-    ${ps.companyInfo.logo ? `<img class="company-logo" src="${logoToDataUri(ps.companyInfo.logo)}" alt="${ps.companyInfo.name}" />` : ''}
-    <div class="company-name">${ps.companyInfo.name}</div>
-    ${ps.companyInfo.description ? `<div class="company-desc" data-i18n="companyDesc">${ps.companyInfo.description}</div>` : ''}
+    ${logoToDataUri(ps.companyInfo.logo) ? `<img class="company-logo" src="${logoToDataUri(ps.companyInfo.logo)}" alt="${escapeHtml(String(ps.companyInfo.name ?? ''))}" />` : ''}
+    <div class="company-name">${escapeHtml(String(ps.companyInfo.name ?? ''))}</div>
+    ${ps.companyInfo.description ? `<div class="company-desc" data-i18n="companyDesc">${escapeHtml(String(ps.companyInfo.description))}</div>` : ''}
   </div>`
       : ''
   }
   <div class="kp-header">
     <div class="kp-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span data-i18n="badge">Коммерческое предложение</span></div>
-    <div class="kp-project">${d.projectName}</div>
+    <div class="kp-project">${escapeHtml(String(d.projectName ?? ''))}</div>
     <div class="kp-meta">
-      ${d.clientData ? `<span class="kp-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${d.clientData}</span>` : ''}
+      ${d.clientData ? `<span class="kp-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(String(d.clientData))}</span>` : ''}
       <span class="kp-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${new Date(d.calculatedAt).toLocaleDateString('ru-RU')}</span>
     </div>
   </div>
@@ -1885,6 +1925,13 @@ export class CalculationsService {
       if (btn) btn.classList.add('active');
       if (total) total.style.display = 'flex';
     }
+    window.addEventListener('message', function(event) {
+      var message = event.data;
+      if (!message || message.type !== 'onay-proposal-tier') return;
+      if (${jsonForInlineScript(enabledTiers)}.indexOf(message.tier) !== -1) {
+        showTab(message.tier);
+      }
+    });
 
     /* ── Theme toggle ── */
     function toggleTheme() {
@@ -1918,7 +1965,7 @@ export class CalculationsService {
         print: 'Печать / PDF'${
           ps.companyInfo?.description
             ? `,
-        companyDesc: ${JSON.stringify(ps.companyInfo.description)}`
+        companyDesc: ${jsonForInlineScript(ps.companyInfo.description)}`
             : ''
         }
       },
@@ -1931,10 +1978,10 @@ export class CalculationsService {
         print: 'Басып шығару / PDF'${
           ps.companyInfo?.descriptionKz
             ? `,
-        companyDesc: ${JSON.stringify(ps.companyInfo.descriptionKz)}`
+        companyDesc: ${jsonForInlineScript(ps.companyInfo.descriptionKz)}`
             : ps.companyInfo?.description
               ? `,
-        companyDesc: ${JSON.stringify(ps.companyInfo.description)}`
+        companyDesc: ${jsonForInlineScript(ps.companyInfo.description)}`
               : ''
         }
       }
@@ -2741,29 +2788,53 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function jsonForInlineScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/&/g, '\\u0026')
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 /** Convert /uploads/filename.ext to base64 data URI for self-contained HTML */
 function logoToDataUri(logoPath: string): string {
   try {
-    const filename = path.basename(logoPath);
-    const filePath = path.join(process.cwd(), 'uploads', filename);
-    if (!fs.existsSync(filePath)) return logoPath;
+    if (typeof logoPath !== 'string') return '';
+    const match = /^\/uploads\/([A-Za-z0-9][A-Za-z0-9._-]{0,99})$/.exec(
+      logoPath,
+    );
+    if (!match) return '';
+    const filename = match[1];
+    const resolvedUploads = path.resolve(
+      process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
+    );
+    const filePath = path.join(resolvedUploads, filename);
+    if (!path.resolve(filePath).startsWith(`${resolvedUploads}${path.sep}`)) {
+      return '';
+    }
+    if (
+      !fs.existsSync(filePath) ||
+      fs.statSync(filePath).size > 5 * 1024 * 1024
+    ) {
+      return '';
+    }
     const buf = fs.readFileSync(filePath);
     const ext = path.extname(filename).toLowerCase().replace('.', '');
     const mime =
-      ext === 'svg'
-        ? 'image/svg+xml'
-        : ext === 'jpg' || ext === 'jpeg'
-          ? 'image/jpeg'
-          : ext === 'png'
-            ? 'image/png'
-            : ext === 'webp'
-              ? 'image/webp'
-              : ext === 'gif'
-                ? 'image/gif'
-                : 'image/png';
+      ext === 'jpg' || ext === 'jpeg'
+        ? 'image/jpeg'
+        : ext === 'png'
+          ? 'image/png'
+          : ext === 'webp'
+            ? 'image/webp'
+            : ext === 'gif'
+              ? 'image/gif'
+              : '';
+    if (!mime) return '';
     return `data:${mime};base64,${buf.toString('base64')}`;
   } catch {
-    return logoPath;
+    return '';
   }
 }
 

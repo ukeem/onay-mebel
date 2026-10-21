@@ -38,8 +38,6 @@ export default function ProposalPage({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeLoaded = useRef(false);
   const htmlUrlRef = useRef("");
-  const activeTierRef = useRef<Tier>(activeTier);
-  activeTierRef.current = activeTier;
 
   useEffect(() => {
     api
@@ -103,21 +101,23 @@ export default function ProposalPage({
   const handleIframeLoad = useCallback(() => {
     iframeLoaded.current = true;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (iframeRef.current?.contentWindow as any)?.showTab?.(
-        activeTierRef.current,
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "onay-proposal-tier", tier: activeTier },
+        "*",
       );
     } catch {
       /* cross-origin fallback */
     }
-  }, []);
+  }, [activeTier]);
 
   const switchTier = useCallback((tier: Tier) => {
     setActiveTier(tier);
     if (iframeLoaded.current) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (iframeRef.current?.contentWindow as any)?.showTab?.(tier);
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: "onay-proposal-tier", tier },
+          "*",
+        );
       } catch {
         /* ignore */
       }
@@ -295,7 +295,7 @@ export default function ProposalPage({
           ref={iframeRef}
           id="proposal-frame"
           src={htmlUrl}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-modals"
           className="mt-2 flex-1 rounded-md border bg-white"
           title={t("proposal.title")}
           onLoad={handleIframeLoad}

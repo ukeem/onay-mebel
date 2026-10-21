@@ -35,6 +35,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
       } else if (typeof exceptionResponse === 'object') {
         message = exceptionResponse;
       }
+    } else if (isMulterError(exception)) {
+      status =
+        exception.code === 'LIMIT_FILE_SIZE'
+          ? HttpStatus.PAYLOAD_TOO_LARGE
+          : HttpStatus.BAD_REQUEST;
+      message = {
+        statusCode: status,
+        message:
+          status === HttpStatus.PAYLOAD_TOO_LARGE
+            ? 'Файл превышает допустимый лимит'
+            : 'Некорректный multipart-запрос',
+      };
+    } else if (isHttpParserError(exception)) {
+      status = exception.status;
+      message = {
+        statusCode: status,
+        message:
+          status === HttpStatus.PAYLOAD_TOO_LARGE
+            ? 'Размер запроса превышает допустимый лимит'
+            : 'Некорректный запрос',
+      };
     } else {
       // Unexpected error — log full details
       this.logger.error(
@@ -57,4 +78,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof message === 'object' ? message : { statusCode: status, message },
       );
   }
+}
+
+function isMulterError(
+  exception: unknown,
+): exception is { name: 'MulterError'; code: string } {
+  return (
+    exception instanceof Error &&
+    exception.name === 'MulterError' &&
+    'code' in exception &&
+    typeof (exception as { code?: unknown }).code === 'string'
+  );
+}
+
+function isHttpParserError(
+  exception: unknown,
+): exception is { status: number } {
+  if (!exception || typeof exception !== 'object' || !('status' in exception)) {
+    return false;
+  }
+  const status = (exception as { status?: unknown }).status;
+  return typeof status === 'number' && status >= 400 && status < 500;
 }

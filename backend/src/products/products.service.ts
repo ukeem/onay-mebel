@@ -1,5 +1,5 @@
 import {
-  ForbiddenException,
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -69,13 +69,11 @@ export class ProductsService {
 
   /* ── single product ── */
   async findOne(id: string, userId: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
+    const product = await this.prisma.product.findFirst({
+      where: { id, room: { project: { userId } } },
       include: { ...PRODUCT_INCLUDE, room: { include: { project: true } } },
     });
     if (!product) throw new NotFoundException('Изделие не найдено');
-    if (product.room.project.userId !== userId)
-      throw new ForbiddenException('Нет доступа');
     return product;
   }
 
@@ -130,6 +128,12 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(this.prisma.productSection, productId, items);
+    await this.ensureCatalogAccess(
+      userId,
+      items.flatMap((item) => [item.materialId, item.backWallMaterialId]),
+      items.map((item) => item.legsHardwareId),
+    );
     const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productSection.deleteMany({
@@ -182,6 +186,16 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(
+      this.prisma.productPartition,
+      productId,
+      items,
+    );
+    await this.ensureCatalogAccess(
+      userId,
+      items.map((item) => item.materialId),
+      [],
+    );
     return this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productPartition.deleteMany({
@@ -217,6 +231,12 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(this.prisma.productShelf, productId, items);
+    await this.ensureCatalogAccess(
+      userId,
+      items.map((item) => item.materialId),
+      items.map((item) => item.holderHardwareId),
+    );
     const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productShelf.deleteMany({
@@ -263,6 +283,16 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(this.prisma.productFacade, productId, items);
+    await this.ensureCatalogAccess(
+      userId,
+      items.map((item) => item.materialId),
+      items.flatMap((item) => [
+        item.hingeHardwareId,
+        item.handleHardwareId,
+        item.tipOnHardwareId,
+      ]),
+    );
     const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productFacade.deleteMany({
@@ -326,6 +356,12 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(this.prisma.productDrawer, productId, items);
+    await this.ensureCatalogAccess(
+      userId,
+      items.map((item) => item.materialId),
+      items.map((item) => item.slideHardwareId),
+    );
     const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productDrawer.deleteMany({
@@ -379,6 +415,16 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(
+      this.prisma.productFalseFacade,
+      productId,
+      items,
+    );
+    await this.ensureCatalogAccess(
+      userId,
+      items.map((item) => item.materialId),
+      [],
+    );
     const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productFalseFacade.deleteMany({
@@ -429,6 +475,16 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(
+      this.prisma.productCountertop,
+      productId,
+      items,
+    );
+    await this.ensureCatalogAccess(
+      userId,
+      items.flatMap((item) => [item.materialId, item.apronMaterialId]),
+      [],
+    );
     const results = await this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productCountertop.deleteMany({
@@ -477,6 +533,7 @@ export class ProductsService {
     userId: string,
   ) {
     await this.ensureProductOwner(productId, userId);
+    await this.ensureComponentIds(this.prisma.productExtra, productId, items);
     return this.prisma.$transaction(async (tx) => {
       const keepIds = items.filter((i) => i.id).map((i) => i.id!);
       await tx.productExtra.deleteMany({
@@ -534,24 +591,92 @@ export class ProductsService {
     });
   }
 
+  private async ensureComponentIds(
+    delegate: {
+      findMany(args: {
+        where: { productId: string; id: { in: string[] } };
+        select: { id: true };
+      }): Promise<Array<{ id: string }>>;
+    },
+    productId: string,
+    items: Array<{ id?: string }>,
+  ) {
+    const ids = items.flatMap((item) => (item.id ? [item.id] : []));
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('ID компонентов не должны повторяться');
+    }
+    if (ids.length === 0) return;
+
+    const owned = await delegate.findMany({
+      where: { productId, id: { in: ids } },
+      select: { id: true },
+    });
+    if (owned.length !== ids.length) {
+      throw new NotFoundException('Компоненты изделия не найдены');
+    }
+  }
+
+  private async ensureCatalogAccess(
+    userId: string,
+    materialValues: Array<string | null | undefined>,
+    hardwareValues: Array<string | null | undefined>,
+  ) {
+    const materialIds = [...new Set(materialValues.filter(isPresent))];
+    const hardwareIds = [...new Set(hardwareValues.filter(isPresent))];
+
+    const [materials, hardware] = await Promise.all([
+      materialIds.length
+        ? this.prisma.userMaterial.findMany({
+            where: {
+              userId,
+              enabled: true,
+              materialId: { in: materialIds },
+              material: { OR: [{ userId: null }, { userId }] },
+            },
+            select: { materialId: true },
+          })
+        : [],
+      hardwareIds.length
+        ? this.prisma.userHardware.findMany({
+            where: {
+              userId,
+              enabled: true,
+              hardwareId: { in: hardwareIds },
+              hardware: { OR: [{ userId: null }, { userId }] },
+            },
+            select: { hardwareId: true },
+          })
+        : [],
+    ]);
+
+    if (
+      materials.length !== materialIds.length ||
+      hardware.length !== hardwareIds.length
+    ) {
+      throw new BadRequestException(
+        'Один или несколько материалов или видов фурнитуры недоступны',
+      );
+    }
+  }
+
   private async ensureRoomOwner(roomId: string, userId: string) {
-    const room = await this.prisma.room.findUnique({
-      where: { id: roomId },
+    const room = await this.prisma.room.findFirst({
+      where: { id: roomId, project: { userId } },
       include: { project: true },
     });
     if (!room) throw new NotFoundException('Комната не найдена');
-    if (room.project.userId !== userId)
-      throw new ForbiddenException('Нет доступа');
     return room;
   }
 
   private async ensureProductOwner(productId: string, userId: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-      include: { room: { include: { project: true } } },
+    const product = await this.prisma.product.findFirst({
+      where: { id: productId, room: { project: { userId } } },
+      select: { id: true },
     });
     if (!product) throw new NotFoundException('Изделие не найдено');
-    if (product.room.project.userId !== userId)
-      throw new ForbiddenException('Нет доступа');
   }
+}
+
+function isPresent(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.length > 0;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 
 import { Spinner } from "@/components/ui/spinner";
 import { API_BASE_URL } from "@/lib/constants";
@@ -16,9 +16,13 @@ export default function PublicProposalPage({
   const { idDetail } = use(params);
   const [htmlUrl, setHtmlUrl] = useState("");
   const [error, setError] = useState(false);
+  const htmlUrlRef = useRef("");
 
   useEffect(() => {
-    fetch(`${API_URL}/api/public/proposal/${idDetail}`)
+    const controller = new AbortController();
+    fetch(`${API_URL}/api/public/proposal/${idDetail}`, {
+      signal: controller.signal,
+    })
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
         return r.text();
@@ -30,16 +34,21 @@ export default function PublicProposalPage({
         );
         const blob = new Blob([withAbsoluteUploads], { type: "text/html" });
         const url = URL.createObjectURL(blob);
+        htmlUrlRef.current = url;
         setHtmlUrl(url);
       })
-      .catch(() => {
-        setError(true);
+      .catch((fetchError: unknown) => {
+        if (!(
+          fetchError instanceof DOMException && fetchError.name === "AbortError"
+        )) {
+          setError(true);
+        }
       });
 
     return () => {
-      if (htmlUrl) URL.revokeObjectURL(htmlUrl);
+      controller.abort();
+      if (htmlUrlRef.current) URL.revokeObjectURL(htmlUrlRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idDetail]);
 
   return (
@@ -48,7 +57,7 @@ export default function PublicProposalPage({
         <iframe
           id="public-proposal-frame"
           src={htmlUrl}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-modals"
           className="h-screen w-full border-0"
           title="Коммерческое предложение"
         />

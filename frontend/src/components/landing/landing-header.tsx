@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, Moon, Sun, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,16 +24,11 @@ export function LandingHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
-  const [currentLocale, setCurrentLocale] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCurrentLocale(document.cookie.match(/locale=(ru|kz)/)?.[1] ?? "kz");
-  }, []);
+  const currentLocale = useLocale();
 
   const toggleLocale = () => {
     const next = currentLocale === "ru" ? "kz" : "ru";
     document.cookie = `locale=${next};path=/;max-age=31536000`;
-    setCurrentLocale(next);
     router.refresh();
   };
 

@@ -3,14 +3,15 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { json, urlencoded } from 'express';
 import helmet from 'helmet';
 import * as path from 'path';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
+import { configureBodyParsers } from './http-body-limits';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
     logger:
       process.env.NODE_ENV === 'production'
         ? ['error', 'warn', 'log']
@@ -26,10 +27,8 @@ async function bootstrap() {
   // Cookie parser (for httpOnly cookie auth)
   app.use(cookieParser());
 
-  // Increase body size limit for large calculation snapshots
-  const bodyLimit = process.env.BODY_LIMIT || '1024mb';
-  app.use(json({ limit: bodyLimit }));
-  app.use(urlencoded({ limit: bodyLimit, extended: true }));
+  // Keep JSON parsing bounded before authentication/validation.
+  configureBodyParsers(app);
 
   // Global exception filter (hides stack traces in production)
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -52,7 +51,10 @@ async function bootstrap() {
   });
 
   // Static files: serve uploads folder
-  app.useStaticAssets(path.join(process.cwd(), 'uploads'), {
+  const uploadDir = path.resolve(
+    process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
+  );
+  app.useStaticAssets(uploadDir, {
     prefix: '/uploads/',
   });
 

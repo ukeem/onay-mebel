@@ -89,9 +89,29 @@ model User {
   contacts        UserContact[]
   customMaterials Material[]       @relation("CustomMaterials")
   customHardware  Hardware[]       @relation("CustomHardware")
+  uploads         Upload[]
+  uploadBytes     BigInt           @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Upload {
+  id        String @id @default(cuid())
+  filename  String @unique
+  url       String @unique
+  sizeBytes Int
+  userId    String
+  owner     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model UploadStorage {
+  id        Int    @id
+  usedBytes BigInt @default(0)
 }
 
 model RefreshToken {

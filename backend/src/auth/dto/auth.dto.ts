@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -8,6 +14,7 @@ export class RegisterDto {
 
   @IsString()
   @MinLength(8, { message: 'Минимум 8 символов' })
+  @MaxLength(128, { message: 'Максимум 128 символов' })
   password!: string;
 }
 
@@ -19,6 +26,7 @@ export class LoginDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(128, { message: 'Максимум 128 символов' })
   password!: string;
 }
 
@@ -37,6 +45,7 @@ export class VerifySmsDto {
 export class RefreshDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(512)
   refreshToken!: string;
 }
 
@@ -60,5 +69,6 @@ export class ResetConfirmDto {
 
   @IsString()
   @MinLength(8, { message: 'Минимум 8 символов' })
+  @MaxLength(128, { message: 'Максимум 128 символов' })
   newPassword!: string;
 }

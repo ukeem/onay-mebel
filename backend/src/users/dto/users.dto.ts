@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 
@@ -15,6 +16,7 @@ export class CreateUserDto {
 
   @IsString()
   @MinLength(8)
+  @MaxLength(128)
   password!: string;
 
   @IsEnum(Role)
@@ -33,11 +35,13 @@ export class UpdateUserDto {
 
   @IsDateString()
   @IsOptional()
+  @MaxLength(64)
   activeUntil?: string;
 }
 
 export class ChangePasswordDto {
   @IsString()
   @MinLength(8)
+  @MaxLength(128)
   newPassword!: string;
 }

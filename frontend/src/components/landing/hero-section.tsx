@@ -51,16 +51,16 @@ function useCountUp(target: number, duration = 2000) {
     return () => observer.disconnect();
   }, [startCount]);
 
-  return { count, ref };
+  return [count, ref] as const;
 }
 
 export function HeroSection() {
   const t = useTranslations("landing.hero");
   const containerRef = useRef<HTMLElement>(null);
 
-  const stat1 = useCountUp(500, 2000);
-  const stat2 = useCountUp(10000, 2500);
-  const stat3 = useCountUp(7, 1000);
+  const [stat1Count, stat1Ref] = useCountUp(500, 2000);
+  const [stat2Count, stat2Ref] = useCountUp(10000, 2500);
+  const [stat3Count, stat3Ref] = useCountUp(7, 1000);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -149,27 +149,27 @@ export function HeroSection() {
 
             {/* Social proof numbers */}
             <div className="hero-microcopy mt-10 flex items-center justify-center sm:justify-start gap-6 sm:gap-8">
-              <div ref={stat1.ref} className="text-center sm:text-left">
+              <div ref={stat1Ref} className="text-center sm:text-left">
                 <div className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-                  {stat1.count}+
+                  {stat1Count}+
                 </div>
                 <div className="text-xs text-muted-foreground/70 mt-0.5">
                   {t("stat1") || "мебельщиков"}
                 </div>
               </div>
-              <div ref={stat2.ref} className="text-center sm:text-left">
+              <div ref={stat2Ref} className="text-center sm:text-left">
                 <div className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-                  {stat2.count >= 1000
-                    ? `${Math.floor(stat2.count / 1000)}K+`
-                    : `${stat2.count}+`}
+                  {stat2Count >= 1000
+                    ? `${Math.floor(stat2Count / 1000)}K+`
+                    : `${stat2Count}+`}
                 </div>
                 <div className="text-xs text-muted-foreground/70 mt-0.5">
                   {t("stat2") || "расчётов"}
                 </div>
               </div>
-              <div ref={stat3.ref} className="text-center sm:text-left">
+              <div ref={stat3Ref} className="text-center sm:text-left">
                 <div className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-                  {stat3.count}
+                  {stat3Count}
                 </div>
                 <div className="text-xs text-muted-foreground/70 mt-0.5">
                   {t("stat3") || "дней бесплатно"}

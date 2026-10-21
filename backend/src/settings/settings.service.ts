@@ -517,7 +517,7 @@ export class SettingsService {
     if (material.userId !== userId) throw new ForbiddenException('Нет доступа');
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.material.update({
+      await tx.material.update({
         where: { id: materialId },
         data: {
           ...(dto.brand !== undefined ? { brand: dto.brand } : {}),

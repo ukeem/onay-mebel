@@ -1,16 +1,25 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
   Post,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IsString, Matches, MaxLength } from 'class-validator';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UploadsService } from './uploads.service';
+import { MAX_UPLOAD_SIZE, UploadsService } from './uploads.service';
+
+class DeleteUploadDto {
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^\/uploads\/[0-9a-f-]{36}\.webp$/i)
+  url!: string;
+}
 
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
@@ -19,24 +28,31 @@ export class UploadsController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024 } }),
+    FileInterceptor('file', {
+      limits: {
+        fileSize: MAX_UPLOAD_SIZE,
+        files: 1,
+        fields: 0,
+        parts: 1,
+        fieldNameSize: 100,
+        headerPairs: 50,
+      },
+    }),
   )
-  async upload(@UploadedFile() file: Express.Multer.File) {
-    const url = await this.uploadsService.saveFile(file);
+  async upload(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request & { user: { id: string } },
+  ) {
+    const url = await this.uploadsService.saveFile(file, req.user.id);
     return { url };
   }
 
   @Delete()
-  async remove(@Body('url') url: string) {
-    if (
-      !url ||
-      typeof url !== 'string' ||
-      !url.startsWith('/uploads/') ||
-      url.includes('..')
-    ) {
-      throw new BadRequestException('Некорректный путь к файлу');
-    }
-    await this.uploadsService.deleteFile(url);
+  async remove(
+    @Body() body: DeleteUploadDto,
+    @Req() req: Request & { user: { id: string } },
+  ) {
+    await this.uploadsService.deleteFile(body.url, req.user.id);
     return { message: 'Файл удалён' };
   }
 }
