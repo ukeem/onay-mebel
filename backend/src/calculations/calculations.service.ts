@@ -12,6 +12,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { isBoundedSnapshot } from './dto/snapshot-limits';
 
+export const PROPOSAL_IMAGE_BUDGET_BYTES = 6 * 1024 * 1024;
+export const PROPOSAL_HTML_BUDGET_BYTES = 10 * 1024 * 1024;
+const CANONICAL_UPLOAD_URL =
+  /^\/uploads\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp)$/i;
+
 /* ================================================================
    CALCULATION ENGINE
    Три уровня цен:
@@ -660,14 +665,14 @@ export class CalculationsService {
   /* =================================================================
      COMMERCIAL PROPOSAL (HTML) — services distributed into products
      ================================================================= */
-  generateProposal(
+  async generateProposal(
     data: any,
     proposalSettings?: {
       companyInfo?: any;
       paymentStages?: any[];
       contacts?: any[];
     },
-  ): string {
+  ): Promise<string> {
     const d = data;
     const ps = proposalSettings ?? {};
     const fmt = (n: number) =>
@@ -698,6 +703,14 @@ export class CalculationsService {
       comfort: d.rooms,
       premium: d.rooms,
     };
+    const proposalImages = await loadProposalImages(
+      collectProposalImagePaths(
+        enabledTiers,
+        tierRoomsSnapshot,
+        d.rooms,
+        ps.companyInfo?.logo,
+      ),
+    );
 
     const reservePct = d.totals?.reserve ?? 10;
     const discountPct = d.totals?.discount ?? 0;
@@ -929,9 +942,9 @@ export class CalculationsService {
                   ? `<span class="price-old">${fmt(detBd)}</span> <span class="price-new">${fmt(detAd)}</span>`
                   : `<span class="price-current">${fmt(detAd)}</span>`;
 
-              const detImgSrc = det.image ? logoToDataUri(det.image) : '';
-              const detThumbHtml = detImgSrc
-                ? `<span class="detail-chip has-img" onclick="openLightbox(this)"><img src="${detImgSrc}" alt=""/><span class="detail-chip-plus">+</span></span>`
+              const detImageId = proposalImages.idFor(det.image);
+              const detThumbHtml = detImageId
+                ? `<span class="detail-chip has-img" onclick="openLightbox(this)"><img data-proposal-image="${detImageId}" alt=""/><span class="detail-chip-plus">+</span></span>`
                 : `<span class="detail-chip placeholder ${det.type === 'material' ? 'mat' : 'hw'}">${det.type === 'material' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'}</span>`;
 
               detailsHtml += `
@@ -948,11 +961,9 @@ export class CalculationsService {
               /^\/uploads\/[A-Za-z0-9._-]+$/.test(pr.image)
                 ? pr.image
                 : '';
-            const productImageSrc = safeImageUrl
-              ? logoToDataUri(safeImageUrl)
-              : '';
-            const productImageHtml = productImageSrc
-              ? `<div class="product-image-wrap"><img class="product-image" src="${productImageSrc}" alt="Изображение изделия"/></div>`
+            const productImageId = proposalImages.idFor(safeImageUrl);
+            const productImageHtml = productImageId
+              ? `<div class="product-image-wrap"><img class="product-image" data-proposal-image="${productImageId}" alt="Изображение изделия"/></div>`
               : '';
             const productContentClass = productImageHtml
               ? 'product-content with-image'
@@ -1127,7 +1138,8 @@ export class CalculationsService {
       contactsHtml = `<div class="contacts-section"><div class="contacts-title" data-i18n="contactsTitle">Контакты</div><div class="contacts-grid">${items}</div></div>`;
     }
 
-    return `<!DOCTYPE html>
+    const companyLogoId = proposalImages.idFor(ps.companyInfo?.logo);
+    const html = `<!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -1868,7 +1880,7 @@ export class CalculationsService {
   ${
     ps.companyInfo
       ? `<div class="company-info">
-    ${logoToDataUri(ps.companyInfo.logo) ? `<img class="company-logo" src="${logoToDataUri(ps.companyInfo.logo)}" alt="${escapeHtml(String(ps.companyInfo.name ?? ''))}" />` : ''}
+    ${companyLogoId ? `<img class="company-logo" data-proposal-image="${companyLogoId}" alt="${escapeHtml(String(ps.companyInfo.name ?? ''))}" />` : ''}
     <div class="company-name">${escapeHtml(String(ps.companyInfo.name ?? ''))}</div>
     ${ps.companyInfo.description ? `<div class="company-desc" data-i18n="companyDesc">${escapeHtml(String(ps.companyInfo.description))}</div>` : ''}
   </div>`
@@ -1898,6 +1910,13 @@ export class CalculationsService {
 </div>
 
   <script>
+    /* One base64 payload per unique local image, shared by all references. */
+    var PROPOSAL_IMAGES = ${jsonForInlineScript(proposalImages.dataUris)};
+    document.querySelectorAll('[data-proposal-image]').forEach(function(img) {
+      var source = PROPOSAL_IMAGES[img.getAttribute('data-proposal-image')];
+      if (source) img.setAttribute('src', source);
+    });
+
     /* ── Lightbox ── */
     function openLightbox(el) {
       var img = el.querySelector('img');
@@ -2009,6 +2028,12 @@ export class CalculationsService {
   </script>
 </body>
 </html>`;
+    if (Buffer.byteLength(html, 'utf8') > PROPOSAL_HTML_BUDGET_BYTES) {
+      throw new PayloadTooLargeException(
+        'Коммерческое предложение превышает допустимый размер',
+      );
+    }
+    return html;
   }
 
   /* =================================================================
@@ -2797,45 +2822,77 @@ function jsonForInlineScript(value: unknown): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
-/** Convert /uploads/filename.ext to base64 data URI for self-contained HTML */
-function logoToDataUri(logoPath: string): string {
-  try {
-    if (typeof logoPath !== 'string') return '';
-    const match = /^\/uploads\/([A-Za-z0-9][A-Za-z0-9._-]{0,99})$/.exec(
-      logoPath,
-    );
-    if (!match) return '';
-    const filename = match[1];
-    const resolvedUploads = path.resolve(
-      process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
-    );
-    const filePath = path.join(resolvedUploads, filename);
-    if (!path.resolve(filePath).startsWith(`${resolvedUploads}${path.sep}`)) {
-      return '';
+type ProposalImages = {
+  dataUris: Record<string, string>;
+  idFor(value: unknown): string;
+};
+
+function collectProposalImagePaths(
+  enabledTiers: string[],
+  tierRoomsSnapshot: Record<string, any>,
+  fallbackRooms: unknown,
+  companyLogo: unknown,
+): string[] {
+  const paths: unknown[] = [companyLogo];
+  for (const tier of enabledTiers) {
+    const rooms = tierRoomsSnapshot[tier] ?? fallbackRooms;
+    if (!Array.isArray(rooms)) continue;
+    for (const room of rooms) {
+      if (!Array.isArray(room?.products)) continue;
+      for (const product of room.products) {
+        paths.push(product?.image);
+        if (!Array.isArray(product?.details)) continue;
+        for (const detail of product.details) {
+          if (detail?.enabled !== false) paths.push(detail?.image);
+        }
+      }
     }
-    if (
-      !fs.existsSync(filePath) ||
-      fs.statSync(filePath).size > 5 * 1024 * 1024
-    ) {
-      return '';
-    }
-    const buf = fs.readFileSync(filePath);
-    const ext = path.extname(filename).toLowerCase().replace('.', '');
-    const mime =
-      ext === 'jpg' || ext === 'jpeg'
-        ? 'image/jpeg'
-        : ext === 'png'
-          ? 'image/png'
-          : ext === 'webp'
-            ? 'image/webp'
-            : ext === 'gif'
-              ? 'image/gif'
-              : '';
-    if (!mime) return '';
-    return `data:${mime};base64,${buf.toString('base64')}`;
-  } catch {
-    return '';
   }
+  return paths.filter((value): value is string => typeof value === 'string');
+}
+
+/** Load each canonical local image at most once without blocking the event loop. */
+async function loadProposalImages(paths: string[]): Promise<ProposalImages> {
+  const uploadDir = path.resolve(
+    process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
+  );
+  const idsByPath = new Map<string, string>();
+  const dataUris: Record<string, string> = {};
+  let imageBytes = 0;
+
+  for (const uploadPath of new Set(paths)) {
+    const match = CANONICAL_UPLOAD_URL.exec(uploadPath);
+    if (!match) continue;
+    const filename = match[1].toLowerCase();
+    const filePath = path.resolve(uploadDir, filename);
+    if (path.dirname(filePath) !== uploadDir) continue;
+
+    try {
+      const stats = await fs.promises.lstat(filePath);
+      if (
+        !stats.isFile() ||
+        stats.size <= 0 ||
+        stats.size > PROPOSAL_IMAGE_BUDGET_BYTES - imageBytes
+      ) {
+        continue;
+      }
+      const buffer = await fs.promises.readFile(filePath);
+      if (buffer.length !== stats.size) continue;
+      imageBytes += buffer.length;
+      const id = `i${idsByPath.size}`;
+      idsByPath.set(uploadPath, id);
+      dataUris[id] = `data:image/webp;base64,${buffer.toString('base64')}`;
+    } catch {
+      // A missing/unreadable image is omitted; the proposal remains usable.
+    }
+  }
+
+  return {
+    dataUris,
+    idFor(value: unknown) {
+      return typeof value === 'string' ? (idsByPath.get(value) ?? '') : '';
+    },
+  };
 }
 
 function defaultService() {

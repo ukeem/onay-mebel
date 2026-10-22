@@ -31,6 +31,10 @@ const mockCatalogCopy = {
   copySettingsToUser: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockUploads = {
+  deleteUserWithUploads: jest.fn().mockResolvedValue(undefined),
+};
+
 const makeUser = (overrides: Record<string, any> = {}) => ({
   id: 'user-1',
   phone: '+77001234567',
@@ -53,6 +57,7 @@ describe('UsersService', () => {
       mockPrisma as any,
       mockWs as any,
       mockCatalogCopy as any,
+      mockUploads as any,
     );
   });
 
@@ -326,12 +331,23 @@ describe('UsersService', () => {
   describe('remove', () => {
     it('should delete user and force logout', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(makeUser());
-      mockPrisma.user.delete.mockResolvedValue({});
-
       const result = await service.remove('user-1', 'admin-1');
 
       expect(result.message).toBe('Пользователь удалён');
+      expect(mockUploads.deleteUserWithUploads).toHaveBeenCalledWith('user-1');
       expect(mockWs.forceLogout).toHaveBeenCalledWith('user-1');
+    });
+
+    it('does not report deletion or force logout when upload cleanup fails', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(makeUser());
+      mockUploads.deleteUserWithUploads.mockRejectedValueOnce(
+        new Error('filesystem failure'),
+      );
+
+      await expect(service.remove('user-1', 'admin-1')).rejects.toThrow(
+        'filesystem failure',
+      );
+      expect(mockWs.forceLogout).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenException when deleting self', async () => {

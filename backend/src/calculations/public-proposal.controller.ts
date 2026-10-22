@@ -24,7 +24,10 @@ export class PublicProposalController {
     const proposalSettings = calcWithProject?.userId
       ? await this.settingsService.getProposalSettings(calcWithProject.userId)
       : undefined;
-    const html = this.svc.generateProposal(calc.data as any, proposalSettings);
+    const html = await this.svc.generateProposal(
+      calc.data as any,
+      proposalSettings,
+    );
     setProposalSecurityHeaders(res);
     res.send(html);
   }

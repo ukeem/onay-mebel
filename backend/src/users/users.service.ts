@@ -8,6 +8,7 @@ import { Role, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogCopyService } from '../shared/catalog-copy.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { WsGateway } from '../ws/ws.gateway';
 import {
   ChangePasswordDto,
@@ -31,6 +32,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly ws: WsGateway,
     private readonly catalogCopy: CatalogCopyService,
+    private readonly uploads: UploadsService,
   ) {}
 
   /** Список пользователей. ADMIN видит только USER, SUPER видит всех */
@@ -229,9 +231,8 @@ export class UsersService {
       throw new ForbiddenException('Нельзя удалить суперадмина');
     }
 
+    await this.uploads.deleteUserWithUploads(id);
     this.ws.forceLogout(id);
-
-    await this.prisma.user.delete({ where: { id } });
     return { message: 'Пользователь удалён' };
   }
 }

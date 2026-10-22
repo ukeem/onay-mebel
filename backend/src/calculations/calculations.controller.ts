@@ -77,7 +77,10 @@ export class CalculationsController {
     const proposalSettings = await this.settingsService.getProposalSettings(
       req.user.id,
     );
-    const html = this.svc.generateProposal(calc.data as any, proposalSettings);
+    const html = await this.svc.generateProposal(
+      calc.data as any,
+      proposalSettings,
+    );
     setProposalSecurityHeaders(res);
     res.send(html);
   }
