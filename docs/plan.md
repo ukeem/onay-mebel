@@ -2,7 +2,7 @@
 
 ## Текущее состояние
 
-В работе T-004: исправление критического memory amplification публичного КП, production dependency graph backend image и durable consistency uploads. Последний принятый ID: T-003.
+T-004 принята: закрыты memory amplification публичного КП, воспроизводимость production dependency graph backend image и восстановимая согласованность uploads. Следующая задача — T-009 по оставшимся production-блокерам. Последний принятый ID: T-004.
 
 ## Запуск рабочих сессий
 
@@ -26,7 +26,7 @@
 | T-001 [аудит] | Аудит проекта и готовности к чистому production-деплою | 1 | принята с замечаниями | Подтверждены сборки, TypeScript, 94 теста, красные ESLint gates и блокеры; Linux images, чистые миграции/seed и runtime на VPS проверяются позднее |
 | T-002 [fix] | Закрыть критические уязвимости до production | 1 | принята с замечаниями | Tenant isolation, uploads, публичное КП и лимиты закрыты; clean PostgreSQL migrate-twice и Linux image smoke обязательны в T-006 |
 | T-003 [review] | Независимо проверить исправления T-002 | 1 | принята с критической находкой | Подтверждены основные security fixes; найден memory amplification КП, неверный Docker dependency graph, отсутствие durable upload reconciliation и пробел интеграционных gates |
-| T-004 [fix] | Исправить находки независимого review T-003 | 1 | выдана | Ограничить output/память КП, сделать backend image воспроизводимым, восстановить согласованность uploads и добавить регрессии |
+| T-004 [fix] | Исправить находки независимого review T-003 | 1 | принята с замечаниями | КП ограничено бюджетами и дедупликацией, runtime graph воспроизводим, uploads имеют startup reconciliation; Linux image/PostgreSQL/browser gates остаются T-006 |
 | T-005 [review] | Проверить готовность к развёртыванию | 1 | план | Независимая проверка кода, конфигурации, зависимостей и полного набора deployment gates |
 | T-006 [доп] | Развернуть Onay Mebel на новом VPS | 1 | план | Dokploy, swap, DNS, HTTPS, production-секреты, чистая база, smoke-тест, постоянные volumes и внешний backup с пробным restore |
 | T-007 [review] | Независимо проверить production | 1 | план | Проверить внешнюю доступность, права, основной сценарий, ресурсы и восстановимость бэкапов |
@@ -54,3 +54,10 @@
 - **Важно:** crash между резервом БД и записью файла, а также удаление пользователя оставляют рассинхронизацию metadata/квот/файлов; нужен безопасный cleanup/reconciliation.
 - **Важно:** unit/e2e T-002 в значительной части мокируют persistence. Реальный PostgreSQL two-tenant gate, конкурентные квоты, rollback и browser-level КП должны быть доказаны до production; кодовые регрессии добавляются в T-004, инфраструктурные gates остаются в T-006.
 - Frontend standalone не содержит уязвимый `picomatch`; эта часть классификации T-002 подтверждена.
+
+## Замечания приёмки T-004
+
+- Подтверждены асинхронная дедупликация локальных изображений КП, бюджеты 6 MiB для исходных изображений и 10 MiB для итогового HTML, одинаковая защита публичного и внутреннего endpoints и сохранение XSS/CSP/sandbox регрессий.
+- Подтверждены чистая production-only установка backend по lock-файлу, точное совпадение Prisma CLI/client 7.4.0, runtime verifier и отсутствие Jest, ts-jest, Handlebars и Nest CLI в воспроизведённом production tree.
+- Upload lifecycle использует temp → atomic rename и fail-closed startup reconciliation; покрыты metadata/file/counter рассинхронизации, orphan/temp, traversal, symlink, идемпотентность и удаление пользователя. При редком сбое БД после уже выполненного unlink следующая reconciliation выбирает согласованное состояние без файла; это допустимо для текущей пустой production и одной backend replica, но не заменяет внешний backup.
+- На финальном дереве прошли 127 backend unit/security тестов и 15 e2e, TypeScript/build/Prisma/lint frontend и backend без новых errors. Реальная Alpine image, чистая PostgreSQL, конкурентные квоты, browser print/PDF/offline КП и restore backup остаются обязательными T-006 gates.
